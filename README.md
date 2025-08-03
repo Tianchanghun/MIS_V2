@@ -27,8 +27,8 @@ docker-compose logs -f
 ```
 
 ### **2. 접속 정보**
-- **PostgreSQL**: `localhost:5432`
-- **pgAdmin**: `http://localhost:5050`
+- **PostgreSQL**: `localhost:5433`
+- **pgAdmin**: `http://localhost:5051`
   - ID: `admin@mis.co.kr`
   - PW: `admin123!@#`
 - **Flask App**: `http://localhost:5000`
@@ -52,23 +52,27 @@ docker-compose up postgres
 
 #### **2단계: 데이터 복제 (READ ONLY)**
 ```bash
-# 레거시 DB에서 안전하게 복제
-python db_migration.py
+# 레거시 DB에서 안전하게 복제 (재개 가능)
+python db_migration_resumable.py
+
+# 강제 재시작
+python db_migration_resumable.py --restart
 ```
 
 **📌 복제 특징:**
 - ✅ **READ ONLY 모드**: 원본 DB 절대 손상 없음
+- ✅ **재개 가능**: 중단된 지점부터 자동 재시작
+- ✅ **배치 처리**: 500건씩 안전한 처리
 - ✅ **스키마 자동 변환**: MS-SQL → PostgreSQL
-- ✅ **컬럼명 변환**: CamelCase → snake_case
 - ✅ **데이터 검증**: 마이그레이션 후 자동 검증
 
 #### **3단계: 복제 확인**
 ```bash
 # pgAdmin에서 확인
-http://localhost:5050
+http://localhost:5051
 
 # 또는 직접 연결
-psql -h localhost -p 5432 -U mis_user -d db_mis
+psql -h localhost -p 5433 -U mis_user -d db_mis
 ```
 
 ## 🎯 **구현 우선순위**
@@ -108,16 +112,17 @@ psql -h localhost -p 5432 -U mis_user -d db_mis
 C:\mis_v2\
 ├── docker-compose.yml          # Docker 환경 설정
 ├── requirements.txt            # Python 의존성
-├── db_migration.py            # DB 마이그레이션 도구
+├── db_migration_resumable.py   # 재개 가능한 DB 마이그레이션 도구
 ├── sql_scripts/               # PostgreSQL 초기화 스크립트
 │   └── 01_create_schema.sql
+├── docs/                      # 프로젝트 문서
 ├── app/                       # Flask 애플리케이션 (예정)
 │   ├── __init__.py
 │   ├── models/               # SQLAlchemy 모델
 │   ├── views/                # 라우트 처리
 │   ├── templates/            # HTML 템플릿
 │   └── static/               # CSS, JS, 이미지
-└── mis.aone.co.kr/           # 레거시 ASP.NET MVC (참조용)
+└── mis.aone.co.kr/           # 레거시 ASP.NET MVC (참조용, Git 제외)
 ```
 
 ## 🚨 **중요 사항**
@@ -135,11 +140,11 @@ C:\mis_v2\
 ## 🎯 **다음 단계**
 
 1. **환경 구축**: `docker-compose up -d`
-2. **마이그레이션**: `python db_migration.py`
+2. **마이그레이션**: `python db_migration_resumable.py`
 3. **Flask 앱 개발**: Phase 1부터 시작
 4. **테스트**: 로컬 환경에서 검증
 5. **배포**: 검증 완료 후 실서버 이전
 
 ---
 
-**📞 문의사항이나 문제 발생시 언제든 연락주세요!** 🚀 
+**📞 문의사항이나 문제 발생시 언제든 연락주세요!** 🚀
