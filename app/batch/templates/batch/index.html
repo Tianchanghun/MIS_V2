@@ -1,276 +1,390 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 
-{% block page_title %}배치 관리{% endblock %}
+{% block title %}ERPia 배치 대시보드{% endblock %}
 
 {% block extra_css %}
 <style>
-    .status-card {
-        transition: transform 0.2s;
-    }
-    .status-card:hover {
-        transform: translateY(-2px);
-    }
-    
-    .job-status-running {
-        color: #28a745;
-    }
-    
-    .job-status-paused {
-        color: #ffc107;
-    }
-    
-    .job-status-error {
-        color: #dc3545;
-    }
-    
-    .execution-log {
-        max-height: 300px;
-        overflow-y: auto;
-        font-family: 'Courier New', monospace;
-        font-size: 0.85rem;
-    }
+.status-card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.status-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.status-icon {
+    font-size: 2.5rem;
+    margin-bottom: 15px;
+}
+
+.gradient-primary {
+    background: linear-gradient(135deg, #007bff, #6f42c1);
+    color: white;
+}
+
+.gradient-success {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+}
+
+.gradient-warning {
+    background: linear-gradient(135deg, #ffc107, #fd7e14);
+    color: white;
+}
+
+.gradient-info {
+    background: linear-gradient(135deg, #17a2b8, #6f42c1);
+    color: white;
+}
+
+.job-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.job-item {
+    border-left: 4px solid #007bff;
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 10px;
+    transition: all 0.3s ease;
+}
+
+.job-item:hover {
+    background: #e9ecef;
+    border-left-color: #6f42c1;
+}
+
+.btn-action {
+    min-width: 80px;
+}
+
+.refresh-spinner {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.manual-batch-section {
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    border-radius: 12px;
+    padding: 20px;
+    border: 2px dashed #6c757d;
+    margin-bottom: 20px;
+}
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid">
+    <!-- 헤더 -->
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="fas fa-clock"></i> 배치 관리 대시보드</h2>
         <div>
-            <button type="button" class="btn btn-success" onclick="startScheduler()">
-                <i class="fas fa-play"></i> 스케줄러 시작
+            <h2><i class="fas fa-tachometer-alt text-primary me-2"></i>ERPia 배치 대시보드</h2>
+            <p class="text-muted mb-0">ERPia 데이터 수집 및 배치 작업을 모니터링합니다.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-primary" onclick="refreshDashboard()">
+                <i class="fas fa-sync-alt me-2" id="refreshIcon"></i>새로고침
             </button>
-            <button type="button" class="btn btn-warning" onclick="stopScheduler()">
-                <i class="fas fa-stop"></i> 스케줄러 중지
-            </button>
-            <button type="button" class="btn btn-info" onclick="refreshStatus()">
-                <i class="fas fa-sync-alt"></i> 새로고침
-            </button>
+            <a href="{{ url_for('batch.settings') }}" class="btn btn-primary">
+                <i class="fas fa-cog me-2"></i>배치 설정
+            </a>
         </div>
     </div>
-    
-    <!-- 시스템 상태 카드 -->
+
+    <!-- 회사 선택 -->
     <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card text-white bg-info status-card">
+        <div class="col-md-6">
+            <div class="card">
                 <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h6>스케줄러 상태</h6>
-                            <h4 id="schedulerStatus">
-                                {% if scheduler_status.running %}
-                                    <i class="fas fa-check-circle"></i> 실행중
-                                {% else %}
-                                    <i class="fas fa-times-circle"></i> 중지됨
-                                {% endif %}
-                            </h4>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-cog fa-2x"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card text-white bg-success status-card">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h6>ERPia 연결</h6>
-                            <h4 id="erpiaStatus">확인중...</h4>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-wifi fa-2x"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card text-white bg-warning status-card">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h6>등록된 작업</h6>
-                            <h4 id="jobCount">{{ scheduler_status.job_count }}개</h4>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-tasks fa-2x"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card text-white bg-primary status-card">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h6>사은품 분류</h6>
-                            <h4 id="giftStatus">활성</h4>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-gift fa-2x"></i>
-                        </div>
-                    </div>
+                    <label class="form-label fw-bold">모니터링할 회사 선택</label>
+                    <select class="form-select" id="companyFilter" onchange="updateDashboard()">
+                        <option value="">전체 회사</option>
+                        {% if user_companies %}
+                            {% for uc in user_companies %}
+                            <option value="{{ uc.company_id }}" {% if current_company and uc.company_id == current_company.id %}selected{% endif %}>
+                                {{ uc.company.company_name }}
+                                {% if uc.is_primary %}<span class="badge bg-primary ms-1">주속</span>{% endif %}
+                            </option>
+                            {% endfor %}
+                        {% endif %}
+                    </select>
                 </div>
             </div>
         </div>
     </div>
-    
-    <!-- 배치 작업 목록 -->
-    <div class="row">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">
-                        <i class="fas fa-list"></i> 등록된 배치 작업
-                    </h5>
-                    <button class="btn btn-primary btn-sm" onclick="addNewJob()">
-                        <i class="fas fa-plus"></i> 작업 추가
-                    </button>
-                </div>
+
+    <!-- 상태 카드 -->
+    <div class="row mb-4" id="statusCards">
+        <div class="col-md-3 mb-3">
+            <div class="card status-card gradient-primary text-center">
                 <div class="card-body">
-                    {% if jobs %}
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>작업명</th>
-                                    <th>스케줄</th>
-                                    <th>상태</th>
-                                    <th>다음 실행</th>
-                                    <th>관리</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for job in jobs %}
-                                <tr>
-                                    <td>
-                                        <strong>{{ job.name }}</strong><br>
-                                        <small class="text-muted">{{ job.id }}</small>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-info">{{ job.trigger }}</span>
-                                    </td>
-                                    <td>
-                                        {% if job.next_run_time %}
-                                            <span class="badge bg-success job-status-running">실행중</span>
-                                        {% else %}
-                                            <span class="badge bg-warning job-status-paused">일시정지</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if job.next_run_time %}
-                                            {{ job.next_run_time.strftime('%Y-%m-%d %H:%M:%S') }}
-                                        {% else %}
-                                            -
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <button class="btn btn-sm btn-success" onclick="runJobNow('{{ job.id }}')">
-                                            <i class="fas fa-play"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-warning" onclick="pauseJob('{{ job.id }}')">
-                                            <i class="fas fa-pause"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-danger" onclick="removeJob('{{ job.id }}')">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                    <div class="status-icon">
+                        <i class="fas fa-server"></i>
                     </div>
-                    {% else %}
-                    <div class="text-center py-4">
-                        <i class="fas fa-tasks fa-3x text-muted mb-3"></i>
-                        <p class="text-muted">등록된 배치 작업이 없습니다.</p>
-                        <button class="btn btn-primary" onclick="addNewJob()">
-                            <i class="fas fa-plus"></i> 첫 번째 작업 추가
-                        </button>
-                    </div>
-                    {% endif %}
+                    <h4 class="mb-2" id="schedulerStatus">-</h4>
+                    <p class="mb-0">스케줄러 상태</p>
                 </div>
             </div>
         </div>
         
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-history"></i> 최근 실행 결과
-                    </h5>
-                </div>
+        <div class="col-md-3 mb-3">
+            <div class="card status-card gradient-success text-center">
                 <div class="card-body">
-                    {% if recent_executions %}
-                    <div class="execution-log">
-                        {% for execution in recent_executions %}
-                        <div class="mb-2 p-2 border-bottom">
-                            <div class="d-flex justify-content-between">
-                                <strong>{{ execution.job_name }}</strong>
-                                <span class="badge bg-{{ 'success' if execution.status == 'SUCCESS' else 'danger' }}">
-                                    {{ execution.status }}
-                                </span>
-                            </div>
-                            <small class="text-muted">{{ execution.executed_at.strftime('%Y-%m-%d %H:%M:%S') }}</small>
-                            {% if execution.error_message %}
-                            <div class="text-danger small">{{ execution.error_message }}</div>
-                            {% endif %}
-                        </div>
-                        {% endfor %}
+                    <div class="status-icon">
+                        <i class="fas fa-tasks"></i>
                     </div>
-                    {% else %}
-                    <div class="text-center py-4">
-                        <i class="fas fa-clock fa-2x text-muted mb-2"></i>
-                        <p class="text-muted">실행 결과가 없습니다.</p>
+                    <h4 class="mb-2" id="jobCount">-</h4>
+                    <p class="mb-0">등록된 작업</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card status-card gradient-warning text-center">
+                <div class="card-body">
+                    <div class="status-icon">
+                        <i class="fas fa-plug"></i>
                     </div>
-                    {% endif %}
+                    <h4 class="mb-2" id="erpiaStatus">-</h4>
+                    <p class="mb-0">ERPia 연결</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card status-card gradient-info text-center">
+                <div class="card-body">
+                    <div class="status-icon">
+                        <i class="fas fa-history"></i>
+                    </div>
+                    <h4 class="mb-2" id="lastRun">-</h4>
+                    <p class="mb-0">마지막 실행</p>
                 </div>
             </div>
         </div>
     </div>
-    
-    <!-- ERPia 배치 실행 -->
-    <div class="row mt-4">
-        <div class="col-12">
+
+    <!-- 수동 배치 실행 섹션 -->
+    <div class="manual-batch-section">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h5 class="text-primary mb-2">
+                    <i class="fas fa-play me-2"></i>수동 배치 실행
+                </h5>
+                <p class="text-muted mb-0">
+                    원하는 날짜 범위의 ERPia 데이터를 즉시 수집하고 사은품을 자동 분류할 수 있습니다.
+                </p>
+            </div>
+            <div class="col-md-4 text-end">
+                <button class="btn btn-lg btn-success" onclick="showManualBatchModal()">
+                    <i class="fas fa-rocket me-2"></i>배치 실행
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- 스케줄러 제어 -->
+        <div class="col-md-6 mb-4">
             <div class="card">
                 <div class="card-header">
                     <h5 class="mb-0">
-                        <i class="fas fa-sync-alt"></i> ERPia 배치 실행
+                        <i class="fas fa-play-circle me-2"></i>스케줄러 제어
                     </h5>
                 </div>
                 <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h6>수동 배치 실행</h6>
-                            <p class="text-muted">ERPia에서 데이터를 즉시 수집합니다.</p>
-                            <div class="btn-group" role="group">
-                                <button class="btn btn-outline-primary" onclick="runErpiaBatch('orders')">
-                                    <i class="fas fa-shopping-cart"></i> 주문 수집
-                                </button>
-                                <button class="btn btn-outline-primary" onclick="runErpiaBatch('products')">
-                                    <i class="fas fa-box"></i> 상품 수집
-                                </button>
-                                <button class="btn btn-outline-primary" onclick="runErpiaBatch('customers')">
-                                    <i class="fas fa-users"></i> 고객 수집
-                                </button>
-                                <button class="btn btn-outline-success" onclick="runErpiaBatch('all')">
-                                    <i class="fas fa-sync"></i> 전체 수집
-                                </button>
-                            </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="badge bg-secondary" id="schedulerStatusBadge">확인 중...</span>
+                            <p class="text-muted mb-0 mt-2">
+                                스케줄러를 시작하면 설정된 시간에 자동으로 배치가 실행됩니다.
+                            </p>
                         </div>
-                        <div class="col-md-6">
-                            <h6>사은품 분류 실행</h6>
-                            <p class="text-muted">수집된 데이터에서 사은품을 자동 분류합니다.</p>
-                            <button class="btn btn-success" onclick="runGiftClassification()">
-                                <i class="fas fa-magic"></i> 사은품 분류 실행
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-success btn-action" onclick="startScheduler()">
+                                <i class="fas fa-play"></i> 시작
+                            </button>
+                            <button class="btn btn-danger btn-action" onclick="stopScheduler()">
+                                <i class="fas fa-stop"></i> 중지
                             </button>
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- ERPia 연결 상태 -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-wifi me-2"></i>ERPia 연결 상태
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="badge bg-secondary" id="erpiaStatusBadge">확인 중...</span>
+                            <p class="text-muted mb-0 mt-2" id="erpiaStatusMessage">
+                                ERPia 서버와의 연결 상태를 확인 중입니다.
+                            </p>
+                        </div>
+                        <div>
+                            <button class="btn btn-outline-primary btn-action" onclick="testErpiaConnection()">
+                                <i class="fas fa-sync-alt"></i> 테스트
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 배치 작업 목록 -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>등록된 배치 작업
+                    </h5>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-primary" onclick="runErpiaCollection()">
+                            <i class="fas fa-download"></i> ERPia 수집
+                        </button>
+                        <button class="btn btn-outline-success" onclick="runGiftClassification()">
+                            <i class="fas fa-gift"></i> 사은품 분류
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="job-list" id="jobList">
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                            <p>작업 목록을 불러오는 중...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 최근 실행 로그 -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history me-2"></i>최근 실행 로그
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>시간</th>
+                                    <th>회사</th>
+                                    <th>유형</th>
+                                    <th>상태</th>
+                                    <th>처리 건수</th>
+                                    <th>소요 시간</th>
+                                    <th>상세</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentLogsTable">
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted">
+                                        <i class="fas fa-spinner fa-spin me-2"></i>로그를 불러오는 중...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 수동 배치 실행 모달 -->
+<div class="modal fade" id="manualBatchModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-rocket me-2"></i>수동 배치 실행
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="manualBatchForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">대상 회사</label>
+                                <select class="form-select" id="batchCompanyId" required>
+                                    <option value="">회사를 선택하세요</option>
+                                    {% if user_companies %}
+                                        {% for uc in user_companies %}
+                                        <option value="{{ uc.company_id }}">
+                                            {{ uc.company.company_name }}
+                                            {% if uc.is_primary %} (주속){% endif %}
+                                        </option>
+                                        {% endfor %}
+                                    {% endif %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">시작일</label>
+                                <input type="date" class="form-control" id="batchStartDate" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">종료일</label>
+                                <input type="date" class="form-control" id="batchEndDate" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>수동 배치 실행 과정:</strong>
+                        <ol class="mb-0 mt-2">
+                            <li>선택한 기간의 ERPia 주문 데이터를 수집합니다</li>
+                            <li>수집된 상품을 자동으로 사은품/일반상품으로 분류합니다</li>
+                            <li>매출분석 테이블에 데이터를 저장합니다</li>
+                            <li>실행 결과를 배치 로그에 기록합니다</li>
+                        </ol>
+                    </div>
+                    
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>주의사항:</strong> 기존 동일 기간 데이터는 삭제되고 새로 수집됩니다.
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-primary" onclick="executeManualBatch()">
+                    <i class="fas fa-play me-2"></i>배치 실행
+                </button>
             </div>
         </div>
     </div>
@@ -281,11 +395,11 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">실행 로그</h5>
+                <h5 class="modal-title"><i class="fas fa-file-alt me-2"></i>실행 로그</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <pre id="executionLogContent" class="bg-dark text-light p-3" style="height: 400px; overflow-y: auto;"></pre>
+                <pre id="logContent" style="max-height: 400px; overflow-y: auto;"></pre>
             </div>
         </div>
     </div>
@@ -294,125 +408,409 @@
 
 {% block extra_js %}
 <script>
-// 페이지 로드 시 상태 확인
+let currentCompanyFilter = null;
+
 $(document).ready(function() {
-    refreshStatus();
+    // 초기 대시보드 로드
+    updateDashboard();
     
-    // 5초마다 상태 자동 업데이트
-    setInterval(refreshStatus, 5000);
+    // 5초마다 상태 업데이트
+    setInterval(updateStatus, 5000);
+    
+    // 오늘 날짜로 초기화
+    const today = new Date().toISOString().split('T')[0];
+    $('#batchStartDate').val(today);
+    $('#batchEndDate').val(today);
+    
+    // 현재 회사로 기본 설정
+    const currentCompany = $('#companyFilter').val();
+    if (currentCompany) {
+        $('#batchCompanyId').val(currentCompany);
+    }
 });
 
-// 상태 새로고침
-function refreshStatus() {
-    $.get('/batch/api/status', function(data) {
-        $('#schedulerStatus').html(data.scheduler_running ? 
-            '<i class="fas fa-check-circle"></i> 실행중' : 
-            '<i class="fas fa-times-circle"></i> 중지됨'
-        );
-        $('#jobCount').text(data.job_count + '개');
-        $('#erpiaStatus').html(data.erpia_connected ? 
-            '<i class="fas fa-check-circle"></i> 연결됨' : 
-            '<i class="fas fa-times-circle"></i> 연결 실패'
-        );
-    }).fail(function() {
-        console.error('상태 확인 실패');
-    });
+// 대시보드 업데이트
+function updateDashboard() {
+    currentCompanyFilter = $('#companyFilter').val();
+    updateStatus();
+    loadRecentLogs();
 }
 
-// 스케줄러 시작
-function startScheduler() {
-    $.post('/batch/api/scheduler/start', function(data) {
-        if (data.success) {
-            alert('스케줄러가 시작되었습니다.');
-            refreshStatus();
-        } else {
-            alert('오류: ' + data.message);
-        }
-    });
-}
-
-// 스케줄러 중지
-function stopScheduler() {
-    if (confirm('스케줄러를 중지하시겠습니까?')) {
-        $.post('/batch/api/scheduler/stop', function(data) {
-            if (data.success) {
-                alert('스케줄러가 중지되었습니다.');
-                refreshStatus();
-            } else {
-                alert('오류: ' + data.message);
+// 상태 업데이트
+function updateStatus() {
+    $.get('/batch/api/status')
+        .done(function(response) {
+            if (response.success) {
+                updateStatusCards(response.data);
             }
+        })
+        .fail(function() {
+            console.error('상태 업데이트 실패');
         });
+}
+
+// 상태 카드 업데이트
+function updateStatusCards(data) {
+    // 스케줄러 상태
+    const schedulerRunning = data.scheduler_running;
+    $('#schedulerStatus').text(schedulerRunning ? '실행 중' : '중지됨');
+    $('#schedulerStatusBadge').removeClass('bg-success bg-danger')
+        .addClass(schedulerRunning ? 'bg-success' : 'bg-danger')
+        .text(schedulerRunning ? '실행 중' : '중지됨');
+    
+    // 작업 수
+    $('#jobCount').text(data.job_count + '개');
+    
+    // ERPia 연결 상태
+    const erpiaConnected = data.erpia_connected;
+    $('#erpiaStatus').text(erpiaConnected ? '정상' : '오류');
+    $('#erpiaStatusBadge').removeClass('bg-success bg-danger')
+        .addClass(erpiaConnected ? 'bg-success' : 'bg-danger')
+        .text(erpiaConnected ? '정상' : '오류');
+    $('#erpiaStatusMessage').text(
+        erpiaConnected ? 'ERPia 서버 연결이 정상입니다.' : 'ERPia 서버 연결에 문제가 있습니다.'
+    );
+    
+    // 마지막 실행
+    if (data.last_execution) {
+        const lastTime = new Date(data.last_execution).toLocaleString('ko-KR');
+        $('#lastRun').text(lastTime);
+    } else {
+        $('#lastRun').text('없음');
     }
+    
+    // 작업 목록 업데이트
+    updateJobList(data.jobs || []);
 }
 
-// ERPia 배치 실행
-function runErpiaBatch(type) {
-    $('#executionLogContent').text('실행 시작...\n');
-    $('#executionLogModal').modal('show');
+// 작업 목록 업데이트
+function updateJobList(jobs) {
+    const jobList = $('#jobList');
+    jobList.empty();
     
-    $.post('/batch/api/run-erpia', {type: type}, function(data) {
-        if (data.success) {
-            $('#executionLogContent').append('✅ ' + data.message + '\n');
-        } else {
-            $('#executionLogContent').append('❌ 오류: ' + data.message + '\n');
-        }
-    }).fail(function() {
-        $('#executionLogContent').append('❌ 실행 중 오류가 발생했습니다.\n');
+    if (jobs.length === 0) {
+        jobList.html(`
+            <div class="text-center text-muted py-4">
+                <i class="fas fa-tasks fa-2x mb-3"></i>
+                <p>등록된 배치 작업이 없습니다.</p>
+            </div>
+        `);
+        return;
+    }
+    
+    jobs.forEach(job => {
+        const nextRun = job.next_run ? new Date(job.next_run).toLocaleString('ko-KR') : '설정되지 않음';
+        const statusBadge = job.active ? 
+            '<span class="badge bg-success">활성</span>' : 
+            '<span class="badge bg-secondary">비활성</span>';
+        
+        const jobHtml = `
+            <div class="job-item">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="mb-2">${job.name}</h6>
+                        <p class="text-muted mb-2">${job.description || '설명 없음'}</p>
+                        <small class="text-muted">
+                            다음 실행: ${nextRun}
+                        </small>
+                    </div>
+                    <div class="text-end">
+                        ${statusBadge}
+                        <div class="btn-group btn-group-sm mt-2">
+                            <button class="btn btn-outline-primary" onclick="runJob('${job.id}')">
+                                <i class="fas fa-play"></i>
+                            </button>
+                            <button class="btn btn-outline-warning" onclick="pauseJob('${job.id}')">
+                                <i class="fas fa-pause"></i>
+                            </button>
+                            <button class="btn btn-outline-danger" onclick="removeJob('${job.id}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        jobList.append(jobHtml);
     });
 }
 
-// 사은품 분류 실행
+// 최근 로그 로드
+function loadRecentLogs() {
+    const url = currentCompanyFilter ? 
+        `/batch/api/erpia/batch-logs/${currentCompanyFilter}?per_page=10` :
+        '/batch/api/recent-logs?per_page=10';
+    
+    $.get(url)
+        .done(function(response) {
+            if (response.success) {
+                updateRecentLogsTable(response.data.logs || []);
+            }
+        })
+        .fail(function() {
+            $('#recentLogsTable').html('<tr><td colspan="7" class="text-center text-muted">로그 로드 실패</td></tr>');
+        });
+}
+
+// 최근 로그 테이블 업데이트
+function updateRecentLogsTable(logs) {
+    const tbody = $('#recentLogsTable');
+    tbody.empty();
+    
+    if (logs.length === 0) {
+        tbody.html('<tr><td colspan="7" class="text-center text-muted">최근 실행 로그가 없습니다.</td></tr>');
+        return;
+    }
+    
+    logs.forEach(log => {
+        const startTime = new Date(log.start_time).toLocaleString('ko-KR');
+        const endTime = log.end_time ? new Date(log.end_time) : null;
+        const duration = endTime ? 
+            Math.round((endTime - new Date(log.start_time)) / 1000) + '초' : '-';
+        
+        let statusBadge = '';
+        if (log.status === 'SUCCESS') {
+            statusBadge = '<span class="badge bg-success">성공</span>';
+        } else if (log.status === 'FAILED') {
+            statusBadge = '<span class="badge bg-danger">실패</span>';
+        } else {
+            statusBadge = '<span class="badge bg-warning">실행중</span>';
+        }
+        
+        const companyName = log.company_name || (log.company_id === 1 ? '에이원' : '에이원월드');
+        
+        const row = `
+            <tr>
+                <td>${startTime}</td>
+                <td>${companyName}</td>
+                <td><span class="badge bg-secondary">${log.batch_type}</span></td>
+                <td>${statusBadge}</td>
+                <td>${log.processed_orders || 0}건</td>
+                <td>${duration}</td>
+                <td>
+                    ${log.error_message ? 
+                        `<button class="btn btn-sm btn-outline-danger" onclick="showLogDetail('${log.error_message}')">오류</button>` :
+                        '<span class="text-muted">-</span>'
+                    }
+                </td>
+            </tr>
+        `;
+        tbody.append(row);
+    });
+}
+
+// 대시보드 새로고침
+function refreshDashboard() {
+    const icon = $('#refreshIcon');
+    icon.addClass('refresh-spinner');
+    
+    updateDashboard();
+    
+    setTimeout(() => {
+        icon.removeClass('refresh-spinner');
+    }, 1000);
+}
+
+// 스케줄러 제어
+function startScheduler() {
+    $.post('/batch/api/scheduler/start')
+        .done(function(response) {
+            if (response.success) {
+                showAlert('스케줄러가 시작되었습니다.', 'success');
+                updateStatus();
+            } else {
+                showAlert('스케줄러 시작 실패: ' + response.message, 'error');
+            }
+        })
+        .fail(function() {
+            showAlert('스케줄러 시작 중 오류가 발생했습니다.', 'error');
+        });
+}
+
+function stopScheduler() {
+    $.post('/batch/api/scheduler/stop')
+        .done(function(response) {
+            if (response.success) {
+                showAlert('스케줄러가 중지되었습니다.', 'success');
+                updateStatus();
+            } else {
+                showAlert('스케줄러 중지 실패: ' + response.message, 'error');
+            }
+        })
+        .fail(function() {
+            showAlert('스케줄러 중지 중 오류가 발생했습니다.', 'error');
+        });
+}
+
+// ERPia 연결 테스트
+function testErpiaConnection() {
+    const companyId = currentCompanyFilter || 1; // 기본값으로 에이원 사용
+    
+    $.post(`/batch/api/erpia/test-connection/${companyId}`)
+        .done(function(response) {
+            if (response.success) {
+                showAlert('ERPia 연결 테스트 성공: ' + response.message, 'success');
+                updateStatus();
+            } else {
+                showAlert('ERPia 연결 테스트 실패: ' + response.message, 'error');
+            }
+        })
+        .fail(function() {
+            showAlert('ERPia 연결 테스트 중 오류가 발생했습니다.', 'error');
+        });
+}
+
+// 배치 작업 실행
+function runErpiaCollection() {
+    const companyId = currentCompanyFilter || 1;
+    const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
+    
+    const formData = {
+        start_date: today,
+        end_date: today
+    };
+    
+    $.ajax({
+        url: `/batch/api/erpia/manual-batch/${companyId}`,
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(formData),
+        success: function(response) {
+            if (response.success) {
+                showAlert('ERPia 데이터 수집이 시작되었습니다.', 'success');
+                loadRecentLogs();
+            } else {
+                showAlert('ERPia 수집 실패: ' + response.message, 'error');
+            }
+        },
+        error: function() {
+            showAlert('ERPia 수집 중 오류가 발생했습니다.', 'error');
+        }
+    });
+}
+
 function runGiftClassification() {
-    $('#executionLogContent').text('사은품 분류 시작...\n');
-    $('#executionLogModal').modal('show');
-    
-    $.post('/batch/api/run-gift-classification', function(data) {
-        if (data.success) {
-            $('#executionLogContent').append('✅ ' + data.message + '\n');
-        } else {
-            $('#executionLogContent').append('❌ 오류: ' + data.message + '\n');
-        }
-    });
+    showAlert('사은품 분류 기능은 ERPia 수집과 함께 자동으로 실행됩니다.', 'info');
 }
 
-// 작업 관리 함수들
-function addNewJob() {
-    alert('작업 추가 기능은 준비 중입니다.');
-}
-
-function runJobNow(jobId) {
-    $.post('/batch/api/job/run/' + jobId, function(data) {
-        if (data.success) {
-            alert('작업이 실행되었습니다.');
-            refreshStatus();
-        } else {
-            alert('오류: ' + data.message);
-        }
-    });
+// 작업 제어
+function runJob(jobId) {
+    $.post(`/batch/api/job/run/${jobId}`)
+        .done(function(response) {
+            if (response.success) {
+                showAlert('작업이 실행되었습니다.', 'success');
+                updateStatus();
+            } else {
+                showAlert('작업 실행 실패: ' + response.message, 'error');
+            }
+        })
+        .fail(function() {
+            showAlert('작업 실행 중 오류가 발생했습니다.', 'error');
+        });
 }
 
 function pauseJob(jobId) {
-    $.post('/batch/api/job/pause/' + jobId, function(data) {
-        if (data.success) {
-            alert('작업이 일시정지되었습니다.');
-            refreshStatus();
-        } else {
-            alert('오류: ' + data.message);
-        }
-    });
+    $.post(`/batch/api/job/pause/${jobId}`)
+        .done(function(response) {
+            if (response.success) {
+                showAlert('작업이 일시 정지되었습니다.', 'success');
+                updateStatus();
+            } else {
+                showAlert('작업 일시 정지 실패: ' + response.message, 'error');
+            }
+        })
+        .fail(function() {
+            showAlert('작업 일시 정지 중 오류가 발생했습니다.', 'error');
+        });
 }
 
 function removeJob(jobId) {
     if (confirm('정말로 이 작업을 삭제하시겠습니까?')) {
-        $.post('/batch/api/job/remove/' + jobId, function(data) {
-            if (data.success) {
-                alert('작업이 삭제되었습니다.');
-                location.reload();
-            } else {
-                alert('오류: ' + data.message);
-            }
-        });
+        $.post(`/batch/api/job/remove/${jobId}`)
+            .done(function(response) {
+                if (response.success) {
+                    showAlert('작업이 삭제되었습니다.', 'success');
+                    updateStatus();
+                } else {
+                    showAlert('작업 삭제 실패: ' + response.message, 'error');
+                }
+            })
+            .fail(function() {
+                showAlert('작업 삭제 중 오류가 발생했습니다.', 'error');
+            });
     }
+}
+
+// 수동 배치 실행 모달
+function showManualBatchModal() {
+    $('#manualBatchModal').modal('show');
+}
+
+function executeManualBatch() {
+    const companyId = $('#batchCompanyId').val();
+    const startDate = $('#batchStartDate').val();
+    const endDate = $('#batchEndDate').val();
+    
+    if (!companyId || !startDate || !endDate) {
+        showAlert('모든 필드를 입력해주세요.', 'error');
+        return;
+    }
+    
+    const formData = {
+        start_date: startDate.replace(/-/g, ''),
+        end_date: endDate.replace(/-/g, '')
+    };
+    
+    $.ajax({
+        url: `/batch/api/erpia/manual-batch/${companyId}`,
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(formData),
+        success: function(response) {
+            if (response.success) {
+                showAlert('배치가 성공적으로 실행되었습니다.', 'success');
+                $('#manualBatchModal').modal('hide');
+                loadRecentLogs();
+            } else {
+                showAlert('배치 실행 실패: ' + response.message, 'error');
+            }
+        },
+        error: function() {
+            showAlert('배치 실행 중 오류가 발생했습니다.', 'error');
+        }
+    });
+}
+
+// 로그 상세 보기
+function showLogDetail(message) {
+    $('#logContent').text(message);
+    $('#executionLogModal').modal('show');
+}
+
+// 알림 표시
+function showAlert(message, type) {
+    const alertClass = type === 'success' ? 'alert-success' : 
+                      type === 'error' ? 'alert-danger' : 
+                      type === 'info' ? 'alert-info' : 'alert-warning';
+    
+    const alertHtml = `
+        <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    // 기존 알림 제거
+    $('.alert').remove();
+    
+    // 새 알림 추가
+    $('.container-fluid').prepend(alertHtml);
+    
+    // 3초 후 자동 제거
+    setTimeout(() => {
+        $('.alert').fadeOut();
+    }, 3000);
 }
 </script>
 {% endblock %} 

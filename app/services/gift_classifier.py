@@ -2,642 +2,417 @@
 # -*- coding: utf-8 -*-
 """
 사은품 자동 분류 엔진
-0원 상품과 키워드 기반으로 사은품을 자동 분류하여 매출 정확도 향상
+- 회사별 분류 규칙 지원
+- 매출분석 시스템 연동
+- 지능형 분류 로직
 """
 
 import logging
-import re
-from typing import Dict, List, Optional, Any, Tuple
-from dataclasses import dataclass
-from datetime import datetime, timedelta
-from collections import defaultdict
-import json
+from typing import Dict, List, Any, Optional
+from datetime import datetime
 
-# 로깅 설정
 logger = logging.getLogger(__name__)
 
-@dataclass
-class GiftClassificationRule:
-    """사은품 분류 규칙"""
-    rule_id: str
-    name: str
-    rule_type: str  # ZERO_PRICE, KEYWORD, PATTERN, MASTER_BASED
-    enabled: bool = True
-    priority: int = 1  # 낮을수록 높은 우선순위
-    
-    # 키워드 규칙
-    keywords: List[str] = None
-    
-    # 패턴 규칙 (정규식)
-    pattern: str = ""
-    
-    # 가격 범위 규칙
-    min_price: int = 0
-    max_price: int = 0
-    
-    # 브랜드/거래처 제외 규칙
-    exclude_brands: List[str] = None
-    exclude_customers: List[str] = None
-    
-    # 분류 설정
-    classification_reason: str = ""
-    confidence_score: float = 1.0
-    
-    # 시스템 정보
-    company_id: int = 1
-    created_at: datetime = None
-    updated_at: datetime = None
-
-    def __post_init__(self):
-        if self.keywords is None:
-            self.keywords = []
-        if self.exclude_brands is None:
-            self.exclude_brands = []
-        if self.exclude_customers is None:
-            self.exclude_customers = []
-        if self.created_at is None:
-            self.created_at = datetime.now()
-
-@dataclass
-class GiftClassificationResult:
-    """사은품 분류 결과"""
-    product_id: str
-    sl_no: str
-    sl_seq: int
-    original_type: str
-    classified_type: str  # PRODUCT, GIFT
-    classification_reason: str
-    confidence_score: float
-    rule_applied: str
-    revenue_impact: int
-    is_revenue: bool
-    gift_type: str  # ZERO_PRICE, KEYWORD_BASED, PATTERN_BASED, MASTER_BASED
-    classified_at: datetime
-    company_id: int
-
-@dataclass
-class GiftStatistics:
-    """사은품 통계"""
-    total_products: int
-    gift_products: int
-    revenue_products: int
-    zero_price_gifts: int
-    keyword_gifts: int
-    pattern_gifts: int
-    master_gifts: int
-    total_revenue_impact: int
-    accuracy_rate: float
-    classification_date: datetime
-    company_id: int
-
 class GiftClassifier:
-    """사은품 자동 분류 엔진"""
+    """
+    사은품 자동 분류 엔진 (회사별 설정 지원)
     
-    def __init__(self, company_id: int = 1):
+    @docs/06_ERPia_API_완전_가이드.md의 사은품 처리 로직 구현
+    """
+    
+    def __init__(self, company_id: int):
         """
         Args:
             company_id: 회사 ID (1=에이원, 2=에이원월드)
         """
         self.company_id = company_id
-        self.classification_rules = []
-        self.load_classification_rules()
-        
-    def load_classification_rules(self):
-        """분류 규칙 로드"""
+        self._load_classification_rules()
+    
+    def _load_classification_rules(self):
+        """회사별 분류 규칙 로드"""
         try:
-            # 기본 규칙들 생성
+            from app.common.models import ErpiaBatchSettings
+            
+            # 자동 분류 활성화 여부
+            auto_classify_setting = ErpiaBatchSettings.query.filter_by(
+                company_id=self.company_id,
+                setting_key='auto_gift_classify'
+            ).first()
+            
+            self.auto_classify_enabled = (
+                auto_classify_setting.setting_value.lower() == 'true' 
+                if auto_classify_setting else True
+            )
+            
+            # 기본 분류 규칙
             self.classification_rules = self._create_default_rules()
             
-            # DB에서 사용자 정의 규칙 로드
-            custom_rules = self._load_custom_rules()
-            self.classification_rules.extend(custom_rules)
-            
-            # 우선순위별 정렬
-            self.classification_rules.sort(key=lambda x: x.priority)
-            
-            logger.info(f"🔧 사은품 분류 규칙 로드 완료: {len(self.classification_rules)}개")
+            logger.info(f"🎁 사은품 분류 규칙 로드 완료 (회사: {self.company_id}, 자동분류: {self.auto_classify_enabled})")
             
         except Exception as e:
-            logger.error(f"❌ 분류 규칙 로드 실패: {e}")
+            logger.warning(f"⚠️ 분류 규칙 로드 실패, 기본값 사용: {e}")
+            self.auto_classify_enabled = True
             self.classification_rules = self._create_default_rules()
     
-    def _create_default_rules(self) -> List[GiftClassificationRule]:
+    def _create_default_rules(self) -> Dict[str, Any]:
         """기본 분류 규칙 생성"""
-        default_rules = [
-            # 1. 0원 상품 규칙 (최고 우선순위)
-            GiftClassificationRule(
-                rule_id="zero_price_rule",
-                name="0원 상품 자동 분류",
-                rule_type="ZERO_PRICE",
-                priority=1,
-                max_price=0,
-                classification_reason="공급가 0원 (자동분류)",
-                confidence_score=1.0,
-                company_id=self.company_id
-            ),
-            
-            # 2. 사은품 키워드 규칙
-            GiftClassificationRule(
-                rule_id="gift_keyword_rule",
-                name="사은품 키워드 매칭",
-                rule_type="KEYWORD",
-                priority=2,
-                keywords=[
-                    "사은품", "증정품", "무료", "샘플", "체험", "증정", "무료배송",
-                    "서비스", "덤", "추가", "보너스", "이벤트", "프로모션",
-                    "테스터", "시연", "체험용", "샘플용", "견본", "증정용"
-                ],
-                classification_reason="사은품 키워드 매칭",
-                confidence_score=0.9,
-                company_id=self.company_id
-            ),
-            
-            # 3. 특정 브랜드 제외 규칙
-            GiftClassificationRule(
-                rule_id="exclude_main_brands",
-                name="주요 브랜드 제외",
-                rule_type="KEYWORD",
-                priority=3,
-                exclude_brands=["조이", "아이조이", "브라이텍스", "맥시코시"],
-                classification_reason="주요 브랜드 제외",
-                confidence_score=0.8,
-                company_id=self.company_id
-            ),
-            
-            # 4. 소액 상품 의심 규칙
-            GiftClassificationRule(
-                rule_id="low_price_rule",
-                name="소액 상품 사은품 의심",
-                rule_type="ZERO_PRICE",
-                priority=4,
-                min_price=1,
-                max_price=1000,
-                keywords=["사은품", "증정", "무료"],
-                classification_reason="소액 + 키워드 매칭",
-                confidence_score=0.7,
-                company_id=self.company_id
-            )
-        ]
-        
-        return default_rules
-    
-    def _load_custom_rules(self):
-        """사용자 정의 분류 규칙 로드"""
-        try:
-            # Flask 앱 컨텍스트 확인
-            from flask import has_app_context, current_app
-            
-            if not has_app_context():
-                print("⚠️ Flask 앱 컨텍스트 없음 - 기본 규칙 사용")
-                return self._create_default_rules()
-            
-            # 사용자 정의 규칙 로드 시도
-            return self._create_default_rules()
-            
-        except Exception as e:
-            print(f"⚠️ 사용자 정의 규칙 로드 실패: {e}")
-            # Flask 앱 컨텍스트가 없는 경우 기본 규칙 사용
-            return self._create_default_rules()
-        
-        # DB 연결 실패 시 기본 규칙 사용  
-        print("⚠️ Flask 앱 컨텍스트 없음 - 기본 규칙 사용")
-        return self._create_default_rules()
-    
-    def classify_product(self, product_data: Dict[str, Any]) -> GiftClassificationResult:
-        """단일 상품 사은품 분류"""
-        try:
-            # 상품 정보 추출
-            g_name = product_data.get('g_name', '')
-            gong_amt = product_data.get('gong_amt', 0)
-            pan_amt = product_data.get('pan_amt', 0)
-            brand_name = product_data.get('brand_name', '')
-            g_erp_name = product_data.get('g_erp_name', '')
-            sl_no = product_data.get('sl_no', '')
-            sl_seq = product_data.get('sl_seq', 0)
-            
-            # 각 규칙에 대해 검사
-            for rule in self.classification_rules:
-                if not rule.enabled:
-                    continue
-                
-                classification = self._apply_rule(rule, product_data)
-                if classification:
-                    logger.debug(f"🎁 사은품 분류: {g_name} -> {classification.classification_reason}")
-                    return classification
-            
-            # 모든 규칙에 해당하지 않으면 일반 상품으로 분류
-            return GiftClassificationResult(
-                product_id=f"{sl_no}_{sl_seq}",
-                sl_no=sl_no,
-                sl_seq=sl_seq,
-                original_type="PRODUCT",
-                classified_type="PRODUCT",
-                classification_reason="일반 매출 상품",
-                confidence_score=1.0,
-                rule_applied="default",
-                revenue_impact=gong_amt,
-                is_revenue=True,
-                gift_type="",
-                classified_at=datetime.now(),
-                company_id=self.company_id
-            )
-            
-        except Exception as e:
-            logger.error(f"❌ 상품 분류 실패: {e}")
-            # 실패 시 일반 상품으로 처리
-            return GiftClassificationResult(
-                product_id=f"{sl_no}_{sl_seq}",
-                sl_no=sl_no,
-                sl_seq=sl_seq,
-                original_type="PRODUCT",
-                classified_type="PRODUCT",
-                classification_reason="분류 실패 - 일반 상품으로 처리",
-                confidence_score=0.0,
-                rule_applied="error",
-                revenue_impact=product_data.get('gong_amt', 0),
-                is_revenue=True,
-                gift_type="",
-                classified_at=datetime.now(),
-                company_id=self.company_id
-            )
-    
-    def _apply_rule(self, rule: GiftClassificationRule, product_data: Dict[str, Any]) -> Optional[GiftClassificationResult]:
-        """규칙 적용"""
-        try:
-            g_name = product_data.get('g_name', '')
-            gong_amt = product_data.get('gong_amt', 0)
-            pan_amt = product_data.get('pan_amt', 0)
-            brand_name = product_data.get('brand_name', '')
-            sl_no = product_data.get('sl_no', '')
-            sl_seq = product_data.get('sl_seq', 0)
-            
-            # 브랜드 제외 확인
-            if rule.exclude_brands and brand_name:
-                for exclude_brand in rule.exclude_brands:
-                    if exclude_brand.lower() in brand_name.lower():
-                        return None
-            
-            # 규칙 타입별 처리
-            if rule.rule_type == "ZERO_PRICE":
-                # 0원 상품 규칙
-                if gong_amt == 0 and pan_amt == 0:
-                    return self._create_gift_result(rule, product_data, "ZERO_PRICE")
-                
-                # 가격 범위 확인 (소액 상품)
-                if rule.min_price <= gong_amt <= rule.max_price:
-                    # 키워드도 함께 확인하는 경우
-                    if rule.keywords:
-                        if self._check_keywords(g_name, rule.keywords):
-                            return self._create_gift_result(rule, product_data, "ZERO_PRICE")
-                    else:
-                        return self._create_gift_result(rule, product_data, "ZERO_PRICE")
-            
-            elif rule.rule_type == "KEYWORD":
-                # 키워드 규칙
-                if self._check_keywords(g_name, rule.keywords):
-                    return self._create_gift_result(rule, product_data, "KEYWORD_BASED")
-            
-            elif rule.rule_type == "PATTERN":
-                # 패턴 규칙 (정규식)
-                if rule.pattern and re.search(rule.pattern, g_name, re.IGNORECASE):
-                    return self._create_gift_result(rule, product_data, "PATTERN_BASED")
-            
-            return None
-            
-        except Exception as e:
-            logger.error(f"❌ 규칙 적용 실패 ({rule.rule_id}): {e}")
-            return None
-    
-    def _check_keywords(self, text: str, keywords: List[str]) -> bool:
-        """키워드 매칭 확인"""
-        if not text or not keywords:
-            return False
-        
-        text_lower = text.lower()
-        for keyword in keywords:
-            if keyword.lower() in text_lower:
-                return True
-        return False
-    
-    def _create_gift_result(self, rule: GiftClassificationRule, product_data: Dict[str, Any], gift_type: str) -> GiftClassificationResult:
-        """사은품 분류 결과 생성"""
-        sl_no = product_data.get('sl_no', '')
-        sl_seq = product_data.get('sl_seq', 0)
-        gong_amt = product_data.get('gong_amt', 0)
-        
-        return GiftClassificationResult(
-            product_id=f"{sl_no}_{sl_seq}",
-            sl_no=sl_no,
-            sl_seq=sl_seq,
-            original_type="PRODUCT",
-            classified_type="GIFT",
-            classification_reason=rule.classification_reason,
-            confidence_score=rule.confidence_score,
-            rule_applied=rule.rule_id,
-            revenue_impact=0,  # 사은품은 매출 영향 0
-            is_revenue=False,
-            gift_type=gift_type,
-            classified_at=datetime.now(),
-            company_id=self.company_id
-        )
-    
-    def classify_orders(self, orders: List[Dict[str, Any]]) -> List[GiftClassificationResult]:
-        """여러 주문의 상품들을 일괄 분류"""
-        results = []
-        
-        try:
-            logger.info(f"🔄 주문 상품 일괄 분류 시작: {len(orders)}건")
-            
-            total_products = 0
-            classified_gifts = 0
-            
-            for order in orders:
-                products = order.get('products', [])
-                
-                for product in products:
-                    result = self.classify_product(product.__dict__ if hasattr(product, '__dict__') else product)
-                    results.append(result)
-                    total_products += 1
-                    
-                    if result.classified_type == "GIFT":
-                        classified_gifts += 1
-            
-            logger.info(f"✅ 상품 분류 완료: 전체 {total_products}건, 사은품 {classified_gifts}건")
-            
-            # 분류 결과 저장
-            self._save_classification_results(results)
-            
-            return results
-            
-        except Exception as e:
-            logger.error(f"❌ 주문 상품 일괄 분류 실패: {e}")
-            return results
-    
-    def auto_classify_recent_products(self, company_id: int, days_back: int = 7) -> int:
-        """최근 상품들의 자동 분류"""
-        try:
-            logger.info(f"🔄 최근 {days_back}일간 상품 자동 분류 시작")
-            
-            from app.common.models import ErpiaOrderProduct, db
-            
-            # 최근 상품 조회
-            since_date = datetime.now() - timedelta(days=days_back)
-            
-            products = ErpiaOrderProduct.query.filter(
-                ErpiaOrderProduct.company_id == company_id,
-                ErpiaOrderProduct.created_at >= since_date,
-                # 아직 분류되지 않은 상품들
-                ErpiaOrderProduct.product_type.is_(None)
-            ).all()
-            
-            classified_count = 0
-            results = []
-            
-            for product in products:
-                # 상품 데이터 준비
-                product_data = {
-                    'sl_no': product.sl_no,
-                    'sl_seq': product.sl_seq,
-                    'g_name': product.g_name,
-                    'gong_amt': product.gong_amt,
-                    'pan_amt': product.pan_amt,
-                    'brand_name': product.brand_name,
-                    'g_erp_name': product.g_erp_name
-                }
-                
-                # 분류 실행
-                result = self.classify_product(product_data)
-                results.append(result)
-                
-                # DB 업데이트
-                product.product_type = result.classified_type
-                product.is_revenue = result.is_revenue
-                product.gift_type = result.gift_type
-                product.classification_reason = result.classification_reason
-                product.revenue_impact = result.revenue_impact
-                
-                if result.classified_type == "GIFT":
-                    classified_count += 1
-            
-            # 변경사항 저장
-            db.session.commit()
-            
-            # 분류 결과 로그 저장
-            self._save_classification_results(results)
-            
-            logger.info(f"✅ 자동 분류 완료: {len(products)}건 중 {classified_count}건 사은품 분류")
-            return classified_count
-            
-        except Exception as e:
-            logger.error(f"❌ 자동 분류 실패: {e}")
-            return 0
-    
-    def get_classification_statistics(self, start_date: str, end_date: str) -> GiftStatistics:
-        """분류 통계 조회"""
-        try:
-            from app.common.models import ErpiaOrderProduct
-            
-            # 기간 내 상품 조회
-            products = ErpiaOrderProduct.query.filter(
-                ErpiaOrderProduct.company_id == self.company_id,
-                ErpiaOrderProduct.created_at >= datetime.strptime(start_date, '%Y-%m-%d'),
-                ErpiaOrderProduct.created_at <= datetime.strptime(end_date, '%Y-%m-%d')
-            ).all()
-            
-            total_products = len(products)
-            gift_products = sum(1 for p in products if p.product_type == "GIFT")
-            revenue_products = total_products - gift_products
-            
-            # 사은품 타입별 통계
-            zero_price_gifts = sum(1 for p in products if p.gift_type == "ZERO_PRICE")
-            keyword_gifts = sum(1 for p in products if p.gift_type == "KEYWORD_BASED")
-            pattern_gifts = sum(1 for p in products if p.gift_type == "PATTERN_BASED")
-            master_gifts = sum(1 for p in products if p.gift_type == "MASTER_BASED")
-            
-            # 매출 영향 계산
-            total_revenue_impact = sum(p.revenue_impact or 0 for p in products)
-            
-            # 정확도 계산 (임시로 분류된 상품 비율로 계산)
-            accuracy_rate = (gift_products + revenue_products) / total_products if total_products > 0 else 0
-            
-            return GiftStatistics(
-                total_products=total_products,
-                gift_products=gift_products,
-                revenue_products=revenue_products,
-                zero_price_gifts=zero_price_gifts,
-                keyword_gifts=keyword_gifts,
-                pattern_gifts=pattern_gifts,
-                master_gifts=master_gifts,
-                total_revenue_impact=total_revenue_impact,
-                accuracy_rate=accuracy_rate,
-                classification_date=datetime.now(),
-                company_id=self.company_id
-            )
-            
-        except Exception as e:
-            logger.error(f"❌ 분류 통계 조회 실패: {e}")
-            return GiftStatistics(
-                total_products=0,
-                gift_products=0,
-                revenue_products=0,
-                zero_price_gifts=0,
-                keyword_gifts=0,
-                pattern_gifts=0,
-                master_gifts=0,
-                total_revenue_impact=0,
-                accuracy_rate=0.0,
-                classification_date=datetime.now(),
-                company_id=self.company_id
-            )
-    
-    def add_classification_rule(self, rule: GiftClassificationRule) -> bool:
-        """분류 규칙 추가"""
-        try:
-            from app.common.models import GiftClassificationRule as RuleModel, db
-            
-            # DB에 저장
-            rule_model = RuleModel(
-                rule_id=rule.rule_id,
-                name=rule.name,
-                rule_type=rule.rule_type,
-                enabled=rule.enabled,
-                priority=rule.priority,
-                keywords=json.dumps(rule.keywords, ensure_ascii=False) if rule.keywords else None,
-                pattern=rule.pattern,
-                min_price=rule.min_price,
-                max_price=rule.max_price,
-                exclude_brands=json.dumps(rule.exclude_brands, ensure_ascii=False) if rule.exclude_brands else None,
-                exclude_customers=json.dumps(rule.exclude_customers, ensure_ascii=False) if rule.exclude_customers else None,
-                classification_reason=rule.classification_reason,
-                confidence_score=rule.confidence_score,
-                company_id=rule.company_id,
-                created_at=rule.created_at,
-                updated_at=rule.updated_at
-            )
-            
-            db.session.add(rule_model)
-            db.session.commit()
-            
-            # 메모리 규칙 목록 업데이트
-            self.classification_rules.append(rule)
-            self.classification_rules.sort(key=lambda x: x.priority)
-            
-            logger.info(f"✅ 분류 규칙 추가됨: {rule.name}")
-            return True
-            
-        except Exception as e:
-            logger.error(f"❌ 분류 규칙 추가 실패: {e}")
-            return False
-    
-    def _save_classification_results(self, results: List[GiftClassificationResult]):
-        """분류 결과 저장"""
-        try:
-            from app.common.models import GiftClassificationLog, db
-            
-            for result in results:
-                log = GiftClassificationLog(
-                    product_id=result.product_id,
-                    sl_no=result.sl_no,
-                    sl_seq=result.sl_seq,
-                    original_type=result.original_type,
-                    classified_type=result.classified_type,
-                    classification_reason=result.classification_reason,
-                    confidence_score=result.confidence_score,
-                    rule_applied=result.rule_applied,
-                    revenue_impact=result.revenue_impact,
-                    is_revenue=result.is_revenue,
-                    gift_type=result.gift_type,
-                    classified_at=result.classified_at,
-                    company_id=result.company_id
-                )
-                db.session.add(log)
-            
-            db.session.commit()
-            logger.debug(f"📝 분류 결과 로그 저장: {len(results)}건")
-            
-        except Exception as e:
-            logger.error(f"❌ 분류 결과 저장 실패: {e}")
-    
-    def test_classification_rules(self, test_products: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """분류 규칙 테스트"""
-        try:
-            logger.info(f"🔍 분류 규칙 테스트 시작: {len(test_products)}건")
-            
-            results = []
-            rule_stats = defaultdict(int)
-            
-            for product in test_products:
-                result = self.classify_product(product)
-                results.append(result)
-                rule_stats[result.rule_applied] += 1
-            
-            # 통계 계산
-            total_count = len(results)
-            gift_count = sum(1 for r in results if r.classified_type == "GIFT")
-            product_count = total_count - gift_count
-            
-            test_result = {
-                'total_products': total_count,
-                'gift_products': gift_count,
-                'revenue_products': product_count,
-                'gift_ratio': gift_count / total_count if total_count > 0 else 0,
-                'rule_statistics': dict(rule_stats),
-                'results': results,
-                'tested_at': datetime.now()
+        return {
+            'zero_price_rules': {
+                'enabled': True,
+                'priority': 1,
+                'description': '공급가 0원 AND 판매가 0원인 상품을 사은품으로 분류'
+            },
+            'keyword_rules': {
+                'enabled': True,
+                'priority': 2,
+                'keywords': ['사은품', '증정품', '무료', '샘플', '체험', '덤', '서비스'],
+                'description': '상품명에 특정 키워드가 포함된 상품을 사은품으로 분류'
+            },
+            'brand_rules': {
+                'enabled': True,
+                'priority': 3,
+                'brand_codes': ['GIFT', 'SAMPLE', 'FREE'],
+                'description': '특정 브랜드 코드의 상품을 사은품으로 분류'
+            },
+            'amount_threshold_rules': {
+                'enabled': False,  # 기본적으로 비활성화
+                'priority': 4,
+                'max_amount': 1000,  # 1000원 이하
+                'description': '특정 금액 이하의 상품을 사은품으로 분류'
             }
-            
-            logger.info(f"✅ 규칙 테스트 완료: 사은품 {gift_count}/{total_count}건 ({gift_count/total_count*100:.1f}%)")
-            return test_result
-            
-        except Exception as e:
-            logger.error(f"❌ 분류 규칙 테스트 실패: {e}")
-            return {
-                'total_products': 0,
-                'gift_products': 0,
-                'revenue_products': 0,
-                'gift_ratio': 0,
-                'rule_statistics': {},
-                'results': [],
-                'tested_at': datetime.now()
-            }
-
-# 사용 예시
-if __name__ == "__main__":
-    # 사은품 분류기 테스트
-    classifier = GiftClassifier(company_id=1)
-    
-    # 테스트 상품들
-    test_products = [
-        {
-            'sl_no': 'TEST001',
-            'sl_seq': 1,
-            'g_name': '조이 카시트 (본품)',
-            'gong_amt': 150000,
-            'pan_amt': 180000,
-            'brand_name': '조이'
-        },
-        {
-            'sl_no': 'TEST001',
-            'sl_seq': 2,
-            'g_name': '유모차 커버 사은품',
-            'gong_amt': 0,
-            'pan_amt': 0,
-            'brand_name': '기타'
-        },
-        {
-            'sl_no': 'TEST002',
-            'sl_seq': 1,
-            'g_name': '워터 증정품',
-            'gong_amt': 500,
-            'pan_amt': 1000,
-            'brand_name': '기타'
         }
-    ]
     
-    # 분류 테스트
-    test_result = classifier.test_classification_rules(test_products)
-    print(f"테스트 결과: {test_result}")
+    def classify_product(self, gong_amt: int, pan_amt: int, product_name: str, 
+                        product_code: str = '', brand_code: str = '') -> Dict[str, Any]:
+        """
+        상품 분류 실행
+        
+        Args:
+            gong_amt: 공급가
+            pan_amt: 판매가
+            product_name: 상품명
+            product_code: 상품 코드
+            brand_code: 브랜드 코드
+            
+        Returns:
+            분류 결과
+        """
+        if not self.auto_classify_enabled:
+            # 자동 분류 비활성화 시 모든 상품을 일반상품으로 처리
+            return self._create_product_result(gong_amt, pan_amt, '자동분류 비활성화')
+        
+        result = {
+            'original_gong_amt': gong_amt,
+            'original_pan_amt': pan_amt,
+            'product_name': product_name,
+            'product_code': product_code,
+            'brand_code': brand_code,
+            'classification_reasons': [],
+            'classification_priority': 999,
+            'classified_at': datetime.utcnow().isoformat()
+        }
+        
+        # 우선순위 순으로 분류 규칙 적용
+        
+        # 1. 0원 상품 체크 (최우선)
+        if self.classification_rules['zero_price_rules']['enabled']:
+            if gong_amt == 0 and pan_amt == 0:
+                result.update(self._create_gift_result(
+                    'ZERO_PRICE',
+                    '공급가 0원 AND 판매가 0원',
+                    1
+                ))
+                result['classification_reasons'].append('공급가 0원')
+                return result
+        
+        # 2. 상품명 키워드 기반 분류
+        if self.classification_rules['keyword_rules']['enabled']:
+            keywords = self.classification_rules['keyword_rules']['keywords']
+            product_name_lower = product_name.lower()
+            
+            for keyword in keywords:
+                if keyword in product_name_lower:
+                    result.update(self._create_gift_result(
+                        'NAME_KEYWORD',
+                        f'상품명 키워드: {keyword}',
+                        2
+                    ))
+                    result['classification_reasons'].append(f'상품명 키워드: {keyword}')
+                    return result
+        
+        # 3. 브랜드 코드 기반 분류
+        if self.classification_rules['brand_rules']['enabled'] and brand_code:
+            brand_codes = self.classification_rules['brand_rules']['brand_codes']
+            
+            for target_brand in brand_codes:
+                if brand_code.upper().startswith(target_brand):
+                    result.update(self._create_gift_result(
+                        'BRAND_CODE',
+                        f'브랜드 코드: {brand_code}',
+                        3
+                    ))
+                    result['classification_reasons'].append(f'브랜드 코드: {target_brand}')
+                    return result
+        
+        # 4. 금액 임계값 기반 분류 (선택적)
+        if self.classification_rules['amount_threshold_rules']['enabled']:
+            max_amount = self.classification_rules['amount_threshold_rules']['max_amount']
+            if gong_amt > 0 and gong_amt <= max_amount:
+                result.update(self._create_gift_result(
+                    'AMOUNT_THRESHOLD',
+                    f'금액 임계값: {gong_amt}원 ≤ {max_amount}원',
+                    4
+                ))
+                result['classification_reasons'].append(f'금액 임계값 이하: {gong_amt}원')
+                return result
+        
+        # 5. 일반상품으로 분류
+        result.update(self._create_product_result(gong_amt, pan_amt, '일반상품'))
+        result['classification_reasons'].append('일반상품')
+        
+        return result
     
-    # 통계 조회
-    stats = classifier.get_classification_statistics('2024-01-01', '2024-12-31')
-    print(f"분류 통계: {stats}") 
+    def _create_gift_result(self, gift_type: str, reason: str, priority: int) -> Dict[str, Any]:
+        """사은품 분류 결과 생성"""
+        return {
+            'product_type': 'GIFT',
+            'is_revenue': False,
+            'analysis_category': '사은품',
+            'revenue_impact': 0,
+            'gift_type': gift_type,
+            'include_in_quantity': True,    # 수량 집계에는 포함
+            'include_in_revenue': False,    # 매출 집계에서 제외
+            'classification_reason': reason,
+            'classification_priority': priority
+        }
+    
+    def _create_product_result(self, gong_amt: int, pan_amt: int, reason: str) -> Dict[str, Any]:
+        """일반상품 분류 결과 생성"""
+        return {
+            'product_type': 'PRODUCT',
+            'is_revenue': True,
+            'analysis_category': '매출상품',
+            'revenue_impact': gong_amt,
+            'gift_type': None,
+            'include_in_quantity': True,
+            'include_in_revenue': True,
+            'classification_reason': reason,
+            'classification_priority': 999
+        }
+    
+    def batch_classify_products(self, products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        상품 목록 일괄 분류
+        
+        Args:
+            products: 상품 정보 리스트
+            
+        Returns:
+            분류된 상품 정보 리스트
+        """
+        classified_products = []
+        
+        for product in products:
+            try:
+                classification = self.classify_product(
+                    gong_amt=product.get('supply_price', 0),
+                    pan_amt=product.get('sell_price', 0),
+                    product_name=product.get('product_name', ''),
+                    product_code=product.get('product_code', ''),
+                    brand_code=product.get('brand_code', '')
+                )
+                
+                # 원본 상품 정보에 분류 결과 병합
+                classified_product = product.copy()
+                classified_product.update(classification)
+                classified_products.append(classified_product)
+                
+            except Exception as e:
+                logger.error(f"❌ 상품 분류 오류: {e}")
+                logger.error(f"   문제 상품: {product}")
+                
+                # 오류 시 일반상품으로 처리
+                error_product = product.copy()
+                error_product.update(self._create_product_result(
+                    product.get('supply_price', 0),
+                    product.get('sell_price', 0),
+                    f'분류 오류: {str(e)}'
+                ))
+                classified_products.append(error_product)
+        
+        return classified_products
+    
+    def get_gift_summary_by_order(self, products: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        주문별 사은품 요약 정보 생성
+        
+        Args:
+            products: 분류된 상품 목록
+            
+        Returns:
+            사은품 요약 정보
+        """
+        total_products = len(products)
+        gift_products = [p for p in products if p.get('product_type') == 'GIFT']
+        revenue_products = [p for p in products if p.get('product_type') == 'PRODUCT']
+        
+        # 사은품 유형별 통계
+        gift_types = {}
+        for gift in gift_products:
+            gift_type = gift.get('gift_type', 'UNKNOWN')
+            if gift_type not in gift_types:
+                gift_types[gift_type] = {'count': 0, 'products': []}
+            gift_types[gift_type]['count'] += 1
+            gift_types[gift_type]['products'].append(gift.get('product_name', ''))
+        
+        return {
+            'total_product_count': total_products,
+            'gift_product_count': len(gift_products),
+            'revenue_product_count': len(revenue_products),
+            'gift_ratio': len(gift_products) / total_products if total_products > 0 else 0,
+            'total_revenue': sum(p.get('revenue_impact', 0) for p in revenue_products),
+            'gift_types': gift_types,
+            'gift_products': [p.get('product_name', '') for p in gift_products],
+            'classification_summary': {
+                'auto_classified': len([p for p in gift_products if p.get('classification_priority', 999) < 999]),
+                'manual_review_needed': len([p for p in products if p.get('classification_reason', '').startswith('분류 오류')])
+            }
+        }
+    
+    def generate_classification_report(self, start_date: str, end_date: str) -> Dict[str, Any]:
+        """
+        분류 성과 리포트 생성
+        
+        Args:
+            start_date: 시작일 (YYYYMMDD)
+            end_date: 종료일 (YYYYMMDD)
+            
+        Returns:
+            분류 리포트
+        """
+        try:
+            from app.common.models import SalesAnalysisMaster
+            from sqlalchemy import func, and_
+            from datetime import datetime
+            
+            start_date_obj = datetime.strptime(start_date, '%Y%m%d').date()
+            end_date_obj = datetime.strptime(end_date, '%Y%m%d').date()
+            
+            # 기본 쿼리
+            base_query = SalesAnalysisMaster.query.filter(
+                and_(
+                    SalesAnalysisMaster.company_id == self.company_id,
+                    SalesAnalysisMaster.sale_date >= start_date_obj,
+                    SalesAnalysisMaster.sale_date <= end_date_obj
+                )
+            )
+            
+            # 전체 통계
+            total_count = base_query.count()
+            
+            # 사은품 분류별 통계
+            gift_stats = base_query.filter(
+                SalesAnalysisMaster.product_type == 'GIFT'
+            ).with_entities(
+                SalesAnalysisMaster.gift_classification,
+                func.count(SalesAnalysisMaster.id).label('count')
+            ).group_by(
+                SalesAnalysisMaster.gift_classification
+            ).all()
+            
+            # 사은품 부착률 (주문 기준)
+            total_orders = base_query.with_entities(
+                func.count(func.distinct(SalesAnalysisMaster.sales_no))
+            ).scalar()
+            
+            orders_with_gifts = base_query.filter(
+                SalesAnalysisMaster.product_type == 'GIFT'
+            ).with_entities(
+                func.count(func.distinct(SalesAnalysisMaster.sales_no))
+            ).scalar()
+            
+            gift_attachment_rate = (orders_with_gifts / total_orders * 100) if total_orders > 0 else 0
+            
+            report = {
+                'period': {
+                    'start_date': start_date,
+                    'end_date': end_date,
+                    'company_id': self.company_id
+                },
+                'summary': {
+                    'total_products': total_count,
+                    'total_orders': total_orders,
+                    'orders_with_gifts': orders_with_gifts,
+                    'gift_attachment_rate': round(gift_attachment_rate, 2)
+                },
+                'classification_breakdown': {
+                    stat.gift_classification or 'UNKNOWN': stat.count
+                    for stat in gift_stats
+                },
+                'classification_rules': {
+                    'auto_classify_enabled': self.auto_classify_enabled,
+                    'active_rules': [
+                        rule_name for rule_name, rule_config in self.classification_rules.items()
+                        if rule_config.get('enabled', False)
+                    ]
+                },
+                'generated_at': datetime.utcnow().isoformat()
+            }
+            
+            logger.info(f"📊 사은품 분류 리포트 생성 완료: {total_count}건 분석")
+            return report
+            
+        except Exception as e:
+            logger.error(f"❌ 분류 리포트 생성 실패: {e}")
+            raise
+
+# 전역 분류기 인스턴스 (회사별 캐시)
+_classifiers = {}
+
+def get_gift_classifier(company_id: int) -> GiftClassifier:
+    """
+    회사별 사은품 분류기 인스턴스 반환 (캐시 지원)
+    
+    Args:
+        company_id: 회사 ID
+        
+    Returns:
+        GiftClassifier 인스턴스
+    """
+    if company_id not in _classifiers:
+        _classifiers[company_id] = GiftClassifier(company_id)
+    return _classifiers[company_id]
+
+def refresh_classifier_cache(company_id: int = None):
+    """
+    분류기 캐시 새로고침
+    
+    Args:
+        company_id: 특정 회사 ID (None이면 전체 캐시 초기화)
+    """
+    global _classifiers
+    
+    if company_id is None:
+        _classifiers.clear()
+        logger.info("🔄 모든 사은품 분류기 캐시 초기화")
+    else:
+        if company_id in _classifiers:
+            del _classifiers[company_id]
+            logger.info(f"🔄 회사 {company_id} 사은품 분류기 캐시 초기화")
+
+# 레거시 호환성을 위한 함수들
+def classify_product_type(gong_amt: int, pan_amt: int, product_name: str, company_id: int = 1) -> Dict[str, Any]:
+    """
+    레거시 호환성을 위한 상품 분류 함수
+    
+    Args:
+        gong_amt: 공급가
+        pan_amt: 판매가
+        product_name: 상품명
+        company_id: 회사 ID
+        
+    Returns:
+        분류 결과
+    """
+    classifier = get_gift_classifier(company_id)
+    return classifier.classify_product(gong_amt, pan_amt, product_name) 

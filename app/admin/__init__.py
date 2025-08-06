@@ -5,9 +5,10 @@
 메뉴관리, 코드관리, 부서관리, 사용자관리, 권한관리, 브랜드관리
 """
 
-from flask import Blueprint, render_template, redirect, url_for, request, flash, jsonify
-from flask_login import login_required
+from flask import Blueprint, render_template, redirect, url_for, request, flash, jsonify, session
+from flask_login import login_required, current_user
 from app.common.models import Menu, User, Department, Code, Brand, MemberAuth, DeptAuth, db
+from datetime import datetime
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -664,10 +665,10 @@ def get_brand():
 def create_brand():
     """브랜드 생성"""
     try:
-        data = request.form
+        data = request.get_json()
         
-        if not data.get('brand_name') or not data.get('brand_code'):
-            return jsonify({'success': False, 'message': '브랜드명과 브랜드 코드는 필수입니다.'})
+        if not data.get('brand_name') or not data.get('brand_code') or not data.get('brand_eng_name'):
+            return jsonify({'success': False, 'message': '브랜드명, 브랜드 코드, 영문명은 필수입니다.'})
         
         # 코드 중복 체크
         existing = Brand.query.filter_by(brand_code=data.get('brand_code')).first()
@@ -677,11 +678,13 @@ def create_brand():
         new_brand = Brand(
             brand_name=data.get('brand_name'),
             brand_code=data.get('brand_code'),
+            brand_eng_name=data.get('brand_eng_name'),
+            brand_info=data.get('brand_info', ''),
             sort=int(data.get('sort', 1)),
             use_yn=data.get('use_yn', 'Y'),
-            memo=data.get('memo', ''),
-            ins_user='admin',
-            ins_date=db.func.now()
+            company_id=session.get('current_company_id'),
+            ins_user=current_user.id,
+            ins_date=datetime.utcnow()
         )
         
         db.session.add(new_brand)
@@ -698,7 +701,7 @@ def create_brand():
 def update_brand():
     """브랜드 수정"""
     try:
-        data = request.form
+        data = request.get_json()
         seq = data.get('seq')
         
         if not seq:
@@ -718,11 +721,12 @@ def update_brand():
         
         brand.brand_name = data.get('brand_name')
         brand.brand_code = data.get('brand_code')
+        brand.brand_eng_name = data.get('brand_eng_name')
+        brand.brand_info = data.get('brand_info', '')
         brand.sort = int(data.get('sort', 1))
         brand.use_yn = data.get('use_yn', 'Y')
-        brand.memo = data.get('memo', '')
-        brand.upt_user = 'admin'
-        brand.upt_date = db.func.now()
+        brand.upt_user = current_user.id
+        brand.upt_date = datetime.utcnow()
         
         db.session.commit()
         return jsonify({'success': True, 'message': '브랜드가 수정되었습니다.'})
@@ -736,7 +740,8 @@ def update_brand():
 def delete_brand():
     """브랜드 삭제"""
     try:
-        seq = request.form.get('seq')
+        data = request.get_json()
+        seq = data.get('seq')
         if not seq:
             return jsonify({'success': False, 'message': 'seq가 필요합니다.'})
         
@@ -744,11 +749,7 @@ def delete_brand():
         if not brand:
             return jsonify({'success': False, 'message': '브랜드를 찾을 수 없습니다.'})
         
-        # 브랜드 사용 중지로 변경
-        brand.use_yn = 'N'
-        brand.upt_user = 'admin'
-        brand.upt_date = db.func.now()
-        
+        db.session.delete(brand)
         db.session.commit()
         return jsonify({'success': True, 'message': '브랜드가 삭제되었습니다.'})
         

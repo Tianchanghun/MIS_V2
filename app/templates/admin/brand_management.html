@@ -22,12 +22,13 @@
                 <table class="table table-hover table-sm">
                     <thead class="table-light">
                         <tr>
-                            <th width="10%">순서</th>
-                            <th width="20%">브랜드 코드</th>
-                            <th width="25%">브랜드명</th>
-                            <th width="10%">사용</th>
-                            <th width="25%">메모</th>
-                            <th width="10%">관리</th>
+                            <th width="8%">순서</th>
+                            <th width="15%">브랜드 코드</th>
+                            <th width="20%">브랜드명</th>
+                            <th width="20%">영문명</th>
+                            <th width="8%">사용</th>
+                            <th width="20%">브랜드 정보</th>
+                            <th width="9%">관리</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -36,17 +37,18 @@
                             <td>{{ brand.sort }}</td>
                             <td>{{ brand.brand_code }}</td>
                             <td>{{ brand.brand_name }}</td>
+                            <td>{{ brand.brand_eng_name or '-' }}</td>
                             <td>
                                 <span class="badge bg-{{ 'success' if brand.use_yn == 'Y' else 'secondary' }}">
                                     {{ brand.use_yn or 'N' }}
                                 </span>
                             </td>
-                            <td class="text-truncate">{{ brand.memo or '-' }}</td>
+                            <td class="text-truncate">{{ brand.brand_info or '-' }}</td>
                             <td>
-                                <button class="btn btn-warning btn-sm" onclick="editBrand({{ brand.seq }})" title="수정">
+                                <button class="btn btn-warning btn-sm" onclick="editBrand('{{ brand.seq }}')" title="수정">
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                <button class="btn btn-danger btn-sm" onclick="deleteBrand({{ brand.seq }})" title="삭제">
+                                <button class="btn btn-danger btn-sm" onclick="deleteBrand('{{ brand.seq }}')" title="삭제">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </td>
@@ -64,119 +66,160 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="brandModalTitle">브랜드 추가</h5>
+                <h5 class="modal-title" id="modalTitle">브랜드 추가</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <form id="brandForm">
-                    <input type="hidden" id="brand_seq" name="brand_seq">
+                    <input type="hidden" id="brandSeq" name="seq">
                     
                     <div class="mb-3">
-                        <label for="brand_code" class="form-label">브랜드 코드 *</label>
-                        <input type="text" class="form-control" id="brand_code" name="brand_code" required 
-                               placeholder="예: AONE, SAMSUNG">
+                        <label for="brand_code" class="form-label">브랜드 코드 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="brand_code" name="brand_code" 
+                               maxlength="10" required>
                     </div>
                     
                     <div class="mb-3">
-                        <label for="brand_name" class="form-label">브랜드명 *</label>
-                        <input type="text" class="form-control" id="brand_name" name="brand_name" required 
-                               placeholder="예: 에이원, 삼성">
+                        <label for="brand_name" class="form-label">브랜드명 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="brand_name" name="brand_name" 
+                               maxlength="50" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="brand_eng_name" class="form-label">영문명 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="brand_eng_name" name="brand_eng_name" 
+                               maxlength="50" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="brand_info" class="form-label">브랜드 정보</label>
+                        <textarea class="form-control" id="brand_info" name="brand_info" rows="3"
+                                  maxlength="255" placeholder="브랜드에 대한 설명을 입력하세요"></textarea>
                     </div>
                     
                     <div class="row">
                         <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="sort" class="form-label">정렬 순서</label>
-                                <input type="number" class="form-control" id="sort" name="sort" value="1" min="1">
-                            </div>
+                            <label for="sort" class="form-label">정렬순서</label>
+                            <input type="number" class="form-control" id="sort" name="sort" 
+                                   min="1" value="1" required>
                         </div>
                         <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="use_yn" class="form-label">사용 여부</label>
-                                <select class="form-control" id="use_yn" name="use_yn">
-                                    <option value="Y">Y</option>
-                                    <option value="N">N</option>
-                                </select>
-                            </div>
+                            <label for="use_yn" class="form-label">사용여부</label>
+                            <select class="form-select" id="use_yn" name="use_yn" required>
+                                <option value="Y">사용</option>
+                                <option value="N">미사용</option>
+                            </select>
                         </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="memo" class="form-label">메모</label>
-                        <textarea class="form-control" id="memo" name="memo" rows="3" 
-                                  placeholder="브랜드에 대한 추가 정보를 입력하세요"></textarea>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-primary" onclick="saveBrand()">
-                    <i class="fas fa-save"></i> 저장
-                </button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-primary" onclick="saveBrand()">저장</button>
             </div>
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
 <script>
 let isEditMode = false;
 
 function showAddBrandModal() {
     isEditMode = false;
-    $('#brandModalTitle').text('브랜드 추가');
+    $('#modalTitle').text('브랜드 추가');
     $('#brandForm')[0].reset();
-    $('#brand_seq').val('');
-    $('#brand_code').prop('disabled', false);
-    $('#sort').val({{ brands|length + 1 }});
+    $('#brandSeq').val('');
+    $('#use_yn').val('Y');
     $('#brandModal').modal('show');
 }
 
 function editBrand(seq) {
     isEditMode = true;
-    $('#brandModalTitle').text('브랜드 수정');
+    seq = parseInt(seq); // 문자열을 숫자로 변환
+    $('#modalTitle').text('브랜드 수정');
     
-    // 임시로 테이블에서 데이터 추출
-    const row = $(`tr:has(button[onclick="editBrand(${seq})"])`);
+    // 테이블에서 데이터 추출
+    const row = $(`button[onclick="editBrand('${seq}')"]`).closest('tr');
+    const sort = row.find('td:nth-child(1)').text();
     const brandCode = row.find('td:nth-child(2)').text();
     const brandName = row.find('td:nth-child(3)').text();
-    const sort = row.find('td:nth-child(1)').text();
-    const memo = row.find('td:nth-child(5)').text();
+    const brandEngName = row.find('td:nth-child(4)').text();
+    const useYn = row.find('td:nth-child(5) .badge').text();
+    const brandInfo = row.find('td:nth-child(6)').text();
     
-    $('#brand_seq').val(seq);
-    $('#brand_code').val(brandCode).prop('disabled', true);
+    // 폼에 데이터 설정
+    $('#brandSeq').val(seq);
+    $('#brand_code').val(brandCode);
     $('#brand_name').val(brandName);
+    $('#brand_eng_name').val(brandEngName === '-' ? '' : brandEngName);
+    $('#brand_info').val(brandInfo === '-' ? '' : brandInfo);
     $('#sort').val(sort);
-    $('#use_yn').val('Y');
-    $('#memo').val(memo === '-' ? '' : memo);
+    $('#use_yn').val(useYn);
+    
     $('#brandModal').modal('show');
-}
-
-function deleteBrand(seq) {
-    if (!confirm('정말로 이 브랜드를 삭제하시겠습니까?')) {
-        return;
-    }
-    alert('브랜드 삭제 기능은 준비 중입니다.');
 }
 
 function saveBrand() {
     const formData = {
-        seq: $('#brand_seq').val(),
+        seq: $('#brandSeq').val(),
         brand_code: $('#brand_code').val().trim(),
         brand_name: $('#brand_name').val().trim(),
-        sort: $('#sort').val(),
-        use_yn: $('#use_yn').val(),
-        memo: $('#memo').val().trim()
+        brand_eng_name: $('#brand_eng_name').val().trim(),
+        brand_info: $('#brand_info').val().trim(),
+        sort: parseInt($('#sort').val()),
+        use_yn: $('#use_yn').val()
     };
     
-    if (!formData.brand_code || !formData.brand_name) {
-        alert('브랜드 코드와 브랜드명은 필수입니다.');
+    // 필수 필드 검증
+    if (!formData.brand_code || !formData.brand_name || !formData.brand_eng_name) {
+        alert('필수 필드를 모두 입력해주세요.');
         return;
     }
     
-    alert((isEditMode ? '브랜드 수정' : '브랜드 등록') + ' 기능은 준비 중입니다.');
-    $('#brandModal').modal('hide');
+    const url = isEditMode ? '/admin/api/brands/update' : '/admin/api/brands/create';
+    
+    $.ajax({
+        url: url,
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(formData),
+        success: function(response) {
+            if (response.success) {
+                alert(isEditMode ? '브랜드가 수정되었습니다.' : '브랜드가 추가되었습니다.');
+                location.reload();
+            } else {
+                alert('오류: ' + response.message);
+            }
+        },
+        error: function(xhr) {
+            alert('오류가 발생했습니다: ' + xhr.responseText);
+        }
+    });
+}
+
+function deleteBrand(seq) {
+    seq = parseInt(seq); // 문자열을 숫자로 변환
+    if (!confirm('정말로 이 브랜드를 삭제하시겠습니까?')) {
+        return;
+    }
+    
+    $.ajax({
+        url: '/admin/api/brands/delete',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({seq: seq}),
+        success: function(response) {
+            if (response.success) {
+                alert('브랜드가 삭제되었습니다.');
+                location.reload();
+            } else {
+                alert('오류: ' + response.message);
+            }
+        },
+        error: function(xhr) {
+            alert('오류가 발생했습니다: ' + xhr.responseText);
+        }
+    });
 }
 </script>
 {% endblock %} 

@@ -151,24 +151,6 @@ def run_job(job_id):
             'message': f'작업 실행 중 오류가 발생했습니다: {str(e)}'
         }), 500
 
-@batch_bp.route('/erpia/test', methods=['GET', 'POST'])
-@login_required
-def test_erpia_connection():
-    """ERPia API 연결 테스트"""
-    try:
-        erpia_client = ErpiaApiClient(company_id=current_user.company_id)
-        test_result = erpia_client.test_connection()
-        
-        return jsonify(test_result)
-        
-    except Exception as e:
-        logger.error(f"❌ ERPia 연결 테스트 실패: {e}")
-        return jsonify({
-            'success': False,
-            'message': f'연결 테스트 중 오류가 발생했습니다: {str(e)}',
-            'company_id': current_user.company_id
-        }), 500
-
 @batch_bp.route('/gift/classify', methods=['POST'])
 @login_required
 def manual_gift_classify():
@@ -178,25 +160,16 @@ def manual_gift_classify():
         
         gift_classifier = GiftClassifier(company_id=current_user.company_id)
         classified_count = gift_classifier.auto_classify_recent_products(
-            company_id=current_user.company_id,
-            days_back=days_back
+            current_user.company_id,
+            days_back
         )
         
         return jsonify({
             'success': True,
-            'message': f'최근 {days_back}일간 사은품 분류 완료',
-            'data': {
-                'classified_count': classified_count,
-                'days_back': days_back
-            }
+            'message': f'{classified_count}개 상품이 사은품으로 분류되었습니다.'
         })
-        
     except Exception as e:
-        logger.error(f"❌ 사은품 수동 분류 실패: {e}")
-        return jsonify({
-            'success': False,
-            'message': f'사은품 분류 중 오류가 발생했습니다: {str(e)}'
-        }), 500
+        return jsonify({'success': False, 'message': str(e)}) 
 
 @batch_bp.route('/gift/statistics')
 @login_required
@@ -236,11 +209,7 @@ def gift_statistics():
         })
         
     except Exception as e:
-        logger.error(f"❌ 사은품 통계 조회 실패: {e}")
-        return jsonify({
-            'success': False,
-            'message': f'사은품 통계 조회 중 오류가 발생했습니다: {str(e)}'
-        }), 500
+        return jsonify({'success': False, 'message': str(e)})
 
 @batch_bp.route('/dashboard/data')
 @login_required  
@@ -511,3 +480,264 @@ def api_remove_job(job_id):
             return jsonify({'success': False, 'message': '작업을 찾을 수 없습니다.'})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}) 
+
+# ==================== ERPia 설정 관리 API ====================
+
+@batch_bp.route('/api/erpia/settings/<int:company_id>', methods=['GET'])
+@login_required
+def get_erpia_settings(company_id):
+    """ERPia 설정 조회"""
+    try:
+        from app.common.models import CompanyErpiaConfig, ErpiaBatchSettings
+        
+        # ERPia 연동 설정 조회
+        erpia_config = CompanyErpiaConfig.query.filter_by(company_id=company_id).first()
+        
+        # 배치 설정 조회
+        batch_settings = {}
+        for setting in ErpiaBatchSettings.query.filter_by(company_id=company_id).all():
+            batch_settings[setting.setting_key] = {
+                'value': setting.setting_value,
+                'type': setting.setting_type,
+                'description': setting.description,
+                'min_value': setting.min_value,
+                'max_value': setting.max_value
+            }
+        
+        result = {
+            'erpia_config': erpia_config.to_dict() if erpia_config else None,
+            'batch_settings': batch_settings
+        }
+        
+        return jsonify({'success': True, 'data': result})
+        
+    except Exception as e:
+        logger.error(f"❌ ERPia 설정 조회 실패: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@batch_bp.route('/api/erpia/settings/<int:company_id>', methods=['POST'])
+@login_required
+def update_erpia_settings(company_id):
+    """ERPia 설정 업데이트"""
+    try:
+        from app.common.models import CompanyErpiaConfig, ErpiaBatchSettings, db
+        from datetime import datetime
+        
+        data = request.get_json()
+        
+        # ERPia 연동 설정 업데이트
+        if 'erpia_config' in data:
+            config_data = data['erpia_config']
+            erpia_config = CompanyErpiaConfig.query.filter_by(company_id=company_id).first()
+            
+            if erpia_config:
+                erpia_config.admin_code = config_data.get('admin_code', erpia_config.admin_code)
+                erpia_config.password = config_data.get('password', erpia_config.password)
+                erpia_config.api_url = config_data.get('api_url', erpia_config.api_url)
+                erpia_config.is_active = config_data.get('is_active', erpia_config.is_active)
+                erpia_config.updated_at = datetime.utcnow()
+            else:
+                erpia_config = CompanyErpiaConfig(
+                    company_id=company_id,
+                    admin_code=config_data.get('admin_code', ''),
+                    password=config_data.get('password', ''),
+                    api_url=config_data.get('api_url', 'http://www.erpia.net/xml/xml.asp'),
+                    is_active=config_data.get('is_active', True)
+                )
+                db.session.add(erpia_config)
+        
+        # 배치 설정 업데이트
+        if 'batch_settings' in data:
+            for key, value in data['batch_settings'].items():
+                setting = ErpiaBatchSettings.query.filter_by(
+                    company_id=company_id,
+                    setting_key=key
+                ).first()
+                
+                if setting:
+                    setting.setting_value = str(value)
+                    setting.updated_at = datetime.utcnow()
+                else:
+                    # 새 설정 생성
+                    setting = ErpiaBatchSettings(
+                        company_id=company_id,
+                        setting_key=key,
+                        setting_value=str(value),
+                        setting_type='text',  # 기본값
+                        description=f'{key} 설정'
+                    )
+                    db.session.add(setting)
+        
+        db.session.commit()
+        
+        # 스케줄러 업데이트 (추후 구현)
+        # from app.services.erpia_scheduler import update_company_schedule
+        # update_company_schedule(company_id)
+        
+        return jsonify({'success': True, 'message': '설정이 업데이트되었습니다.'})
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"❌ ERPia 설정 업데이트 실패: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@batch_bp.route('/api/erpia/test-connection/<int:company_id>', methods=['POST'])
+@login_required
+def test_erpia_connection_by_company(company_id):
+    """ERPia 연결 테스트 (회사별)"""
+    try:
+        from app.common.models import CompanyErpiaConfig
+        from app.services.erpia_client import ErpiaApiClient
+        from datetime import datetime
+        
+        # ERPia 설정 조회
+        erpia_config = CompanyErpiaConfig.query.filter_by(company_id=company_id).first()
+        if not erpia_config:
+            return jsonify({
+                'success': False,
+                'message': 'ERPia 설정이 없습니다. 먼저 설정을 저장해주세요.'
+            }), 400
+        
+        # 연결 테스트
+        client = ErpiaApiClient(company_id)
+        
+        # 간단한 API 호출로 연결 테스트 (사이트 코드 조회)
+        today = datetime.now().strftime('%Y%m%d')
+        result = client.test_connection()
+        
+        if result['success']:
+            # 연결 성공 시 마지막 동기화 시간 업데이트
+            erpia_config.last_sync_date = datetime.utcnow()
+            erpia_config.sync_error_count = 0
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'message': f'연결 성공! {result.get("message", "ERPia 서버와 정상적으로 연결되었습니다.")}'
+            })
+        else:
+            # 연결 실패 시 오류 카운트 증가
+            erpia_config.sync_error_count = (erpia_config.sync_error_count or 0) + 1
+            db.session.commit()
+            
+            return jsonify({
+                'success': False,
+                'message': f'연결 실패: {result.get("message", "알 수 없는 오류")}'
+            }), 400
+    
+    except Exception as e:
+        logger.error(f"❌ ERPia 연결 테스트 실패: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'연결 테스트 중 오류가 발생했습니다: {str(e)}'
+        }), 500
+
+@batch_bp.route('/api/erpia/manual-batch/<int:company_id>', methods=['POST'])
+@login_required
+def run_manual_batch(company_id):
+    """수동 배치 실행"""
+    try:
+        from app.common.models import ErpiaBatchLog, CompanyErpiaConfig
+        from app.services.erpia_batch_service import ErpiaBatchService
+        from datetime import datetime
+        
+        data = request.get_json()
+        start_date = data.get('start_date') if data else None
+        end_date = data.get('end_date') if data else None
+        
+        # 날짜가 없으면 4개월 자동 설정
+        if not start_date or not end_date:
+            from datetime import timedelta
+            end_date = datetime.now().strftime('%Y%m%d')
+            start_date = (datetime.now() - timedelta(days=120)).strftime('%Y%m%d')  # 4개월 이전
+            logger.info(f"📅 수동 배치 자동 날짜 설정: {start_date}~{end_date} (4개월)")
+        
+        # ERPia 설정 조회
+        erpia_config = CompanyErpiaConfig.query.filter_by(company_id=company_id).first()
+        if not erpia_config:
+            return jsonify({
+                'success': False,
+                'message': 'ERPia 설정이 없습니다. 먼저 설정을 저장해주세요.'
+            }), 400
+        
+        # 배치 로그 시작
+        batch_log = ErpiaBatchLog(
+            company_id=company_id,
+            admin_code=erpia_config.admin_code,  # ERPia 관리자 코드 추가
+            batch_type='manual',
+            start_time=datetime.utcnow(),
+            status='RUNNING',
+            date_range=f"{start_date}-{end_date}"
+        )
+        db.session.add(batch_log)
+        db.session.commit()
+        
+        try:
+            # 배치 서비스 실행
+            batch_service = ErpiaBatchService(company_id)
+            result = batch_service.collect_sales_data(start_date, end_date)
+            
+            # 배치 로그 완료
+            batch_log.end_time = datetime.utcnow()
+            batch_log.status = 'SUCCESS'
+            batch_log.processed_orders = result.get('processed_orders', 0)
+            batch_log.processed_products = result.get('processed_products', 0)
+            batch_log.gift_products = result.get('gift_products', 0)
+            batch_log.total_pages = result.get('total_pages', 0)
+            batch_log.execution_details = str(result)
+            db.session.commit()
+            
+            # 성공 메시지에 DB 저장 정보 포함
+            db_info = f"DB 저장: {result.get('saved_to_db', 0)}건 신규, {result.get('updated_in_db', 0)}건 업데이트"
+            success_msg = f"배치가 성공적으로 실행되었습니다. {db_info}"
+            
+            return jsonify({
+                'success': True,
+                'message': success_msg,
+                'result': result
+            })
+            
+        except Exception as batch_error:
+            # 배치 로그 실패
+            batch_log.end_time = datetime.utcnow()
+            batch_log.status = 'FAILED'
+            batch_log.error_message = str(batch_error)
+            batch_log.error_count = 1
+            db.session.commit()
+            raise batch_error
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'배치 실행 실패: {str(e)}'
+        }), 500
+
+@batch_bp.route('/api/erpia/batch-logs/<int:company_id>', methods=['GET'])
+@login_required
+def get_batch_logs(company_id):
+    """배치 실행 로그 조회"""
+    try:
+        from app.common.models import ErpiaBatchLog
+        
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        
+        logs = ErpiaBatchLog.query.filter_by(company_id=company_id)\
+            .order_by(ErpiaBatchLog.start_time.desc())\
+            .paginate(page=page, per_page=per_page, error_out=False)
+        
+        result = {
+            'logs': [log.to_dict() for log in logs.items],
+            'pagination': {
+                'page': logs.page,
+                'pages': logs.pages,
+                'per_page': logs.per_page,
+                'total': logs.total
+            }
+        }
+        
+        return jsonify({'success': True, 'data': result})
+        
+    except Exception as e:
+        logger.error(f"❌ 배치 로그 조회 실패: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500 

@@ -80,48 +80,28 @@ class BatchScheduler:
             self.init_app(app)
     
     def init_app(self, app):
-        """Flask 앱 초기화"""
-        self.app = app
-        
-        # 데이터베이스 URL 가져오기
-        database_url = app.config.get('SQLALCHEMY_DATABASE_URI')
-        
-        # Job Store 설정 (PostgreSQL)
-        jobstores = {
-            'default': SQLAlchemyJobStore(url=database_url)
-        }
-        
-        # Executor 설정
-        executors = {
-            'default': ThreadPoolExecutor(20)
-        }
-        
-        # Scheduler 설정
-        job_defaults = {
-            'coalesce': True,
-            'max_instances': 1,
-            'misfire_grace_time': 300
-        }
-        
-        # 스케줄러 생성
-        self.scheduler = BackgroundScheduler(
-            jobstores=jobstores,
-            executors=executors,
-            job_defaults=job_defaults,
-            timezone=pytz.timezone('Asia/Seoul')
-        )
-        
-        # 이벤트 리스너 등록
-        self.scheduler.add_listener(self._job_executed_listener, EVENT_JOB_EXECUTED)
-        self.scheduler.add_listener(self._job_error_listener, EVENT_JOB_ERROR)
-        
-        # 사은품 분류기 초기화
-        self.gift_classifier = GiftClassifier()
-        
-        # 앱 종료 시 스케줄러 정리
-        app.teardown_appcontext(self._shutdown_scheduler)
-        
-        logger.info("🔧 배치 스케줄러 초기화 완료")
+        """Flask 앱과 스케줄러 초기화"""
+        try:
+            self.app = app
+            self.app.scheduler = self
+            
+            # 배치 작업용 서비스 초기화 (회사별 동적 생성으로 변경)
+            # self.gift_classifier = GiftClassifier()  # 회사별로 동적 생성
+            
+            print("🔧 배치 스케줄러 초기화 완료")
+            
+            # 개발 환경에서는 수동 시작
+            if app.config.get('ENV') == 'development':
+                print("💡 개발 환경: 배치 스케줄러 수동 시작 모드")
+                print("   - /batch 페이지에서 수동으로 시작할 수 있습니다.")
+            else:
+                self.start()
+                
+        except Exception as e:
+            print(f"⚠️ 배치 스케줄러 초기화 실패: {e}")
+            import traceback
+            print(f"   상세 오류: {traceback.format_exc()}")
+            # 초기화 실패해도 앱은 계속 실행
     
     def start(self):
         """스케줄러 시작"""

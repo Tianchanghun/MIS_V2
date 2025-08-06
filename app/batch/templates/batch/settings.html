@@ -1,127 +1,578 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 
-{% block page_title %}배치 설정{% endblock %}
+{% block title %}ERPia 배치 설정{% endblock %}
+
+{% block extra_css %}
+<style>
+.settings-card {
+    border: none;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.card-header {
+    background: linear-gradient(135deg, #007bff, #6f42c1);
+    color: white;
+    border-radius: 8px 8px 0 0 !important;
+    padding: 15px 20px;
+}
+
+.form-section {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.connection-status {
+    padding: 10px 15px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    font-weight: 500;
+}
+
+.status-success {
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+}
+
+.status-error {
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+}
+
+.status-unknown {
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+    color: #856404;
+}
+
+.schedule-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.schedule-option {
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.schedule-option:hover {
+    border-color: #007bff;
+    background-color: #f8f9ff;
+}
+
+.schedule-option.active {
+    border-color: #007bff;
+    background-color: #e3f2fd;
+}
+
+.time-input-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.btn-test {
+    background: linear-gradient(45deg, #28a745, #20c997);
+    border: none;
+    color: white;
+    transition: all 0.3s ease;
+}
+
+.btn-test:hover {
+    background: linear-gradient(45deg, #218838, #1a9970);
+    transform: translateY(-1px);
+}
+
+.batch-step {
+    transition: all 0.3s ease;
+    cursor: move;
+}
+
+.batch-step:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.batch-step.dragging {
+    opacity: 0.5;
+    transform: rotate(2deg);
+}
+
+.step-order {
+    font-size: 0.9rem;
+    min-width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-move-up, .btn-move-down {
+    border: none !important;
+    font-size: 0.8rem;
+}
+
+.batch-step.border-primary {
+    border-width: 2px !important;
+}
+
+.batch-step .form-check-input:checked {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
+    <!-- 페이지 헤더 -->
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="fas fa-cog"></i> 배치 설정</h2>
-        <a href="{{ url_for('batch.index') }}" class="btn btn-secondary">
-            <i class="fas fa-arrow-left"></i> 대시보드로 돌아가기
-        </a>
+        <div>
+            <h2><i class="fas fa-cog text-primary me-2"></i>ERPia 배치 설정</h2>
+            <p class="text-muted mb-0">회사별 ERPia 연동 및 배치 스케줄을 관리합니다.</p>
+        </div>
+        <div>
+            <a href="{{ url_for('batch.index') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>배치 대시보드
+            </a>
+        </div>
     </div>
-    
-    <div class="row">
-        <div class="col-md-8">
-            <div class="card">
+
+    <!-- 회사 선택 -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card settings-card">
                 <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-sliders-h"></i> 일반 설정
-                    </h5>
+                    <h5 class="mb-0"><i class="fas fa-building me-2"></i>회사 선택</h5>
                 </div>
                 <div class="card-body">
-                    <form>
-                        <div class="mb-3">
-                            <label class="form-label">자동 시작</label>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label class="form-label">설정할 회사 선택</label>
+                            <select class="form-select" id="companySelect" onchange="loadCompanySettings()">
+                                <option value="">회사를 선택하세요</option>
+                                {% if user_companies %}
+                                    {% for uc in user_companies %}
+                                    <option value="{{ uc.company_id }}" {% if current_company and uc.company_id == current_company.id %}selected{% endif %}>
+                                        {{ uc.company.company_name }}
+                                        {% if uc.is_primary %}<span class="badge bg-primary ms-1">주속</span>{% endif %}
+                                    </option>
+                                    {% endfor %}
+                                {% endif %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ERPia 연동 설정 -->
+    <div class="row mb-4" id="settingsPanel" style="display: none;">
+        <div class="col-md-6">
+            <div class="card settings-card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-plug me-2"></i>ERPia 연동 설정</h5>
+                </div>
+                <div class="card-body">
+                    <!-- 연결 상태 -->
+                    <div id="connectionStatus" class="connection-status status-unknown">
+                        <i class="fas fa-question-circle me-2"></i>연결 상태를 확인하려면 테스트를 실행하세요.
+                    </div>
+
+                    <form id="erpiaConfigForm">
+                        <div class="form-section">
+                            <h6 class="text-primary mb-3"><i class="fas fa-key me-2"></i>인증 정보</h6>
+                            
+                            <div class="mb-3">
+                                <label for="adminCode" class="form-label">ERPia 관리자 코드</label>
+                                <input type="text" class="form-control" id="adminCode" placeholder="예: aone" required>
+                                <div class="form-text">ERPia 시스템에서 제공받은 관리자 코드를 입력하세요.</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="erpiaPassword" class="form-label">ERPia 비밀번호</label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="erpiaPassword" placeholder="비밀번호 입력" required>
+                                    <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('erpiaPassword')">
+                                        <i class="fas fa-eye" id="erpiaPasswordIcon"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="apiUrl" class="form-label">API URL</label>
+                                <input type="url" class="form-control" id="apiUrl" value="http://www.erpia.net/xml/xml.asp">
+                                <div class="form-text">ERPia API 엔드포인트 URL (기본값 유지 권장)</div>
+                            </div>
+                            
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="autoStart" 
-                                       {% if settings.auto_start %}checked{% endif %}>
-                                <label class="form-check-label" for="autoStart">
-                                    애플리케이션 시작 시 배치 스케줄러 자동 시작
+                                <input class="form-check-input" type="checkbox" id="isActive" checked>
+                                <label class="form-check-label" for="isActive">
+                                    ERPia 연동 활성화
                                 </label>
                             </div>
                         </div>
-                        
-                        <div class="mb-3">
-                            <label for="defaultSchedule" class="form-label">기본 스케줄</label>
-                            <input type="text" class="form-control" id="defaultSchedule" 
-                                   value="{{ settings.default_schedule }}" placeholder="0 2 * * *">
-                            <div class="form-text">Cron 표현식 (예: 0 2 * * * = 매일 새벽 2시)</div>
+
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-test" onclick="testConnection()">
+                                <i class="fas fa-wifi me-2"></i>연결 테스트
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>설정 저장
+                            </button>
                         </div>
-                        
-                        <div class="mb-3">
-                            <label for="maxJobs" class="form-label">최대 동시 실행 작업 수</label>
-                            <input type="number" class="form-control" id="maxJobs" 
-                                   value="{{ settings.max_concurrent_jobs }}" min="1" max="10">
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- 배치 스케줄 설정 -->
+        <div class="col-md-6">
+            <div class="card settings-card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-clock me-2"></i>배치 스케줄 설정</h5>
+                </div>
+                <div class="card-body">
+                    <form id="batchScheduleForm">
+                        <div class="form-section">
+                            <h6 class="text-primary mb-3"><i class="fas fa-calendar me-2"></i>스케줄 유형</h6>
+                            
+                            <div class="schedule-grid">
+                                <div class="schedule-option" data-type="daily">
+                                    <div class="text-center">
+                                        <i class="fas fa-sun fa-2x text-warning mb-2"></i>
+                                        <h6>매일 실행</h6>
+                                        <small class="text-muted">매일 지정된 시간에 자동 실행</small>
+                                    </div>
+                                </div>
+                                
+                                <div class="schedule-option" data-type="weekly">
+                                    <div class="text-center">
+                                        <i class="fas fa-calendar-week fa-2x text-info mb-2"></i>
+                                        <h6>주간 실행</h6>
+                                        <small class="text-muted">선택한 요일에만 실행</small>
+                                    </div>
+                                </div>
+                                
+                                <div class="schedule-option" data-type="manual">
+                                    <div class="text-center">
+                                        <i class="fas fa-hand-paper fa-2x text-secondary mb-2"></i>
+                                        <h6>수동 실행</h6>
+                                        <small class="text-muted">필요시에만 수동으로 실행</small>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        
-                        <div class="mb-3">
-                            <label for="retryAttempts" class="form-label">재시도 횟수</label>
-                            <input type="number" class="form-control" id="retryAttempts" 
-                                   value="{{ settings.retry_attempts }}" min="0" max="10">
+
+                        <!-- 실행 시간 설정 -->
+                        <div class="form-section" id="timeSettings" style="display: none;">
+                            <h6 class="text-primary mb-3"><i class="fas fa-clock me-2"></i>실행 시간</h6>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label class="form-label">실행 시간</label>
+                                    <input type="time" class="form-control" id="scheduleTime" value="02:00">
+                                </div>
+                            </div>
+                            
+                            <!-- 요일 선택 (주간 실행시) -->
+                            <div id="weekdaySettings" style="display: none;">
+                                <label class="form-label mt-3">실행 요일</label>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="day1" value="1">
+                                        <label class="form-check-label" for="day1">월</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="day2" value="2">
+                                        <label class="form-check-label" for="day2">화</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="day3" value="3">
+                                        <label class="form-check-label" for="day3">수</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="day4" value="4">
+                                        <label class="form-check-label" for="day4">목</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="day5" value="5">
+                                        <label class="form-check-label" for="day5">금</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="day6" value="6">
+                                        <label class="form-check-label" for="day6">토</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="day7" value="7">
+                                        <label class="form-check-label" for="day7">일</label>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        
-                        <div class="mb-3">
-                            <label class="form-label">이메일 알림</label>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="emailNotifications" 
-                                       {% if settings.email_notifications %}checked{% endif %}>
-                                <label class="form-check-label" for="emailNotifications">
-                                    배치 실행 결과 이메일 알림 전송
+
+                        <!-- ERPia 배치 실행 순서 설정 -->
+                        <div class="form-section">
+                            <h6 class="text-primary mb-3"><i class="fas fa-list-ol me-2"></i>배치 실행 순서 설정</h6>
+                            
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>배치 실행 순서:</strong> 체크된 항목만 선택한 순서대로 실행됩니다. (매장정보 → 재고정보 → 상품정보 → 매출데이터)
+                            </div>
+                            
+                            <div id="batchStepsList">
+                                <!-- 1. 매장정보 수집 -->
+                                <div class="batch-step card mb-2" data-step="customers">
+                                    <div class="card-body py-2">
+                                        <div class="row align-items-center">
+                                            <div class="col-1">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="step_customers" checked>
+                                                </div>
+                                            </div>
+                                            <div class="col-1 text-center">
+                                                <span class="badge bg-secondary step-order">1</span>
+                                            </div>
+                                            <div class="col-7">
+                                                <strong>매장정보 수집</strong> (mode=cust)
+                                                <br><small class="text-muted">거래처(매장) 마스터 데이터 수집</small>
+                                            </div>
+                                            <div class="col-3">
+                                                <div class="btn-group btn-group-sm">
+                                                    <button type="button" class="btn btn-outline-secondary btn-move-up" onclick="moveStep(this, 'up')">
+                                                        <i class="fas fa-arrow-up"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-secondary btn-move-down" onclick="moveStep(this, 'down')">
+                                                        <i class="fas fa-arrow-down"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 2. 재고 정보 수집 -->
+                                <div class="batch-step card mb-2" data-step="stock">
+                                    <div class="card-body py-2">
+                                        <div class="row align-items-center">
+                                            <div class="col-1">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="step_stock" checked>
+                                                </div>
+                                            </div>
+                                            <div class="col-1 text-center">
+                                                <span class="badge bg-secondary step-order">2</span>
+                                            </div>
+                                            <div class="col-7">
+                                                <strong>재고 정보 수집</strong> (mode=jegoAll)
+                                                <br><small class="text-muted">상품 재고 데이터 (레거시 호환)</small>
+                                            </div>
+                                            <div class="col-3">
+                                                <div class="btn-group btn-group-sm">
+                                                    <button type="button" class="btn btn-outline-secondary btn-move-up" onclick="moveStep(this, 'up')">
+                                                        <i class="fas fa-arrow-up"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-secondary btn-move-down" onclick="moveStep(this, 'down')">
+                                                        <i class="fas fa-arrow-down"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 3. 상품 정보 수집 -->
+                                <div class="batch-step card mb-2" data-step="goods">
+                                    <div class="card-body py-2">
+                                        <div class="row align-items-center">
+                                            <div class="col-1">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="step_goods" checked>
+                                                </div>
+                                            </div>
+                                            <div class="col-1 text-center">
+                                                <span class="badge bg-secondary step-order">3</span>
+                                            </div>
+                                            <div class="col-7">
+                                                <strong>상품 정보 수집</strong> (mode=goods)
+                                                <br><small class="text-muted">상품 마스터 상세 정보</small>
+                                            </div>
+                                            <div class="col-3">
+                                                <div class="btn-group btn-group-sm">
+                                                    <button type="button" class="btn btn-outline-secondary btn-move-up" onclick="moveStep(this, 'up')">
+                                                        <i class="fas fa-arrow-up"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-secondary btn-move-down" onclick="moveStep(this, 'down')">
+                                                        <i class="fas fa-arrow-down"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 4. 매출 데이터 수집 (핵심) -->
+                                <div class="batch-step card mb-2 border-primary" data-step="sales">
+                                    <div class="card-body py-2">
+                                        <div class="row align-items-center">
+                                            <div class="col-1">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="step_sales" checked>
+                                                </div>
+                                            </div>
+                                            <div class="col-1 text-center">
+                                                <span class="badge bg-primary step-order">4</span>
+                                            </div>
+                                            <div class="col-7">
+                                                <strong>매출 데이터 수집</strong> (mode=jumun) <span class="badge bg-danger ms-1">핵심</span>
+                                                <br><small class="text-muted">주문/매출 데이터 + 사은품 자동 분류</small>
+                                            </div>
+                                            <div class="col-3">
+                                                <div class="btn-group btn-group-sm">
+                                                    <button type="button" class="btn btn-outline-secondary btn-move-up" onclick="moveStep(this, 'up')">
+                                                        <i class="fas fa-arrow-up"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-secondary btn-move-down" onclick="moveStep(this, 'down')">
+                                                        <i class="fas fa-arrow-down"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-3">
+                                <button type="button" class="btn btn-outline-success btn-sm" onclick="selectAllSteps()">
+                                    <i class="fas fa-check-double"></i> 전체 선택
+                                </button>
+                                <button type="button" class="btn btn-outline-warning btn-sm" onclick="selectCoreSteps()">
+                                    <i class="fas fa-star"></i> 핵심 4개 선택
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearAllSteps()">
+                                    <i class="fas fa-times"></i> 전체 해제
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 고급 설정 -->
+                        <div class="form-section">
+                            <h6 class="text-primary mb-3"><i class="fas fa-sliders-h me-2"></i>고급 설정</h6>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label class="form-label">API 호출 간격 (초)</label>
+                                    <input type="number" class="form-control" id="callInterval" min="1" max="60" value="3">
+                                    <div class="form-text">ERPia API 호출 사이의 대기 시간</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">페이지당 데이터 건수</label>
+                                    <input type="number" class="form-control" id="pageSize" min="1" max="30" value="30">
+                                    <div class="form-text">한 번에 가져올 데이터 건수 (최대 30건)</div>
+                                </div>
+                            </div>
+                            
+                            <div class="row mt-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">재시도 횟수</label>
+                                    <input type="number" class="form-control" id="retryCount" min="1" max="10" value="3">
+                                    <div class="form-text">API 호출 실패 시 재시도 횟수</div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-check mt-3">
+                                <input class="form-check-input" type="checkbox" id="autoGiftClassify" checked>
+                                <label class="form-check-label" for="autoGiftClassify">
+                                    사은품 자동 분류 활성화
                                 </label>
                             </div>
                         </div>
-                        
-                        <div class="mb-3">
-                            <label for="logRetention" class="form-label">로그 보관 기간 (일)</label>
-                            <input type="number" class="form-control" id="logRetention" 
-                                   value="{{ settings.log_retention_days }}" min="1" max="365">
-                        </div>
-                        
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save"></i> 설정 저장
+
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-save me-2"></i>스케줄 저장
                         </button>
                     </form>
                 </div>
             </div>
         </div>
-        
-        <div class="col-md-4">
-            <div class="card">
+    </div>
+
+    <!-- 최근 배치 로그 -->
+    <div class="row" id="batchLogsPanel" style="display: none;">
+        <div class="col-md-12">
+            <div class="card settings-card">
                 <div class="card-header">
-                    <h6 class="mb-0">
-                        <i class="fas fa-info-circle"></i> 설정 도움말
-                    </h6>
+                    <h5 class="mb-0"><i class="fas fa-history me-2"></i>최근 배치 실행 로그</h5>
                 </div>
                 <div class="card-body">
-                    <h6>Cron 표현식 예시:</h6>
-                    <ul class="list-unstyled small">
-                        <li><code>0 2 * * *</code> - 매일 새벽 2시</li>
-                        <li><code>0 */6 * * *</code> - 6시간마다</li>
-                        <li><code>0 9 * * 1-5</code> - 평일 오전 9시</li>
-                        <li><code>0 0 1 * *</code> - 매월 1일 자정</li>
-                    </ul>
-                    
-                    <hr>
-                    
-                    <h6>권장 설정:</h6>
-                    <ul class="list-unstyled small">
-                        <li><strong>최대 동시 작업:</strong> 3개</li>
-                        <li><strong>재시도 횟수:</strong> 3회</li>
-                        <li><strong>로그 보관:</strong> 30일</li>
-                    </ul>
-                </div>
-            </div>
-            
-            <div class="card mt-3">
-                <div class="card-header">
-                    <h6 class="mb-0">
-                        <i class="fas fa-tools"></i> 시스템 도구
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="d-grid gap-2">
-                        <button class="btn btn-outline-warning btn-sm" onclick="clearLogs()">
-                            <i class="fas fa-trash"></i> 로그 정리
-                        </button>
-                        <button class="btn btn-outline-info btn-sm" onclick="exportSettings()">
-                            <i class="fas fa-download"></i> 설정 내보내기
-                        </button>
-                        <button class="btn btn-outline-secondary btn-sm" onclick="resetSettings()">
-                            <i class="fas fa-undo"></i> 기본값 복원
-                        </button>
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="batchLogsTable">
+                            <thead>
+                                <tr>
+                                    <th>실행 시간</th>
+                                    <th>관리자 코드</th>
+                                    <th>유형</th>
+                                    <th>상태</th>
+                                    <th>처리 건수</th>
+                                    <th>사은품 수</th>
+                                    <th>소요 시간</th>
+                                    <th>상세</th>
+                                </tr>
+                            </thead>
+                            <tbody id="batchLogsBody">
+                                <tr>
+                                    <td colspan="8" class="text-center text-muted">
+                                        <i class="fas fa-spinner fa-spin me-2"></i>로그를 불러오는 중...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 수동 배치 실행 모달 -->
+<div class="modal fade" id="manualBatchModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-play me-2"></i>수동 배치 실행</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="manualBatchForm">
+                    <div class="mb-3">
+                        <label class="form-label">시작일</label>
+                        <input type="date" class="form-control" id="manualStartDate" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">종료일</label>
+                        <input type="date" class="form-control" id="manualEndDate" required>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        지정한 기간의 ERPia 데이터를 수집하고 사은품을 자동 분류합니다.
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-primary" onclick="runManualBatch()">
+                    <i class="fas fa-play me-2"></i>실행
+                </button>
             </div>
         </div>
     </div>
@@ -130,20 +581,543 @@
 
 {% block extra_js %}
 <script>
-function clearLogs() {
-    if (confirm('정말로 모든 로그를 삭제하시겠습니까?')) {
-        alert('로그 정리 기능은 준비 중입니다.');
+let currentCompanyId = null;
+
+// 페이지 로드 시 현재 회사 설정 로드
+$(document).ready(function() {
+    const selectedCompany = $('#companySelect').val();
+    if (selectedCompany) {
+        currentCompanyId = selectedCompany;
+        loadCompanySettings();
+    }
+    
+    // 오늘 날짜로 초기화
+    const today = new Date().toISOString().split('T')[0];
+    $('#manualStartDate').val(today);
+    $('#manualEndDate').val(today);
+});
+
+// 회사 설정 로드
+function loadCompanySettings() {
+    const companyId = $('#companySelect').val();
+    if (!companyId) {
+        $('#settingsPanel').hide();
+        $('#batchLogsPanel').hide();
+        return;
+    }
+    
+    currentCompanyId = companyId;
+    $('#settingsPanel').show();
+    $('#batchLogsPanel').show();
+    
+    // ERPia 설정 로드
+    $.get(`/batch/api/erpia/settings/${companyId}`)
+        .done(function(response) {
+            if (response.success) {
+                populateSettings(response.data);
+            } else {
+                showAlert('설정 로드 실패: ' + response.message, 'error');
+            }
+        })
+        .fail(function() {
+            showAlert('설정을 불러오는 중 오류가 발생했습니다.', 'error');
+        });
+    
+    // 배치 로그 로드
+    loadBatchLogs(companyId);
+}
+
+// 설정 데이터로 폼 채우기
+function populateSettings(data) {
+    const erpiaConfig = data.erpia_config;
+    const batchSettings = data.batch_settings;
+    
+    if (erpiaConfig) {
+        $('#adminCode').val(erpiaConfig.admin_code || '');
+        $('#apiUrl').val(erpiaConfig.api_url || 'http://www.erpia.net/xml/xml.asp');
+        $('#isActive').prop('checked', erpiaConfig.is_active);
+        
+        // 연결 상태 표시
+        updateConnectionStatus(erpiaConfig);
+    }
+    
+    if (batchSettings) {
+        $('#scheduleTime').val(batchSettings.schedule_time?.value || '02:00');
+        $('#callInterval').val(batchSettings.call_interval?.value || '3');
+        $('#pageSize').val(batchSettings.page_size?.value || '30');
+        $('#retryCount').val(batchSettings.retry_count?.value || '3');
+        $('#autoGiftClassify').prop('checked', 
+            batchSettings.auto_gift_classify?.value === 'true');
+        
+        // 스케줄 타입 설정
+        const scheduleType = batchSettings.schedule_type?.value || 'daily';
+        selectScheduleType(scheduleType);
+        
+        // 요일 설정
+        if (batchSettings.schedule_days?.value) {
+            const days = batchSettings.schedule_days.value.split(',');
+            days.forEach(day => {
+                $(`#day${day.trim()}`).prop('checked', true);
+            });
+        }
+
+        // 배치 실행 순서 설정
+        if (batchSettings.batch_steps) {
+            try {
+                const steps = JSON.parse(batchSettings.batch_steps.value || '[]');
+                
+                // 저장된 순서대로 재정렬
+                const container = document.getElementById('batchStepsList');
+                const stepElements = Array.from(container.querySelectorAll('.batch-step'));
+                
+                // 모든 체크박스 초기화
+                stepElements.forEach(stepElement => {
+                    stepElement.querySelector('input[type="checkbox"]').checked = false;
+                });
+                
+                // 저장된 순서대로 정렬 및 활성화
+                steps.sort((a, b) => a.order - b.order).forEach((stepSetting, index) => {
+                    const stepElement = stepElements.find(el => el.dataset.step === stepSetting.step);
+                    if (stepElement && stepSetting.enabled) {
+                        stepElement.querySelector('input[type="checkbox"]').checked = true;
+                        // 순서대로 DOM에서 이동
+                        container.appendChild(stepElement);
+                    }
+                });
+                
+                updateStepNumbers();
+            } catch (e) {
+                console.error('배치 단계 설정 로드 실패:', e);
+                // 기본값으로 핵심 단계만 선택
+                selectCoreSteps();
+            }
+        } else {
+            // 설정이 없으면 기본값으로 핵심 단계만 선택
+            selectCoreSteps();
+        }
     }
 }
 
-function exportSettings() {
-    alert('설정 내보내기 기능은 준비 중입니다.');
+// 연결 상태 업데이트
+function updateConnectionStatus(config) {
+    const statusDiv = $('#connectionStatus');
+    const lastSync = config.last_sync_date;
+    const errorCount = config.sync_error_count || 0;
+    
+    if (lastSync && errorCount === 0) {
+        statusDiv.removeClass('status-unknown status-error').addClass('status-success');
+        const syncTime = new Date(lastSync).toLocaleString('ko-KR');
+        statusDiv.html(`<i class="fas fa-check-circle me-2"></i>연결 정상 (마지막 확인: ${syncTime})`);
+    } else if (errorCount > 0) {
+        statusDiv.removeClass('status-unknown status-success').addClass('status-error');
+        const failText = errorCount === 1 ? '1회 실패' : `${errorCount}회 연속 실패`;
+        if (lastSync) {
+            const syncTime = new Date(lastSync).toLocaleString('ko-KR');
+            statusDiv.html(`<i class="fas fa-exclamation-triangle me-2"></i>연결 오류 (${failText}, 마지막 성공: ${syncTime})`);
+        } else {
+            statusDiv.html(`<i class="fas fa-exclamation-triangle me-2"></i>연결 오류 (${failText})`);
+        }
+    } else {
+        statusDiv.removeClass('status-success status-error').addClass('status-unknown');
+        statusDiv.html('<i class="fas fa-question-circle me-2"></i>연결 상태 미확인 - 설정 후 연결 테스트를 실행하세요');
+    }
 }
 
-function resetSettings() {
-    if (confirm('설정을 기본값으로 복원하시겠습니까?')) {
-        alert('기본값 복원 기능은 준비 중입니다.');
+// 스케줄 타입 선택
+$('.schedule-option').click(function() {
+    $('.schedule-option').removeClass('active');
+    $(this).addClass('active');
+    
+    const type = $(this).data('type');
+    selectScheduleType(type);
+});
+
+function selectScheduleType(type) {
+    $('.schedule-option').removeClass('active');
+    $(`.schedule-option[data-type="${type}"]`).addClass('active');
+    
+    if (type === 'manual') {
+        $('#timeSettings').hide();
+    } else {
+        $('#timeSettings').show();
+        
+        if (type === 'weekly') {
+            $('#weekdaySettings').show();
+        } else {
+            $('#weekdaySettings').hide();
+        }
     }
+}
+
+// ERPia 연동 설정 저장
+$('#erpiaConfigForm').submit(function(e) {
+    e.preventDefault();
+    
+    if (!currentCompanyId) {
+        showAlert('회사를 선택해주세요.', 'error');
+        return;
+    }
+    
+    const formData = {
+        erpia_config: {
+            admin_code: $('#adminCode').val(),
+            api_url: $('#apiUrl').val(),
+            is_active: $('#isActive').prop('checked')
+        }
+    };
+    
+    // 비밀번호가 입력된 경우에만 추가
+    const password = $('#erpiaPassword').val();
+    if (password && password.trim() !== '') {
+        formData.erpia_config.password = password;
+    }
+    
+    $.ajax({
+        url: `/batch/api/erpia/settings/${currentCompanyId}`,
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(formData),
+        success: function(response) {
+            if (response.success) {
+                showAlert('ERPia 설정이 저장되었습니다.', 'success');
+                // 비밀번호 필드 초기화 (보안상)
+                $('#erpiaPassword').val('');
+                loadCompanySettings(); // 설정 새로고침
+            } else {
+                showAlert('설정 저장 실패: ' + response.message, 'error');
+            }
+        },
+        error: function(xhr) {
+            let errorMessage = '설정 저장 중 오류가 발생했습니다.';
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMessage = '설정 저장 실패: ' + xhr.responseJSON.message;
+            }
+            showAlert(errorMessage, 'error');
+        }
+    });
+});
+
+// 배치 스케줄 설정 저장
+$('#batchScheduleForm').submit(function(e) {
+    e.preventDefault();
+    
+    if (!currentCompanyId) {
+        showAlert('회사를 선택해주세요.', 'error');
+        return;
+    }
+    
+    const scheduleType = $('.schedule-option.active').data('type');
+    let scheduleDays = '1,2,3,4,5,6,7'; // 기본값: 매일
+    
+    if (scheduleType === 'weekly') {
+        const selectedDays = [];
+        $('input[id^="day"]:checked').each(function() {
+            selectedDays.push($(this).val());
+        });
+        
+        if (selectedDays.length === 0) {
+            showAlert('주간 실행의 경우 최소 1개 요일을 선택해야 합니다.', 'error');
+            return;
+        }
+        
+        scheduleDays = selectedDays.join(',');
+    }
+    
+    const formData = {
+        batch_settings: {
+            schedule_type: scheduleType,
+            schedule_time: $('#scheduleTime').val(),
+            schedule_days: scheduleDays,
+            call_interval: $('#callInterval').val(),
+            page_size: $('#pageSize').val(),
+            retry_count: $('#retryCount').val(),
+            auto_gift_classify: $('#autoGiftClassify').prop('checked') ? 'true' : 'false',
+            batch_steps: JSON.stringify(getBatchStepsSettings())
+        }
+    };
+    
+    $.ajax({
+        url: `/batch/api/erpia/settings/${currentCompanyId}`,
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(formData),
+        success: function(response) {
+            if (response.success) {
+                showAlert('배치 스케줄이 저장되었습니다.', 'success');
+            } else {
+                showAlert('스케줄 저장 실패: ' + response.message, 'error');
+            }
+        },
+        error: function() {
+            showAlert('스케줄 저장 중 오류가 발생했습니다.', 'error');
+        }
+    });
+});
+
+// ERPia 연결 테스트
+function testConnection() {
+    if (!currentCompanyId) {
+        showAlert('회사를 선택해주세요.', 'error');
+        return;
+    }
+    
+    const btn = $('.btn-test');
+    const originalHtml = btn.html();
+    btn.html('<i class="fas fa-spinner fa-spin me-2"></i>테스트 중...').prop('disabled', true);
+    
+    $.post(`/batch/api/erpia/test-connection/${currentCompanyId}`)
+        .done(function(response) {
+            if (response.success) {
+                showAlert('연결 테스트 성공: ' + response.message, 'success');
+                // 연결 상태를 즉시 업데이트
+                $('#connectionStatus').removeClass('status-unknown status-error').addClass('status-success');
+                $('#connectionStatus').html('<i class="fas fa-check-circle me-2"></i>연결 정상 (방금 테스트 완료)');
+                // 설정을 다시 로드하여 최신 상태 반영
+                setTimeout(() => {
+                    loadCompanySettings();
+                }, 1000);
+            } else {
+                showAlert('연결 테스트 실패: ' + response.message, 'error');
+                // 연결 상태를 오류로 업데이트
+                $('#connectionStatus').removeClass('status-unknown status-success').addClass('status-error');
+                $('#connectionStatus').html('<i class="fas fa-exclamation-triangle me-2"></i>연결 실패 (방금 테스트 완료)');
+            }
+        })
+        .fail(function(xhr) {
+            let errorMessage = '연결 테스트 중 오류가 발생했습니다.';
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMessage = '연결 테스트 실패: ' + xhr.responseJSON.message;
+            }
+            showAlert(errorMessage, 'error');
+            // 연결 상태를 오류로 업데이트
+            $('#connectionStatus').removeClass('status-unknown status-success').addClass('status-error');
+            $('#connectionStatus').html('<i class="fas fa-exclamation-triangle me-2"></i>연결 테스트 오류');
+        })
+        .always(function() {
+            btn.html(originalHtml).prop('disabled', false);
+        });
+}
+
+// 배치 로그 로드
+function loadBatchLogs(companyId) {
+    $.get(`/batch/api/erpia/batch-logs/${companyId}?per_page=5`)
+        .done(function(response) {
+            if (response.success) {
+                displayBatchLogs(response.data.logs);
+            } else {
+                $('#batchLogsBody').html('<tr><td colspan="8" class="text-center text-muted">로그 로드 실패</td></tr>');
+            }
+        })
+        .fail(function() {
+            $('#batchLogsBody').html('<tr><td colspan="8" class="text-center text-muted">로그 로드 중 오류 발생</td></tr>');
+        });
+}
+
+// 배치 로그 표시
+function displayBatchLogs(logs) {
+    const tbody = $('#batchLogsBody');
+    tbody.empty();
+    
+    if (logs.length === 0) {
+        tbody.html('<tr><td colspan="8" class="text-center text-muted">배치 실행 로그가 없습니다.</td></tr>');
+        return;
+    }
+    
+    logs.forEach(log => {
+        const startTime = new Date(log.start_time).toLocaleString('ko-KR');
+        const endTime = log.end_time ? new Date(log.end_time) : null;
+        const duration = endTime ? 
+            Math.round((endTime - new Date(log.start_time)) / 1000) + '초' : '-';
+        
+        let statusBadge = '';
+        if (log.status === 'SUCCESS') {
+            statusBadge = '<span class="badge bg-success">성공</span>';
+        } else if (log.status === 'FAILED') {
+            statusBadge = '<span class="badge bg-danger">실패</span>';
+        } else {
+            statusBadge = '<span class="badge bg-warning">실행중</span>';
+        }
+        
+        const row = `
+            <tr>
+                <td>${startTime}</td>
+                <td>${log.admin_code || 'N/A'}</td>
+                <td><span class="badge bg-secondary">${log.batch_type}</span></td>
+                <td>${statusBadge}</td>
+                <td>${log.processed_orders || 0}건</td>
+                <td>${log.gift_products || 0}건</td>
+                <td>${duration}</td>
+                <td>
+                    ${log.error_message ? 
+                        `<button class="btn btn-sm btn-outline-danger" onclick="showLogDetail('${log.error_message}')">오류</button>` :
+                        '<span class="text-muted">-</span>'
+                    }
+                </td>
+            </tr>
+        `;
+        tbody.append(row);
+    });
+}
+
+// 로그 상세 보기
+function showLogDetail(message) {
+    alert('오류 상세:\n' + message);
+}
+
+// 수동 배치 실행
+function runManualBatch() {
+    const startDate = $('#manualStartDate').val();
+    const endDate = $('#manualEndDate').val();
+    
+    if (!startDate || !endDate) {
+        showAlert('시작일과 종료일을 모두 입력해주세요.', 'error');
+        return;
+    }
+    
+    if (!currentCompanyId) {
+        showAlert('회사를 선택해주세요.', 'error');
+        return;
+    }
+    
+    const formData = {
+        start_date: startDate.replace(/-/g, ''),
+        end_date: endDate.replace(/-/g, '')
+    };
+    
+    $.ajax({
+        url: `/batch/api/erpia/manual-batch/${currentCompanyId}`,
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(formData),
+        success: function(response) {
+            if (response.success) {
+                showAlert('배치가 성공적으로 실행되었습니다.', 'success');
+                $('#manualBatchModal').modal('hide');
+                loadBatchLogs(currentCompanyId); // 로그 새로고침
+            } else {
+                showAlert('배치 실행 실패: ' + response.message, 'error');
+            }
+        },
+        error: function() {
+            showAlert('배치 실행 중 오류가 발생했습니다.', 'error');
+        }
+    });
+}
+
+// 비밀번호 표시/숨김
+function togglePassword(inputId) {
+    const input = document.getElementById(inputId);
+    const icon = document.getElementById(inputId + 'Icon');
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'fas fa-eye-slash';
+    } else {
+        input.type = 'password';
+        icon.className = 'fas fa-eye';
+    }
+}
+
+// 알림 표시
+function showAlert(message, type) {
+    const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+    const alertHtml = `
+        <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    // 기존 알림 제거
+    $('.alert').remove();
+    
+    // 새 알림 추가
+    $('.container-fluid').prepend(alertHtml);
+    
+    // 3초 후 자동 제거
+    setTimeout(() => {
+        $('.alert').fadeOut();
+    }, 3000);
+}
+
+// 수동 배치 실행 버튼 (추가)
+function showManualBatchModal() {
+    $('#manualBatchModal').modal('show');
+}
+
+// 배치 실행 순서 관리 함수들
+function moveStep(button, direction) {
+    const step = button.closest('.batch-step');
+    const container = step.parentElement;
+    
+    if (direction === 'up' && step.previousElementSibling) {
+        container.insertBefore(step, step.previousElementSibling);
+    } else if (direction === 'down' && step.nextElementSibling) {
+        container.insertBefore(step.nextElementSibling, step);
+    }
+    
+    updateStepNumbers();
+}
+
+function updateStepNumbers() {
+    const steps = document.querySelectorAll('.batch-step');
+    steps.forEach((step, index) => {
+        const orderBadge = step.querySelector('.step-order');
+        orderBadge.textContent = index + 1;
+        
+        // 순서에 따라 배지 색상 변경
+        orderBadge.className = 'badge step-order';
+        if (index === 0) {
+            orderBadge.classList.add('bg-success');
+        } else if (step.dataset.step === 'sales') {
+            orderBadge.classList.add('bg-primary');
+        } else {
+            orderBadge.classList.add('bg-secondary');
+        }
+    });
+}
+
+function selectAllSteps() {
+    document.querySelectorAll('.batch-step input[type="checkbox"]').forEach(checkbox => {
+        checkbox.checked = true;
+    });
+}
+
+function selectCoreSteps() {
+    // 모든 체크박스 해제
+    document.querySelectorAll('.batch-step input[type="checkbox"]').forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    
+    // 핵심 단계만 선택 (매장정보, 재고, 상품, 매출)
+    document.getElementById('step_customers').checked = true;
+    document.getElementById('step_stock').checked = true;
+    document.getElementById('step_goods').checked = true;
+    document.getElementById('step_sales').checked = true;
+}
+
+function clearAllSteps() {
+    document.querySelectorAll('.batch-step input[type="checkbox"]').forEach(checkbox => {
+        checkbox.checked = false;
+    });
+}
+
+function getBatchStepsSettings() {
+    const steps = [];
+    const stepElements = document.querySelectorAll('.batch-step');
+    
+    stepElements.forEach((stepElement, index) => {
+        const checkbox = stepElement.querySelector('input[type="checkbox"]');
+        if (checkbox.checked) {
+            steps.push({
+                step: stepElement.dataset.step,
+                order: index + 1,
+                enabled: true
+            });
+        }
+    });
+    
+    return steps;
 }
 </script>
 {% endblock %} 
