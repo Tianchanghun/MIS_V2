@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+
+{% block page_title %}배치 설정{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-cog"></i> 배치 설정</h2>
+        <a href="{{ url_for('batch.index') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> 대시보드로 돌아가기
+        </a>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-sliders-h"></i> 일반 설정
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form>
+                        <div class="mb-3">
+                            <label class="form-label">자동 시작</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="autoStart" 
+                                       {% if settings.auto_start %}checked{% endif %}>
+                                <label class="form-check-label" for="autoStart">
+                                    애플리케이션 시작 시 배치 스케줄러 자동 시작
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="defaultSchedule" class="form-label">기본 스케줄</label>
+                            <input type="text" class="form-control" id="defaultSchedule" 
+                                   value="{{ settings.default_schedule }}" placeholder="0 2 * * *">
+                            <div class="form-text">Cron 표현식 (예: 0 2 * * * = 매일 새벽 2시)</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="maxJobs" class="form-label">최대 동시 실행 작업 수</label>
+                            <input type="number" class="form-control" id="maxJobs" 
+                                   value="{{ settings.max_concurrent_jobs }}" min="1" max="10">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="retryAttempts" class="form-label">재시도 횟수</label>
+                            <input type="number" class="form-control" id="retryAttempts" 
+                                   value="{{ settings.retry_attempts }}" min="0" max="10">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">이메일 알림</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="emailNotifications" 
+                                       {% if settings.email_notifications %}checked{% endif %}>
+                                <label class="form-check-label" for="emailNotifications">
+                                    배치 실행 결과 이메일 알림 전송
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="logRetention" class="form-label">로그 보관 기간 (일)</label>
+                            <input type="number" class="form-control" id="logRetention" 
+                                   value="{{ settings.log_retention_days }}" min="1" max="365">
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> 설정 저장
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-info-circle"></i> 설정 도움말
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <h6>Cron 표현식 예시:</h6>
+                    <ul class="list-unstyled small">
+                        <li><code>0 2 * * *</code> - 매일 새벽 2시</li>
+                        <li><code>0 */6 * * *</code> - 6시간마다</li>
+                        <li><code>0 9 * * 1-5</code> - 평일 오전 9시</li>
+                        <li><code>0 0 1 * *</code> - 매월 1일 자정</li>
+                    </ul>
+                    
+                    <hr>
+                    
+                    <h6>권장 설정:</h6>
+                    <ul class="list-unstyled small">
+                        <li><strong>최대 동시 작업:</strong> 3개</li>
+                        <li><strong>재시도 횟수:</strong> 3회</li>
+                        <li><strong>로그 보관:</strong> 30일</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-tools"></i> 시스템 도구
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-warning btn-sm" onclick="clearLogs()">
+                            <i class="fas fa-trash"></i> 로그 정리
+                        </button>
+                        <button class="btn btn-outline-info btn-sm" onclick="exportSettings()">
+                            <i class="fas fa-download"></i> 설정 내보내기
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="resetSettings()">
+                            <i class="fas fa-undo"></i> 기본값 복원
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function clearLogs() {
+    if (confirm('정말로 모든 로그를 삭제하시겠습니까?')) {
+        alert('로그 정리 기능은 준비 중입니다.');
+    }
+}
+
+function exportSettings() {
+    alert('설정 내보내기 기능은 준비 중입니다.');
+}
+
+function resetSettings() {
+    if (confirm('설정을 기본값으로 복원하시겠습니까?')) {
+        alert('기본값 복원 기능은 준비 중입니다.');
+    }
+}
+</script>
+{% endblock %} 

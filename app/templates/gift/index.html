@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{% block page_title %}사은품 분류 관리{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-gift me-2"></i>
+                    사은품 분류 관리
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    사은품 분류 관리 모듈이 준비 중입니다.
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <i class="fas fa-magic fa-3x text-primary mb-3"></i>
+                                <h5>자동 분류</h5>
+                                <p class="text-muted">ERPia 데이터 기반 자동 사은품 분류</p>
+                                <button class="btn btn-primary" disabled>
+                                    설정하기
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <i class="fas fa-cogs fa-3x text-success mb-3"></i>
+                                <h5>분류 규칙</h5>
+                                <p class="text-muted">사은품 분류를 위한 규칙 관리</p>
+                                <a href="{{ url_for('gift.settings') }}" class="btn btn-success" disabled>
+                                    규칙 관리
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

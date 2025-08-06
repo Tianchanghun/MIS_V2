@@ -1,0 +1,579 @@
+{% extends 'base.html' %}
+
+{% block page_title %}메뉴 관리{% endblock %}
+
+{% block extra_css %}
+<style>
+    .child-menu {
+        display: none;
+        background-color: #f8f9fa;
+    }
+    .parent-menu {
+        background-color: #fff;
+        cursor: pointer;
+    }
+    .parent-menu:hover {
+        background-color: #e3f2fd;
+    }
+    .menu-actions {
+        white-space: nowrap;
+    }
+    #menu-insert-panel {
+        display: none;
+    }
+    .depth-indicator {
+        color: #6c757d;
+        font-size: 0.9em;
+    }
+    .table-responsive {
+        max-height: 600px;
+        overflow-y: auto;
+    }
+    /* 컬럼 폭 고정 */
+    #menuTable {
+        table-layout: fixed;
+        width: 100%;
+    }
+    #menuTable th:nth-child(1) { width: 8%; }   /* 번호 */
+    #menuTable th:nth-child(2) { width: 8%; }   /* 아이콘 */
+    #menuTable th:nth-child(3) { width: 30%; }  /* 메뉴명 */
+    #menuTable th:nth-child(4) { width: 25%; }  /* URL */
+    #menuTable th:nth-child(5) { width: 8%; }   /* 웹 */
+    #menuTable th:nth-child(6) { width: 8%; }   /* 모바일 */
+    #menuTable th:nth-child(7) { width: 13%; }  /* 관리 */
+    
+    .table tr.selected {
+        background-color: #d1ecf1 !important;
+    }
+    
+    /* 아이콘 선택 모달 크기 조정 */
+    #iconPickerModal .modal-dialog {
+        max-width: 800px;
+    }
+    
+    #iconGrid .col-2 {
+        min-width: 120px;
+        margin-bottom: 10px;
+    }
+    
+    #iconGrid button {
+        min-height: 80px;
+        padding: 10px 5px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-sitemap"></i> 메뉴 관리</h2>
+        <button class="btn btn-primary" onclick="showInsertPanel(0, 0)">
+            <i class="fas fa-plus"></i> 최상위 메뉴 추가
+        </button>
+    </div>
+    
+    <div class="row">
+        <!-- 좌측: 메뉴 목록 (7컬럼) -->
+        <div class="col-md-7">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list"></i> 메뉴 목록
+                    </h5>
+                    <small class="text-muted">상위 메뉴를 클릭하면 하위 메뉴가 표시됩니다.</small>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm" id="menuTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>번호</th>
+                                    <th>아이콘</th>
+                                    <th>메뉴명</th>
+                                    <th>URL</th>
+                                    <th>웹</th>
+                                    <th>모바일</th>
+                                    <th>관리</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Root 행 -->
+                                <tr class="parent-menu" id="Root" data-seq="0" data-depth="0" data-parent-seq="0">
+                                    <td>-</td>
+                                    <td><i class="fas fa-home text-primary"></i></td>
+                                    <td><strong>Root</strong></td>
+                                    <td>-</td>
+                                    <td>-</td>
+                                    <td>-</td>
+                                    <td>-</td>
+                                </tr>
+                                {% for menu in menus %}
+                                <tr class="{{ 'parent-menu' if menu.depth == 0 else 'child-menu' }}" 
+                                    id="{{ menu.seq }}"
+                                    data-seq="{{ menu.seq }}" 
+                                    data-depth="{{ menu.depth }}" 
+                                    data-parent-seq="{{ menu.parent_seq }}">
+                                    <td>{{ loop.index }}</td>
+                                    <td>
+                                        {% if menu.icon %}
+                                            <i class="{{ menu.icon }}"></i>
+                                        {% else %}
+                                            <i class="fas fa-circle text-muted"></i>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-truncate">
+                                        {% if menu.depth == 0 %}
+                                            <strong>{{ menu.name }}</strong>
+                                        {% else %}
+                                            <span class="depth-indicator">└</span> {{ menu.name }}
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-truncate">{{ menu.url or '-' }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if menu.use_web_yn == 'Y' else 'secondary' }}">
+                                            {{ menu.use_web_yn or 'N' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if menu.use_mob_yn == 'Y' else 'secondary' }}">
+                                            {{ menu.use_mob_yn or 'N' }}
+                                        </span>
+                                    </td>
+                                    <td class="menu-actions">
+                                        {% if menu.depth == 0 %}
+                                        <button class="btn btn-success btn-sm" onclick="addChildMenu({{ menu.seq }})" title="하위 메뉴 추가">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                        {% endif %}
+                                        <button class="btn btn-warning btn-sm" onclick="editMenu({{ menu.seq }})" title="수정">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-danger btn-sm" onclick="deleteMenu({{ menu.seq }})" title="삭제">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 우측: 메뉴 등록 폼 (5컬럼) -->
+        <div class="col-md-5" id="menu-insert-panel">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-plus-circle"></i> <span id="form-title">메뉴 등록</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="menuForm">
+                        <input type="hidden" id="parent_seq" name="parent_seq" value="0">
+                        <input type="hidden" id="depth" name="depth" value="0">
+                        <input type="hidden" id="edit_seq" name="edit_seq" value="">
+                        
+                        <div class="mb-3">
+                            <label for="name" class="form-label">메뉴명 *</label>
+                            <input type="text" class="form-control" id="name" name="name" required 
+                                   placeholder="예: 사용자 관리, 코드 관리">
+                        </div>
+                        
+                        <div class="mb-3" id="icon-section">
+                            <label for="icon" class="form-label">아이콘</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="icon" name="icon" 
+                                       placeholder="예: fas fa-users, fas fa-code">
+                                <button type="button" class="btn btn-outline-secondary" onclick="showIconPicker()">
+                                    <i class="fas fa-search"></i> 선택
+                                </button>
+                            </div>
+                            <div class="form-text">
+                                Font Awesome 아이콘 클래스를 입력하세요. 
+                                <div id="icon-preview" class="mt-2"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3" id="url-section">
+                            <label for="url" class="form-label">URL</label>
+                            <input type="text" class="form-control" id="url" name="url" 
+                                   placeholder="예: /admin/users, /admin/codes">
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="use_web_yn" class="form-label">웹 사용</label>
+                                    <select class="form-control" id="use_web_yn" name="use_web_yn">
+                                        <option value="Y" selected>Y</option>
+                                        <option value="N">N</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="use_mob_yn" class="form-label">모바일 사용</label>
+                                    <select class="form-control" id="use_mob_yn" name="use_mob_yn">
+                                        <option value="Y" selected>Y</option>
+                                        <option value="N">N</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3" id="log-section">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="use_log_yn" name="use_log_yn" checked>
+                                <label class="form-check-label" for="use_log_yn">
+                                    접근 로그 기록
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="sort" class="form-label">정렬 순서</label>
+                            <input type="number" class="form-control" id="sort" name="sort" value="1" min="1">
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-primary" onclick="saveMenu()">
+                                <i class="fas fa-save"></i> <span id="btn-text">등록</span>
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="cancelForm()">
+                                <i class="fas fa-times"></i> 취소
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 아이콘 선택 모달 -->
+<div class="modal fade" id="iconPickerModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">아이콘 선택</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <input type="text" class="form-control" id="iconSearch" placeholder="아이콘 검색 (예: user, home, code)">
+                </div>
+                <div class="row" id="iconGrid">
+                    <!-- 관리 관련 아이콘들 -->
+                    <div class="col-lg-2 col-md-3 col-sm-4 col-6 text-center mb-3">
+                        <button class="btn btn-outline-secondary w-100 h-100" onclick="selectIcon('fas fa-home')">
+                            <i class="fas fa-home fa-2x d-block mb-2"></i><small>home</small>
+                        </button>
+                    </div>
+                    <div class="col-lg-2 col-md-3 col-sm-4 col-6 text-center mb-3">
+                        <button class="btn btn-outline-secondary w-100 h-100" onclick="selectIcon('fas fa-users')">
+                            <i class="fas fa-users fa-2x d-block mb-2"></i><small>users</small>
+                        </button>
+                    </div>
+                    <div class="col-lg-2 col-md-3 col-sm-4 col-6 text-center mb-3">
+                        <button class="btn btn-outline-secondary w-100 h-100" onclick="selectIcon('fas fa-code')">
+                            <i class="fas fa-code fa-2x d-block mb-2"></i><small>code</small>
+                        </button>
+                    </div>
+                    <div class="col-lg-2 col-md-3 col-sm-4 col-6 text-center mb-3">
+                        <button class="btn btn-outline-secondary w-100 h-100" onclick="selectIcon('fas fa-sitemap')">
+                            <i class="fas fa-sitemap fa-2x d-block mb-2"></i><small>sitemap</small>
+                        </button>
+                    </div>
+                    <div class="col-lg-2 col-md-3 col-sm-4 col-6 text-center mb-3">
+                        <button class="btn btn-outline-secondary w-100 h-100" onclick="selectIcon('fas fa-cog')">
+                            <i class="fas fa-cog fa-2x d-block mb-2"></i><small>cog</small>
+                        </button>
+                    </div>
+                    <div class="col-lg-2 col-md-3 col-sm-4 col-6 text-center mb-3">
+                        <button class="btn btn-outline-secondary w-100 h-100" onclick="selectIcon('fas fa-chart-bar')">
+                            <i class="fas fa-chart-bar fa-2x d-block mb-2"></i><small>chart-bar</small>
+                        </button>
+                    </div>
+                    <div class="col-lg-2 col-md-3 col-sm-4 col-6 text-center mb-3">
+                        <button class="btn btn-outline-secondary w-100 h-100" onclick="selectIcon('fas fa-database')">
+                            <i class="fas fa-database fa-2x d-block mb-2"></i><small>database</small>
+                        </button>
+                    </div>
+                    <div class="col-lg-2 col-md-3 col-sm-4 col-6 text-center mb-3">
+                        <button class="btn btn-outline-secondary w-100 h-100" onclick="selectIcon('fas fa-file-alt')">
+                            <i class="fas fa-file-alt fa-2x d-block mb-2"></i><small>file-alt</small>
+                        </button>
+                    </div>
+                    <div class="col-lg-2 col-md-3 col-sm-4 col-6 text-center mb-3">
+                        <button class="btn btn-outline-secondary w-100 h-100" onclick="selectIcon('fas fa-building')">
+                            <i class="fas fa-building fa-2x d-block mb-2"></i><small>building</small>
+                        </button>
+                    </div>
+                    <div class="col-lg-2 col-md-3 col-sm-4 col-6 text-center mb-3">
+                        <button class="btn btn-outline-secondary w-100 h-100" onclick="selectIcon('fas fa-key')">
+                            <i class="fas fa-key fa-2x d-block mb-2"></i><small>key</small>
+                        </button>
+                    </div>
+                    <div class="col-lg-2 col-md-3 col-sm-4 col-6 text-center mb-3">
+                        <button class="btn btn-outline-secondary w-100 h-100" onclick="selectIcon('fas fa-tags')">
+                            <i class="fas fa-tags fa-2x d-block mb-2"></i><small>tags</small>
+                        </button>
+                    </div>
+                    <div class="col-lg-2 col-md-3 col-sm-4 col-6 text-center mb-3">
+                        <button class="btn btn-outline-secondary w-100 h-100" onclick="selectIcon('fas fa-gift')">
+                            <i class="fas fa-gift fa-2x d-block mb-2"></i><small>gift</small>
+                        </button>
+                    </div>
+                    <div class="col-lg-2 col-md-3 col-sm-4 col-6 text-center mb-3">
+                        <button class="btn btn-outline-secondary w-100 h-100" onclick="selectIcon('fas fa-clock')">
+                            <i class="fas fa-clock fa-2x d-block mb-2"></i><small>clock</small>
+                        </button>
+                    </div>
+                    <div class="col-lg-2 col-md-3 col-sm-4 col-6 text-center mb-3">
+                        <button class="btn btn-outline-secondary w-100 h-100" onclick="selectIcon('fas fa-user-friends')">
+                            <i class="fas fa-user-friends fa-2x d-block mb-2"></i><small>user-friends</small>
+                        </button>
+                    </div>
+                    <div class="col-lg-2 col-md-3 col-sm-4 col-6 text-center mb-3">
+                        <button class="btn btn-outline-secondary w-100 h-100" onclick="selectIcon('fas fa-tachometer-alt')">
+                            <i class="fas fa-tachometer-alt fa-2x d-block mb-2"></i><small>tachometer-alt</small>
+                        </button>
+                    </div>
+                    <div class="col-lg-2 col-md-3 col-sm-4 col-6 text-center mb-3">
+                        <button class="btn btn-outline-secondary w-100 h-100" onclick="selectIcon('fas fa-list')">
+                            <i class="fas fa-list fa-2x d-block mb-2"></i><small>list</small>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 전역 변수
+let isEditMode = false;
+let arrMenuClick = [];
+
+// 페이지 로드 시 초기화
+$(document).ready(function() {
+    // 초기에 모든 하위 메뉴 숨김
+    $('.child-menu').hide();
+    
+    // 아이콘 검색 기능
+    $('#iconSearch').on('input', function() {
+        var searchTerm = $(this).val().toLowerCase();
+        $('#iconGrid button').each(function() {
+            var iconText = $(this).find('small').text().toLowerCase();
+            if (iconText.includes(searchTerm) || searchTerm === '') {
+                $(this).parent().show();
+            } else {
+                $(this).parent().hide();
+            }
+        });
+    });
+});
+
+// 상위 메뉴 클릭 시 하위 메뉴 표시/숨김 (레거시 방식)
+$(document).on("click", "#menuTable > tbody > tr", function() {
+    var seq = $(this).attr("id");
+    var parentSeq = $(this).attr("data-parent-seq");
+    var depth = $(this).attr("data-depth");
+    
+    // 클릭 메뉴 하이라이트
+    $("#menuTable > tbody > tr").removeClass("selected");
+    $(this).addClass("selected");
+    
+    // 메뉴 등록 폼 표시 및 설정
+    if (seq === "Root") {
+        showInsertPanel(0, 0);
+        $("#icon-section").show();
+        $("#url-section").hide();
+        $("#log-section").hide();
+    } else {
+        var currentDepth = parseInt(depth);
+        showInsertPanel(seq, currentDepth);
+        $("#icon-section").hide();
+        $("#url-section").show();
+        $("#log-section").hide();
+    }
+    
+    // 상위 메뉴인 경우 하위 메뉴 토글
+    if ($(this).hasClass("parent-menu")) {
+        arrMenuClick = [];
+    }
+    arrMenuClick.push(seq);
+    
+    // 하위 메뉴 표시/숨김 로직 (레거시와 동일)
+    $(".child-menu").each(function() {
+        var childParentSeq = $(this).attr("data-parent-seq");
+        if (childParentSeq == seq || childParentSeq == parentSeq || $.inArray(childParentSeq, arrMenuClick) >= 0) {
+            $(this).fadeIn("slow");
+        } else {
+            $(this).hide();
+        }
+    });
+});
+
+// 등록 패널 표시
+function showInsertPanel(parentSeq, depth) {
+    resetForm();
+    $('#menu-insert-panel').slideUp(200).slideDown(400);
+    $('#form-title').text(depth === 0 ? '최상위 메뉴 등록' : '하위 메뉴 등록');
+    $('#btn-text').text('등록');
+    $('#parent_seq').val(parentSeq);
+    $('#depth').val(depth);
+    isEditMode = false;
+}
+
+// 하위 메뉴 추가
+function addChildMenu(parentSeq) {
+    resetForm();
+    $('#menu-insert-panel').slideUp(200).slideDown(400);
+    $('#form-title').text('하위 메뉴 등록');
+    $('#btn-text').text('등록');
+    $('#parent_seq').val(parentSeq);
+    $('#depth').val('1');
+    isEditMode = false;
+    
+    // 하위 메뉴에서는 아이콘 숨김, URL과 로그 표시
+    $("#icon-section").hide();
+    $("#url-section").show();
+    $("#log-section").hide();
+}
+
+// 메뉴 수정
+function editMenu(seq) {
+    $.post('/admin/api/menus/get', {seq: seq}, function(data) {
+        if (data.success) {
+            const menu = data.data;
+            $('#menu-insert-panel').slideUp(200).slideDown(400);
+            $('#form-title').text('메뉴 수정');
+            $('#btn-text').text('수정');
+            $('#edit_seq').val(menu.seq);
+            $('#parent_seq').val(menu.parent_seq);
+            $('#depth').val(menu.depth);
+            $('#name').val(menu.name);
+            $('#icon').val(menu.icon || '');
+            $('#url').val(menu.url || '');
+            $('#use_web_yn').val(menu.use_web_yn || 'Y');
+            $('#use_mob_yn').val(menu.use_mob_yn || 'Y');
+            $('#use_log_yn').prop('checked', menu.use_log_yn === 'Y');
+            $('#sort').val(menu.sort || 1);
+            isEditMode = true;
+            updateIconPreview();
+            
+            // 메뉴 깊이에 따라 폼 요소 표시/숨김
+            if (menu.depth === 0) {
+                $("#icon-section").show();
+                $("#url-section").hide();
+                $("#log-section").hide();
+            } else {
+                $("#icon-section").hide();
+                $("#url-section").show();
+                $("#log-section").hide();
+            }
+        } else {
+            alert('메뉴 정보 조회 실패: ' + data.message);
+        }
+    });
+}
+
+// 메뉴 삭제
+function deleteMenu(seq) {
+    if (!confirm('정말로 이 메뉴를 삭제하시겠습니까?\n하위 메뉴가 있는 경우 함께 삭제됩니다.')) {
+        return;
+    }
+    
+    $.post('/admin/api/menus/delete', {seq: seq}, function(data) {
+        if (data.success) {
+            alert('메뉴가 삭제되었습니다.');
+            location.reload();
+        } else {
+            alert('삭제 실패: ' + data.message);
+        }
+    });
+}
+
+// 메뉴 저장
+function saveMenu() {
+    const formData = {
+        seq: $('#edit_seq').val(),
+        parent_seq: $('#parent_seq').val(),
+        depth: $('#depth').val(),
+        name: $('#name').val().trim(),
+        icon: $('#icon').val().trim(),
+        url: $('#url').val().trim(),
+        use_web_yn: $('#use_web_yn').val(),
+        use_mob_yn: $('#use_mob_yn').val(),
+        use_log_yn: $('#use_log_yn').is(':checked') ? 'Y' : 'N',
+        sort: $('#sort').val()
+    };
+    
+    // 유효성 검사
+    if (!formData.name) {
+        alert('메뉴명은 필수입니다.');
+        return;
+    }
+    
+    const url = isEditMode ? '/admin/api/menus/update' : '/admin/api/menus/create';
+    
+    $.post(url, formData, function(data) {
+        if (data.success) {
+            alert(isEditMode ? '메뉴가 수정되었습니다.' : '메뉴가 등록되었습니다.');
+            location.reload();
+        } else {
+            alert((isEditMode ? '수정' : '등록') + ' 실패: ' + data.message);
+        }
+    });
+}
+
+// 아이콘 선택기 표시
+function showIconPicker() {
+    $('#iconPickerModal').modal('show');
+}
+
+// 아이콘 선택
+function selectIcon(iconClass) {
+    $('#icon').val(iconClass);
+    updateIconPreview();
+    $('#iconPickerModal').modal('hide');
+}
+
+// 아이콘 미리보기 업데이트
+function updateIconPreview() {
+    const iconClass = $('#icon').val();
+    if (iconClass) {
+        $('#icon-preview').html(`<i class="${iconClass}"></i> ${iconClass}`);
+    } else {
+        $('#icon-preview').html('');
+    }
+}
+
+// 아이콘 입력 시 미리보기 업데이트
+$('#icon').on('input', updateIconPreview);
+
+// 폼 리셋
+function resetForm() {
+    $('#menuForm')[0].reset();
+    $('#edit_seq').val('');
+    $('#parent_seq').val('0');
+    $('#depth').val('0');
+    $('#sort').val('1');
+    $('#use_web_yn').val('Y');
+    $('#use_mob_yn').val('Y');
+    $('#use_log_yn').prop('checked', true);
+    updateIconPreview();
+}
+
+// 취소
+function cancelForm() {
+    $('#menu-insert-panel').slideUp(400);
+    resetForm();
+}
+</script>
+{% endblock %} 

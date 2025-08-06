@@ -1,0 +1,127 @@
+<!-- 배치 상태 표시 영역 -->
+<div id="batch-status-bar" class="bg-light border-bottom px-3 py-2" style="display: none;">
+    <div class="d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center">
+            <div class="spinner-border spinner-border-sm text-primary me-2" role="status" id="batch-spinner">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <span id="batch-status-text" class="text-muted">배치 작업 확인 중...</span>
+        </div>
+        <div class="d-flex align-items-center">
+            <small class="text-muted me-3" id="batch-last-update">마지막 업데이트: -</small>
+            <button class="btn btn-sm btn-outline-secondary" onclick="refreshBatchStatus()">
+                <i class="bi bi-arrow-clockwise"></i>
+            </button>
+        </div>
+    </div>
+    
+    <!-- 배치 진행률 바 -->
+    <div class="progress mt-2" style="height: 4px; display: none;" id="batch-progress-container">
+        <div class="progress-bar" role="progressbar" id="batch-progress-bar" style="width: 0%"></div>
+    </div>
+</div>
+
+<script>
+// 배치 상태 확인 함수
+function checkBatchStatus() {
+    $.ajax({
+        url: '/batch/status',
+        method: 'GET',
+        success: function(data) {
+            updateBatchStatus(data);
+        },
+        error: function() {
+            // 에러 시 상태바 숨기기
+            $('#batch-status-bar').hide();
+        }
+    });
+}
+
+// 배치 상태 업데이트
+function updateBatchStatus(data) {
+    const statusBar = $('#batch-status-bar');
+    const spinner = $('#batch-spinner');
+    const statusText = $('#batch-status-text');
+    const lastUpdate = $('#batch-last-update');
+    const progressContainer = $('#batch-progress-container');
+    const progressBar = $('#batch-progress-bar');
+    
+    if (data.is_running) {
+        // 배치 실행 중
+        statusBar.show();
+        spinner.show();
+        statusText.html(`<strong>${data.current_batch}</strong> 실행 중... (${data.processed}건 처리됨)`);
+        
+        if (data.progress !== undefined) {
+            progressContainer.show();
+            progressBar.css('width', data.progress + '%');
+        }
+        
+        // 상태바 색상 변경
+        statusBar.removeClass('bg-light bg-success bg-danger').addClass('bg-info');
+        
+    } else if (data.last_result) {
+        // 마지막 실행 결과 표시
+        spinner.hide();
+        progressContainer.hide();
+        
+        if (data.last_result.status === 'SUCCESS') {
+            statusBar.removeClass('bg-light bg-info bg-danger').addClass('bg-success');
+            statusText.html(`<strong>${data.last_result.batch_name}</strong> 완료 (${data.last_result.processed_count}건 처리)`);
+        } else if (data.last_result.status === 'ERROR') {
+            statusBar.removeClass('bg-light bg-info bg-success').addClass('bg-danger');
+            statusText.html(`<strong>${data.last_result.batch_name}</strong> 오류 발생`);
+        }
+        
+        statusBar.show();
+        
+        // 5초 후 숨기기
+        setTimeout(() => {
+            statusBar.fadeOut();
+        }, 5000);
+    } else {
+        // 배치 작업 없음
+        statusBar.hide();
+    }
+    
+    // 마지막 업데이트 시간
+    if (data.last_update) {
+        lastUpdate.text(`마지막 업데이트: ${data.last_update}`);
+    }
+}
+
+// 배치 상태 새로고침
+function refreshBatchStatus() {
+    checkBatchStatus();
+}
+
+// 페이지 로드시 배치 상태 확인
+$(document).ready(function() {
+    checkBatchStatus();
+    
+    // 10초마다 배치 상태 확인
+    setInterval(checkBatchStatus, 10000);
+});
+</script>
+
+<style>
+#batch-status-bar {
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+}
+
+#batch-status-bar.bg-info {
+    background-color: #e3f2fd !important;
+    border-color: #2196f3 !important;
+}
+
+#batch-status-bar.bg-success {
+    background-color: #e8f5e8 !important;
+    border-color: #4caf50 !important;
+}
+
+#batch-status-bar.bg-danger {
+    background-color: #ffebee !important;
+    border-color: #f44336 !important;
+}
+</style> 

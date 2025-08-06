@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}관리자 대시보드 - MIS v2{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h2 mb-4">
+        <i class="bi bi-speedometer2"></i> 관리자 대시보드
+    </h1>
+    
+    <div class="row">
+        <div class="col-md-3 mb-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5><i class="bi bi-list"></i> 메뉴 관리</h5>
+                </div>
+                <div class="card-body">
+                    <p>시스템 메뉴를 관리합니다.</p>
+                    <a href="{{ url_for('admin.menu_management') }}" class="btn btn-primary">메뉴 관리</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-4">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5><i class="bi bi-people"></i> 사용자 관리</h5>
+                </div>
+                <div class="card-body">
+                    <p>시스템 사용자를 관리합니다.</p>
+                    <a href="{{ url_for('admin.user_management') }}" class="btn btn-success">사용자 관리</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-4">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5><i class="bi bi-building"></i> 부서 관리</h5>
+                </div>
+                <div class="card-body">
+                    <p>부서 정보를 관리합니다.</p>
+                    <a href="{{ url_for('admin.department_management') }}" class="btn btn-info">부서 관리</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-4">
+            <div class="card">
+                <div class="card-header bg-warning text-white">
+                    <h5><i class="bi bi-code-square"></i> 코드 관리</h5>
+                </div>
+                <div class="card-body">
+                    <p>시스템 코드를 관리합니다.</p>
+                    <a href="{{ url_for('admin.code_management') }}" class="btn btn-warning">코드 관리</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-secondary text-white">
+                    <h5><i class="bi bi-award"></i> 브랜드 관리</h5>
+                </div>
+                <div class="card-body">
+                    <p>브랜드 정보를 관리합니다.</p>
+                    <a href="{{ url_for('admin.brand_management') }}" class="btn btn-secondary">브랜드 관리</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h5><i class="bi bi-shield-check"></i> 권한 관리</h5>
+                </div>
+                <div class="card-body">
+                    <p>사용자 권한을 관리합니다.</p>
+                    <a href="{{ url_for('admin.permissions') }}" class="btn btn-dark">권한 관리</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="mt-4">
+        <a href="{{ url_for('index') }}" class="btn btn-outline-primary">
+            <i class="bi bi-house"></i> 메인 대시보드로 돌아가기
+        </a>
+    </div>
+</div>
+{% endblock %} 

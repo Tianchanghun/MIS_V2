@@ -1,0 +1,21 @@
+<!-- 브레드크럼 네비게이션 -->
+<nav aria-label="breadcrumb" class="ms-3 mt-2">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('index') }}">
+                <i class="bi bi-house"></i> 홈
+            </a>
+        </li>
+        {% if breadcrumb_items %}
+            {% for item in breadcrumb_items %}
+                {% if loop.last %}
+                    <li class="breadcrumb-item active" aria-current="page">{{ item.title }}</li>
+                {% else %}
+                    <li class="breadcrumb-item">
+                        <a href="{{ item.url }}">{{ item.title }}</a>
+                    </li>
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+    </ol>
+</nav> 

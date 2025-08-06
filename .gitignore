@@ -1,5 +1,8 @@
 # MIS v2 Project .gitignore
 
+# 보관용 아카이브 폴더 제외
+archive/
+
 # 레거시 ASP.NET MVC 폴더 제외
 mis.aone.co.kr/
 

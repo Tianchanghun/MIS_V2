@@ -1,0 +1,199 @@
+{% extends 'base.html' %}
+
+{% block page_title %}사용자 관리{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-users"></i> 사용자 관리</h2>
+        <button class="btn btn-primary" onclick="showAddUserModal()">
+            <i class="fas fa-plus"></i> 사용자 추가
+        </button>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-list"></i> 사용자 목록
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover table-sm">
+                    <thead class="table-light">
+                        <tr>
+                            <th>번호</th>
+                            <th>ID</th>
+                            <th>이름</th>
+                            <th>상태</th>
+                            <th>슈퍼유저</th>
+                            <th>근무그룹</th>
+                            <th>관리</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td>{{ user.id }}</td>
+                            <td>{{ user.name }}</td>
+                            <td>
+                                <span class="badge bg-{{ 'success' if user.member_status == 'A' else 'secondary' }}">
+                                    {{ '활성' if user.member_status == 'A' else '비활성' }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge bg-{{ 'warning' if user.super_user == 'Y' else 'secondary' }}">
+                                    {{ user.super_user or 'N' }}
+                                </span>
+                            </td>
+                            <td>{{ user.work_group or '-' }}</td>
+                            <td>
+                                <button class="btn btn-warning btn-sm" onclick="editUser({{ user.seq }})" title="수정">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-danger btn-sm" onclick="deleteUser({{ user.seq }})" title="삭제">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 사용자 추가/수정 모달 -->
+<div class="modal fade" id="userModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="userModalTitle">사용자 추가</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="userForm">
+                    <input type="hidden" id="user_seq" name="user_seq">
+                    
+                    <div class="mb-3">
+                        <label for="user_id" class="form-label">ID *</label>
+                        <input type="text" class="form-control" id="user_id" name="user_id" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="user_name" class="form-label">이름 *</label>
+                        <input type="text" class="form-control" id="user_name" name="user_name" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="password" class="form-label">비밀번호</label>
+                        <input type="password" class="form-control" id="password" name="password" placeholder="변경 시에만 입력">
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="member_status" class="form-label">상태</label>
+                                <select class="form-control" id="member_status" name="member_status">
+                                    <option value="A">활성</option>
+                                    <option value="D">비활성</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="super_user" class="form-label">슈퍼유저</label>
+                                <select class="form-control" id="super_user" name="super_user">
+                                    <option value="N">N</option>
+                                    <option value="Y">Y</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="work_group" class="form-label">근무그룹</label>
+                        <input type="text" class="form-control" id="work_group" name="work_group">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="biz_card_num" class="form-label">명함번호</label>
+                        <input type="text" class="form-control" id="biz_card_num" name="biz_card_num">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="saveUser()">
+                    <i class="fas fa-save"></i> 저장
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let isEditMode = false;
+
+function showAddUserModal() {
+    isEditMode = false;
+    $('#userModalTitle').text('사용자 추가');
+    $('#userForm')[0].reset();
+    $('#user_seq').val('');
+    $('#user_id').prop('disabled', false);
+    $('#userModal').modal('show');
+}
+
+function editUser(seq) {
+    isEditMode = true;
+    $('#userModalTitle').text('사용자 수정');
+    
+    // 임시로 테이블에서 데이터 추출
+    const row = $(`tr:has(button[onclick="editUser(${seq})"])`);
+    const userId = row.find('td:nth-child(2)').text();
+    const userName = row.find('td:nth-child(3)').text();
+    
+    $('#user_seq').val(seq);
+    $('#user_id').val(userId).prop('disabled', true);
+    $('#user_name').val(userName);
+    $('#member_status').val('A');
+    $('#super_user').val('N');
+    $('#work_group').val('');
+    $('#biz_card_num').val('');
+    $('#password').val('');
+    $('#userModal').modal('show');
+}
+
+function deleteUser(seq) {
+    if (!confirm('정말로 이 사용자를 삭제하시겠습니까?')) {
+        return;
+    }
+    alert('사용자 삭제 기능은 준비 중입니다.');
+}
+
+function saveUser() {
+    const formData = {
+        seq: $('#user_seq').val(),
+        id: $('#user_id').val().trim(),
+        name: $('#user_name').val().trim(),
+        password: $('#password').val(),
+        member_status: $('#member_status').val(),
+        super_user: $('#super_user').val(),
+        work_group: $('#work_group').val().trim(),
+        biz_card_num: $('#biz_card_num').val().trim()
+    };
+    
+    if (!formData.id || !formData.name) {
+        alert('ID와 이름은 필수입니다.');
+        return;
+    }
+    
+    alert((isEditMode ? '사용자 수정' : '사용자 등록') + ' 기능은 준비 중입니다.');
+    $('#userModal').modal('hide');
+}
+</script>
+{% endblock %} 

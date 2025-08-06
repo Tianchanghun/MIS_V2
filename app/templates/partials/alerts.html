@@ -1,0 +1,44 @@
+<!-- Flash 메시지 표시 -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div class="alert-container">
+            {% for category, message in messages %}
+                {% set alert_class = {
+                    'error': 'alert-danger',
+                    'warning': 'alert-warning', 
+                    'info': 'alert-info',
+                    'success': 'alert-success'
+                }.get(category, 'alert-info') %}
+                
+                <div class="alert {{ alert_class }} alert-dismissible fade show" role="alert">
+                    {% if category == 'error' %}
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                    {% elif category == 'warning' %}
+                        <i class="bi bi-exclamation-circle-fill"></i>
+                    {% elif category == 'success' %}
+                        <i class="bi bi-check-circle-fill"></i>
+                    {% else %}
+                        <i class="bi bi-info-circle-fill"></i>
+                    {% endif %}
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+
+<style>
+.alert-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1050;
+    max-width: 400px;
+}
+
+.alert {
+    margin-bottom: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+</style> 

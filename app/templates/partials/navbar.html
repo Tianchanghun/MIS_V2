@@ -1,0 +1,132 @@
+<!-- 상단 네비게이션 바 -->
+<nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom">
+    <div class="container-fluid">
+        <!-- 사이드바 토글 버튼 -->
+        <button class="btn btn-outline-secondary me-3" id="sidebar-toggle">
+            <i class="bi bi-list"></i>
+        </button>
+        
+        <!-- 회사 전환 (멀티테넌트) -->
+        {% if companies and companies|length > 1 %}
+        <div class="dropdown me-3">
+            <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                <i class="bi bi-building"></i>
+                {{ current_company.company_name if current_company else '에이원' }}
+            </button>
+            <ul class="dropdown-menu">
+                {% for company in companies %}
+                <li>
+                    <a class="dropdown-item {% if current_company and current_company.id == company.id %}active{% endif %}" 
+                       href="#" onclick="switchCompany({{ company.id }})">
+                        <i class="bi bi-building"></i> {{ company.company_name }}
+                        {% if current_company and current_company.id == company.id %}
+                            <i class="bi bi-check2 ms-auto text-success"></i>
+                        {% endif %}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        
+        <!-- 사용자 정보 -->
+        <div class="navbar-nav ms-auto">
+            <div class="dropdown">
+                <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown">
+                    <i class="bi bi-person-circle me-2"></i>
+                    {{ session.member_name or '사용자' }}
+                    {% if session.super_user == 'Y' %}
+                    <span class="badge bg-warning text-dark ms-1">관리자</span>
+                    {% endif %}
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><h6 class="dropdown-header">
+                        <i class="bi bi-person"></i> {{ session.member_name }}
+                        <br><small class="text-muted">{{ session.member_id }}</small>
+                        {% if current_company %}
+                        <br><small class="text-info">{{ current_company.company_name }}</small>
+                        {% endif %}
+                    </h6></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="#" onclick="showProfile()">
+                        <i class="bi bi-person-circle"></i> 내 프로필
+                    </a></li>
+                    <li><a class="dropdown-item" href="#" onclick="showSettings()">
+                        <i class="bi bi-gear"></i> 계정 설정
+                    </a></li>
+                    <li><a class="dropdown-item" href="#" onclick="changePassword()">
+                        <i class="bi bi-key"></i> 비밀번호 변경
+                    </a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-danger" href="#" onclick="confirmLogout()">
+                        <i class="bi bi-box-arrow-right"></i> 로그아웃
+                    </a></li>
+                </ul>
+            </div>
+            
+            <!-- 빠른 로그아웃 버튼 (선택사항) -->
+            <div class="nav-item ms-2">
+                <button class="btn btn-outline-danger btn-sm" onclick="confirmLogout()" title="로그아웃">
+                    <i class="bi bi-box-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- 회사별 테마 적용 -->
+{% if current_company and current_company.theme_color %}
+<style>
+:root {
+    --company-primary-color: {{ current_company.theme_color }};
+}
+
+.btn-primary, .bg-primary {
+    background-color: var(--company-primary-color) !important;
+    border-color: var(--company-primary-color) !important;
+}
+
+.text-primary {
+    color: var(--company-primary-color) !important;
+}
+
+.nav-link.active, .nav-link:focus, .nav-link:hover {
+    color: var(--company-primary-color) !important;
+}
+</style>
+{% endif %}
+
+<!-- 회사 전환 JavaScript -->
+<script>
+async function switchCompany(companyId) {
+    try {
+        showLoading('회사 전환 중...');
+        
+        const response = await fetch('/auth/switch_company/' + companyId, {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+            }
+        });
+        
+        if (response.ok) {
+            // 페이지 새로고침으로 회사 컨텍스트 업데이트
+            window.location.reload();
+        } else {
+            hideLoading();
+            showAlert('회사 전환에 실패했습니다.', 'error');
+        }
+    } catch (error) {
+        hideLoading();
+        showAlert('회사 전환 중 오류가 발생했습니다.', 'error');
+        console.error('Company switch error:', error);
+    }
+}
+
+// 회사 변경 시 자동 저장된 필터 적용
+document.addEventListener('DOMContentLoaded', function() {
+    // 회사별 사용자 설정 로드
+    const currentCompany = {{ current_company.id if current_company else 1 }};
+    console.log('Current company:', currentCompany);
+});
+</script> 

@@ -1,0 +1,229 @@
+<!-- 좌측 사이드바 -->
+<div id="sidebar" class="d-flex flex-column bg-light border-end vh-100 position-fixed" style="width: 250px; z-index: 1000;">
+    <!-- 로고 섹션 -->
+    <div class="p-3 border-bottom bg-primary text-white text-center">
+        <div class="mb-2">
+            <img src="{{ url_for('static', filename='img/logo.png') }}" alt="MIS v2 Logo" style="max-width: 80px; max-height: 50px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+            <i class="fas fa-building fa-2x" style="display: none;"></i>
+        </div>
+        <h5 class="mb-0">MIS v2</h5>
+        <small>Management Information System</small>
+    </div>
+    
+    <!-- 사용자 패널 -->
+    <div class="p-3 border-bottom">
+        <div class="d-flex align-items-center">
+            <div class="me-3">
+                <i class="fas fa-user-circle fa-2x text-primary"></i>
+            </div>
+            <div>
+                <div class="fw-bold">{{ current_user.name }}</div>
+                <small class="text-muted">{{ current_user.id }}</small>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 회사 전환 (멀티테넌트) -->
+    {% if show_company_switcher %}
+    <div class="p-3 border-bottom bg-white">
+        <div class="mb-2">
+            <small class="text-muted fw-bold">현재 회사</small>
+        </div>
+        <div class="dropdown">
+            <button class="btn btn-outline-primary btn-sm dropdown-toggle w-100" type="button" id="companyDropdown" data-bs-toggle="dropdown">
+                <i class="fas fa-building me-2"></i>
+                {% if current_company and current_company.company_name %}
+                    {{ current_company.company_name }}
+                {% elif current_company and current_company.name %}
+                    {{ current_company.name }}
+                {% else %}
+                    회사 선택
+                {% endif %}
+            </button>
+            <ul class="dropdown-menu w-100">
+                {% for company in user_companies %}
+                <li>
+                    <a class="dropdown-item {% if current_company and (company.company_id == current_company.id or company.company.id == current_company.id) %}active{% endif %}" 
+                       href="#" onclick="switchCompany({{ company.company_id if company.company_id else company.company.id }})">
+                        <i class="fas fa-building me-2"></i>
+                        {{ company.company.company_name if company.company else company.name }}
+                        {% if company.is_primary %}<span class="badge bg-primary ms-2">주속</span>{% endif %}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% else %}
+    <!-- 단일 회사 표시 -->
+    <div class="p-3 border-bottom bg-light">
+        <div class="mb-2">
+            <small class="text-muted fw-bold">현재 회사</small>
+        </div>
+        <div class="d-flex align-items-center">
+            <i class="fas fa-building me-2 text-primary"></i>
+            <span class="fw-bold">
+                {% if current_company and current_company.company_name %}
+                    {{ current_company.company_name }}
+                {% elif current_company and current_company.name %}
+                    {{ current_company.name }}
+                {% else %}
+                    에이원
+                {% endif %}
+            </span>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- 메인 네비게이션 -->
+    <nav class="flex-grow-1 overflow-auto">
+        <ul class="nav nav-pills flex-column p-2" id="sidebar-menu">
+            <li class="nav-item"><small class="text-muted fw-bold px-2">NAVIGATION</small></li>
+            
+            <!-- 대시보드 -->
+            <li class="nav-item">
+                <a class="nav-link text-dark" href="{{ url_for('index') }}">
+                    <i class="fas fa-tachometer-alt me-2"></i> 대시보드
+                </a>
+            </li>
+            
+            <!-- 관리자 메뉴 -->
+            <li class="nav-item">
+                <a class="nav-link text-dark dropdown-toggle" href="#adminMenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
+                    <i class="fas fa-cog me-2"></i> 관리자
+                </a>
+                <div class="collapse" id="adminMenu">
+                    <div class="ms-3">
+                        <a class="nav-link text-dark py-1" href="{{ url_for('admin.menu_management') }}">
+                            <i class="fas fa-sitemap me-2"></i> 메뉴 관리
+                        </a>
+                        <a class="nav-link text-dark py-1" href="{{ url_for('admin.code_management') }}">
+                            <i class="fas fa-code me-2"></i> 코드 관리
+                        </a>
+                        <a class="nav-link text-dark py-1" href="{{ url_for('admin.department_management') }}">
+                            <i class="fas fa-building me-2"></i> 부서 관리
+                        </a>
+                        <a class="nav-link text-dark py-1" href="{{ url_for('admin.user_management') }}">
+                            <i class="fas fa-users me-2"></i> 사용자 관리
+                        </a>
+                        <a class="nav-link text-dark py-1" href="{{ url_for('admin.permissions') }}">
+                            <i class="fas fa-key me-2"></i> 권한 관리
+                        </a>
+                        <a class="nav-link text-dark py-1" href="{{ url_for('admin.brand_management') }}">
+                            <i class="fas fa-tags me-2"></i> 브랜드 관리
+                        </a>
+                    </div>
+                </div>
+            </li>
+            
+            <!-- ERPia 배치 -->
+            <li class="nav-item">
+                <a class="nav-link text-dark dropdown-toggle" href="#batchMenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
+                    <i class="fas fa-clock me-2"></i> ERPia 배치
+                </a>
+                <div class="collapse" id="batchMenu">
+                    <div class="ms-3">
+                        <a class="nav-link text-dark py-1" href="{{ url_for('batch.index') }}">
+                            <i class="fas fa-tachometer-alt me-2"></i> 배치 대시보드
+                        </a>
+                        <a class="nav-link text-dark py-1" href="{{ url_for('batch.settings') }}">
+                            <i class="fas fa-cog me-2"></i> 배치 설정
+                        </a>
+                    </div>
+                </div>
+            </li>
+            
+            <!-- 사은품 관리 -->
+            <li class="nav-item">
+                <a class="nav-link text-dark dropdown-toggle" href="#giftMenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
+                    <i class="fas fa-gift me-2"></i> 사은품 관리
+                </a>
+                <div class="collapse" id="giftMenu">
+                    <div class="ms-3">
+                        <a class="nav-link text-dark py-1" href="{{ url_for('gift.index') }}">
+                            <i class="fas fa-list me-2"></i> 분류 관리
+                        </a>
+                        <a class="nav-link text-dark py-1" href="{{ url_for('gift.settings') }}">
+                            <i class="fas fa-cog me-2"></i> 분류 설정
+                        </a>
+                    </div>
+                </div>
+            </li>
+            
+            <!-- 고객 관리 -->
+            <li class="nav-item">
+                <a class="nav-link text-dark dropdown-toggle" href="#customerMenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
+                    <i class="fas fa-user-friends me-2"></i> 고객 관리
+                </a>
+                <div class="collapse" id="customerMenu">
+                    <div class="ms-3">
+                        <a class="nav-link text-dark py-1" href="{{ url_for('customer.index') }}">
+                            <i class="fas fa-list me-2"></i> 고객 목록
+                        </a>
+                        <a class="nav-link text-dark py-1" href="{{ url_for('customer.analysis') }}">
+                            <i class="fas fa-chart-bar me-2"></i> 고객 분석
+                        </a>
+                    </div>
+                </div>
+            </li>
+        </ul>
+    </nav>
+    
+    <!-- 하단 로그아웃 -->
+    <div class="p-3 border-top">
+        <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-danger w-100">
+            <i class="fas fa-sign-out-alt me-2"></i> 로그아웃
+        </a>
+    </div>
+</div>
+
+<!-- 사이드바 토글 버튼 -->
+<button class="btn btn-light d-md-none position-fixed" style="top: 10px; left: 10px; z-index: 1001;" id="sidebar-toggle">
+    <i class="fas fa-bars"></i>
+</button>
+
+<!-- 사이드바 JavaScript -->
+<script>
+// 회사 전환 함수
+function switchCompany(companyId) {
+    $.post('/api/switch-company', {
+        company_id: companyId
+    }, function(data) {
+        if (data.success) {
+            // 성공 시 페이지 새로고침
+            location.reload();
+        } else {
+            alert('회사 전환 실패: ' + data.message);
+        }
+    }).fail(function() {
+        alert('회사 전환 중 오류가 발생했습니다.');
+    });
+}
+
+// 사이드바 토글 (모바일)
+document.getElementById('sidebar-toggle')?.addEventListener('click', function() {
+    const sidebar = document.getElementById('sidebar');
+    sidebar.classList.toggle('d-none');
+});
+</script>
+
+<style>
+@media (max-width: 768px) {
+    #sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+    }
+    #sidebar.show {
+        transform: translateX(0);
+    }
+    .main-content {
+        margin-left: 0 !important;
+    }
+}
+
+@media (min-width: 769px) {
+    .main-content {
+        margin-left: 250px;
+    }
+}
+</style> 

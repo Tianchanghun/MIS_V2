@@ -1,0 +1,381 @@
+{% extends 'base.html' %}
+
+{% block page_title %}코드 관리{% endblock %}
+
+{% block extra_css %}
+<style>
+    .child-code {
+        display: none;
+        background-color: #f8f9fa;
+    }
+    .parent-code {
+        background-color: #fff;
+        cursor: pointer;
+    }
+    .parent-code:hover {
+        background-color: #e3f2fd;
+    }
+    .code-actions {
+        white-space: nowrap;
+    }
+    #code-insert-panel {
+        display: none;
+    }
+    .table-responsive {
+        max-height: 600px;
+        overflow-y: auto;
+    }
+    /* 컬럼 폭 고정 */
+    #codeTable {
+        table-layout: fixed;
+        width: 100%;
+    }
+    #codeTable th:nth-child(1) { width: 20%; }  /* 코드 */
+    #codeTable th:nth-child(2) { width: 25%; }  /* 코드명 */
+    #codeTable th:nth-child(3) { width: 30%; }  /* 설명 */
+    #codeTable th:nth-child(4) { width: 10%; }  /* 깊이 */
+    #codeTable th:nth-child(5) { width: 15%; }  /* 관리 */
+    
+    .table tr.selected {
+        background-color: #d1ecf1 !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-code"></i> 코드 관리</h2>
+        <button class="btn btn-primary" onclick="showInsertPanel(0, 0)">
+            <i class="fas fa-plus"></i> 코드 그룹 추가
+        </button>
+    </div>
+    
+    <div class="row">
+        <!-- 좌측: 코드 목록 (7컬럼) -->
+        <div class="col-md-7">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list"></i> 코드 그룹 목록
+                    </h5>
+                    <small class="text-muted">상위 코드를 클릭하면 하위 코드가 표시됩니다.</small>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm" id="codeTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>코드</th>
+                                    <th>코드명</th>
+                                    <th>설명</th>
+                                    <th>깊이</th>
+                                    <th>관리</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Root 행 -->
+                                <tr class="parent-code" id="Root" data-seq="0" data-depth="0" data-parent-seq="0">
+                                    <td><i class="fas fa-home text-primary"></i></td>
+                                    <td><strong>Root</strong></td>
+                                    <td>최상위 코드</td>
+                                    <td>0</td>
+                                    <td>-</td>
+                                </tr>
+                                {% for code in codes %}
+                                <tr class="{{ 'parent-code' if code.depth == 0 else 'child-code' }}" 
+                                    id="{{ code.seq }}"
+                                    data-seq="{{ code.seq }}" 
+                                    data-depth="{{ code.depth }}" 
+                                    data-parent-seq="{{ code.parent_seq }}">
+                                    <td class="text-truncate">
+                                        {% if code.depth == 0 %}
+                                            <i class="fas fa-folder text-warning"></i> <strong>{{ code.code }}</strong>
+                                        {% else %}
+                                            <i class="fas fa-file text-info"></i> {{ code.code }}
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-truncate">{{ code.code_name }}</td>
+                                    <td class="text-truncate">{{ code.code_info or '-' }}</td>
+                                    <td>{{ code.depth }}</td>
+                                    <td class="code-actions">
+                                        {% if code.depth == 0 %}
+                                        <button class="btn btn-success btn-sm" onclick="addChildCode({{ code.seq }})" title="하위 코드 추가">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                        {% endif %}
+                                        <button class="btn btn-warning btn-sm" onclick="editCode({{ code.seq }})" title="수정">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-danger btn-sm" onclick="deleteCode({{ code.seq }})" title="삭제">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 우측: 코드 등록 폼 (5컬럼) -->
+        <div class="col-md-5" id="code-insert-panel">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-plus-circle"></i> <span id="form-title">코드 등록</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="codeForm">
+                        <input type="hidden" id="parent_seq" name="parent_seq" value="0">
+                        <input type="hidden" id="depth" name="depth" value="0">
+                        <input type="hidden" id="edit_seq" name="edit_seq" value="">
+                        
+                        <div class="mb-3">
+                            <label for="code" class="form-label">코드 *</label>
+                            <input type="text" class="form-control" id="code" name="code" required 
+                                   placeholder="예: USER, DEPT, MENU">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="code_name" class="form-label">코드명 *</label>
+                            <input type="text" class="form-control" id="code_name" name="code_name" required 
+                                   placeholder="예: 사용자, 부서, 메뉴">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="code_info" class="form-label">설명</label>
+                            <textarea class="form-control" id="code_info" name="code_info" rows="3" 
+                                      placeholder="코드에 대한 설명을 입력하세요"></textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="sort" class="form-label">정렬 순서</label>
+                            <input type="number" class="form-control" id="sort" name="sort" value="1" min="1">
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-primary" onclick="saveCode()">
+                                <i class="fas fa-save"></i> <span id="btn-text">등록</span>
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="cancelForm()">
+                                <i class="fas fa-times"></i> 취소
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 하위 코드 조회 모달 -->
+<div class="modal fade" id="childCodesModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">하위 코드 목록</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="childCodesContent">
+                    <div class="text-center">
+                        <i class="fas fa-spinner fa-spin"></i> 로딩 중...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 전역 변수
+let isEditMode = false;
+let arrCodeClick = [];
+
+// 페이지 로드 시 초기화
+$(document).ready(function() {
+    // 초기에 모든 하위 코드 숨김
+    $('.child-code').hide();
+});
+
+// 상위 코드 클릭 시 하위 코드 표시/숨김 (레거시 방식)
+$(document).on("click", "#codeTable > tbody > tr", function() {
+    var seq = $(this).attr("id");
+    var parentSeq = $(this).attr("data-parent-seq");
+    var depth = $(this).attr("data-depth");
+    
+    // 클릭 코드 하이라이트
+    $("#codeTable > tbody > tr").removeClass("selected");
+    $(this).addClass("selected");
+    
+    // 코드 등록 폼 표시 및 설정
+    var currentDepth = parseInt(depth);
+    showInsertPanel(seq, currentDepth);
+    
+    // 상위 코드인 경우 하위 코드 토글
+    if ($(this).hasClass("parent-code")) {
+        arrCodeClick = [];
+    }
+    arrCodeClick.push(seq);
+    
+    // 하위 코드 표시/숨김 로직 (레거시와 동일)
+    $(".child-code").each(function() {
+        var childParentSeq = $(this).attr("data-parent-seq");
+        if (childParentSeq == seq || childParentSeq == parentSeq || $.inArray(childParentSeq, arrCodeClick) >= 0) {
+            $(this).fadeIn("slow");
+        } else {
+            $(this).hide();
+        }
+    });
+});
+
+// 등록 패널 표시
+function showInsertPanel(parentSeq, depth) {
+    resetForm();
+    $('#code-insert-panel').slideUp(200).slideDown(400);
+    $('#form-title').text(depth === 0 ? '코드 그룹 등록' : '하위 코드 등록');
+    $('#btn-text').text('등록');
+    $('#parent_seq').val(parentSeq);
+    $('#depth').val(depth);
+    isEditMode = false;
+}
+
+// 하위 코드 추가
+function addChildCode(parentSeq) {
+    resetForm();
+    $('#code-insert-panel').slideUp(200).slideDown(400);
+    $('#form-title').text('하위 코드 등록');
+    $('#btn-text').text('등록');
+    $('#parent_seq').val(parentSeq);
+    $('#depth').val('1');
+    isEditMode = false;
+}
+
+// 하위 코드 조회
+function showChildCodes(parentSeq) {
+    $('#childCodesModal').modal('show');
+    
+    $.post('/admin/api/codes/children', {parent_seq: parentSeq}, function(data) {
+        if (data.success) {
+            let html = '<div class="table-responsive"><table class="table table-sm">';
+            html += '<thead><tr><th>코드</th><th>코드명</th><th>설명</th><th>관리</th></tr></thead><tbody>';
+            
+            if (data.data.length === 0) {
+                html += '<tr><td colspan="4" class="text-center text-muted">하위 코드가 없습니다.</td></tr>';
+            } else {
+                data.data.forEach(function(code) {
+                    html += `<tr>
+                        <td><i class="fas fa-file"></i> ${code.code}</td>
+                        <td>${code.code_name}</td>
+                        <td>${code.code_info || '-'}</td>
+                        <td>
+                            <button class="btn btn-warning btn-sm" onclick="editCode(${code.seq})" title="수정">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteCode(${code.seq})" title="삭제">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>`;
+                });
+            }
+            html += '</tbody></table></div>';
+            $('#childCodesContent').html(html);
+        } else {
+            $('#childCodesContent').html('<div class="alert alert-danger">하위 코드 조회 실패: ' + data.message + '</div>');
+        }
+    }).fail(function() {
+        $('#childCodesContent').html('<div class="alert alert-danger">서버 오류가 발생했습니다.</div>');
+    });
+}
+
+// 코드 수정
+function editCode(seq) {
+    $.post('/admin/api/codes/get', {seq: seq}, function(data) {
+        if (data.success) {
+            const code = data.data;
+            $('#code-insert-panel').slideUp(200).slideDown(400);
+            $('#form-title').text('코드 수정');
+            $('#btn-text').text('수정');
+            $('#edit_seq').val(code.seq);
+            $('#parent_seq').val(code.parent_seq);
+            $('#depth').val(code.depth);
+            $('#code').val(code.code);
+            $('#code_name').val(code.code_name);
+            $('#code_info').val(code.code_info || '');
+            $('#sort').val(code.sort);
+            isEditMode = true;
+        } else {
+            alert('코드 정보 조회 실패: ' + data.message);
+        }
+    });
+}
+
+// 코드 삭제
+function deleteCode(seq) {
+    if (!confirm('정말로 이 코드를 삭제하시겠습니까?\n하위 코드가 있는 경우 함께 삭제됩니다.')) {
+        return;
+    }
+    
+    $.post('/admin/api/codes/delete', {seq: seq}, function(data) {
+        if (data.success) {
+            alert('코드가 삭제되었습니다.');
+            location.reload();
+        } else {
+            alert('삭제 실패: ' + data.message);
+        }
+    });
+}
+
+// 코드 저장
+function saveCode() {
+    const formData = {
+        seq: $('#edit_seq').val(),
+        parent_seq: $('#parent_seq').val(),
+        depth: $('#depth').val(),
+        code: $('#code').val().trim(),
+        code_name: $('#code_name').val().trim(),
+        code_info: $('#code_info').val().trim(),
+        sort: $('#sort').val()
+    };
+    
+    // 유효성 검사
+    if (!formData.code || !formData.code_name) {
+        alert('코드와 코드명은 필수입니다.');
+        return;
+    }
+    
+    const url = isEditMode ? '/admin/api/codes/update' : '/admin/api/codes/create';
+    
+    $.post(url, formData, function(data) {
+        if (data.success) {
+            alert(isEditMode ? '코드가 수정되었습니다.' : '코드가 등록되었습니다.');
+            location.reload();
+        } else {
+            alert((isEditMode ? '수정' : '등록') + ' 실패: ' + data.message);
+        }
+    });
+}
+
+// 폼 리셋
+function resetForm() {
+    $('#codeForm')[0].reset();
+    $('#edit_seq').val('');
+    $('#parent_seq').val('0');
+    $('#depth').val('0');
+    $('#sort').val('1');
+}
+
+// 취소
+function cancelForm() {
+    $('#code-insert-panel').slideUp(400);
+    resetForm();
+}
+</script>
+{% endblock %} 
