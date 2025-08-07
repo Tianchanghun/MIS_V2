@@ -18,52 +18,33 @@ db = SQLAlchemy()
 # =============================================================================
 
 class User(UserMixin, db.Model):
-    """사용자 모델 - 레거시 tbl_member 테이블 정확 매핑"""
+    """사용자 모델 - 간소화 + 멀티테넌트 강화"""
     __tablename__ = 'tbl_member'
     
     # 기본 정보
     seq = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    id = db.Column(db.String(50))  # 로그인 ID
-    password = db.Column(db.Text)  # 평문 저장 (레거시)
-    id_number = db.Column(db.String(20))
-    name = db.Column(db.String(50))
-    sex = db.Column(db.String(1))
-    mobile = db.Column(db.String(20))
-    extension_number = db.Column(db.String(10))
+    login_id = db.Column('id', db.String(50), nullable=False)  # 실제 컬럼명: id
+    password = db.Column('password', db.Text, nullable=False)  # 실제 컬럼명: password
+    name = db.Column('name', db.String(50), nullable=False)  # 실제 컬럼명: name
+    id_number = db.Column('id_number', db.String(20))  # 실제 컬럼명: id_number
     
-    # 직책/직급 정보
-    job_position = db.Column(db.Integer)
-    job_position_name = db.Column(db.String(50))
-    rank_position = db.Column(db.Integer)
-    rank_position_name = db.Column(db.String(50))
-    promotion_date = db.Column(db.DateTime)
-    
-    # 근무 정보
-    join_date = db.Column(db.DateTime)
-    leave_date = db.Column(db.DateTime)
-    rest_s_date = db.Column(db.DateTime)
-    rest_e_date = db.Column(db.DateTime)
-    
-    # 개인 정보
-    birth_date = db.Column(db.DateTime)
-    birth_type = db.Column(db.String(1))
-    email_id = db.Column(db.String(100))
-    email_password = db.Column(db.Text)
-    married = db.Column(db.String(1))
-    children_cnt = db.Column(db.Integer)
-    biz_card_num = db.Column(db.String(20))
+    # 연락처 정보
+    email = db.Column('email_id', db.String(100))  # 실제 컬럼명: email_id
+    mobile = db.Column('mobile', db.String(20))  # 실제 컬럼명: mobile
+    extension_number = db.Column('extension_number', db.String(10))  # 실제 컬럼명: extension_number
     
     # 시스템 정보
-    super_user = db.Column(db.String(1))  # Y/N
-    member_status = db.Column(db.String(1))  # A: 활성, D: 비활성
-    in_out_id = db.Column(db.String(20))
-    work_group = db.Column(db.Integer)
+    super_user = db.Column('super_user', db.String(1), default='N')  # 실제 컬럼명: super_user
+    member_status = db.Column('member_status', db.String(1), default='Y')  # 실제 컬럼명: member_status
     
     # 생성/수정 정보
-    ins_user = db.Column(db.String(50))
-    ins_date = db.Column(db.DateTime)
-    upt_user = db.Column(db.String(50))
-    upt_date = db.Column(db.DateTime)
+    ins_user = db.Column('ins_user', db.String(50))
+    ins_date = db.Column('ins_date', db.DateTime)
+    upt_user = db.Column('upt_user', db.String(50))
+    upt_date = db.Column('upt_date', db.DateTime)
+    
+    # 멀티테넌트 지원 (이미 DB에 존재하는 컬럼)
+    company_id = db.Column('company_id', db.Integer, default=1)
     
     # Flask-Login 메서드
     def get_id(self):
@@ -71,73 +52,90 @@ class User(UserMixin, db.Model):
         return str(self.seq)
     
     def verify_password(self, password):
-        """비밀번호 확인 - 레거시는 평문 저장"""
-        return self.password == password
+        """비밀번호 확인"""
+        from werkzeug.security import check_password_hash
+        return check_password_hash(self.password, password)
     
     @property
     def is_active(self):
         """활성 상태 확인"""
-        return self.member_status == 'A'
+        return self.member_status == 'Y'
     
     @property
     def is_super_user(self):
         """슈퍼유저 여부 확인"""
         return self.super_user == 'Y'
     
-    # 멀티테넌트 지원 메서드
-    @property
-    def company_id(self):
-        """기본 회사 ID 반환 (레거시 호환)"""
-        # 사용자의 주 소속 회사 조회
-        primary_company = UserCompany.query.filter_by(
-            user_seq=self.seq, 
-            is_primary=True, 
-            is_active=True
-        ).first()
-        
-        if primary_company:
-            return primary_company.company_id
-        
-        # 주 소속이 없으면 첫 번째 접근 가능한 회사
-        first_company = UserCompany.query.filter_by(
-            user_seq=self.seq, 
-            is_active=True
-        ).first()
-        
-        return first_company.company_id if first_company else 1  # 기본값 1
-    
-    def get_accessible_companies(self):
+    # 멀티테넌트 메서드
+    def get_companies(self):
         """접근 가능한 회사 목록"""
-        return UserCompany.query.filter_by(user_seq=self.seq, is_active=True).all()
+        companies = []
+        # 기본 company_id로 회사 정보 조회
+        if self.company_id:
+            from app.common.models import Company
+            company = Company.query.get(self.company_id)
+            if company:
+                companies.append(company)
+        return companies
+    
+    def get_primary_company(self):
+        """주 소속 회사"""
+        if self.company_id:
+            from app.common.models import Company
+            return Company.query.get(self.company_id)
+        return None
     
     def has_company_access(self, company_id):
         """특정 회사 접근 권한 확인"""
         if self.is_super_user:
             return True
-        
-        access = UserCompany.query.filter_by(
-            user_seq=self.seq,
-            company_id=company_id,
-            is_active=True
-        ).first()
-        return access is not None
+        return self.company_id == company_id
+    
+    def get_departments(self, company_id=None):
+        """부서 목록 조회 (회사별 필터링 가능)"""
+        departments = []
+        for ud in self.user_departments:
+            if company_id is None or self.has_company_access(company_id):
+                departments.append(ud.department)
+        return departments
     
     def to_dict(self):
-        """딕셔너리로 변환"""
+        """딕셔너리 변환"""
+        companies = []
+        if self.company_id:
+            company = self.get_primary_company()
+            if company:
+                companies.append({
+                    'company_id': company.id,
+                    'company_name': company.company_name,
+                    'company_code': company.company_code,
+                    'is_primary': True,
+                    'role': 'admin' if self.super_user == 'Y' else 'user'
+                })
+        
+        departments = []
+        for ud in self.user_departments:
+            departments.append({
+                'seq': ud.dept_seq,
+                'name': ud.department.dept_name
+            })
+        
         return {
             'seq': self.seq,
-            'id': self.id,
+            'login_id': self.login_id,
             'name': self.name,
-            'member_status': self.member_status,
+            'id_number': self.id_number,
+            'email': self.email,
+            'mobile': self.mobile,
+            'extension_number': self.extension_number,
             'super_user': self.super_user,
-            'work_group': self.work_group,
-            'biz_card_num': self.biz_card_num,
-            'company_id': self.company_id,
-            'is_super_user': self.is_super_user
+            'member_status': self.member_status,
+            'companies': companies,
+            'departments': departments
         }
     
     def __repr__(self):
-        return f'<User {self.id}({self.name})>'
+        return f'<User {self.login_id}({self.name})>'
 
 class Menu(db.Model):
     """메뉴 관리 (tbl_category 매핑) - 실제 레거시 스키마"""
@@ -193,6 +191,7 @@ class Department(db.Model):
     bg_color = db.Column(db.String(10))  # 배경 색상
     sort = db.Column(db.Integer)  # 정렬 순서
     use_yn = db.Column(db.String(1), default='Y')  # 사용 여부
+    company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), default=1)  # 사용 회사
     ins_user = db.Column(db.String(50))
     ins_date = db.Column(db.DateTime)
     upt_user = db.Column(db.String(50))
@@ -200,18 +199,41 @@ class Department(db.Model):
     
     def __repr__(self):
         return f'<Department {self.dept_name}>'
+    
+    def to_dict(self):
+        """딕셔너리 변환"""
+        return {
+            'seq': self.seq,
+            'dept_name': self.dept_name,
+            'sort': self.sort or 1,
+            'use_yn': self.use_yn or 'Y',
+            'company_id': self.company_id or 1,
+            'ins_user': self.ins_user,
+            'ins_date': self.ins_date.isoformat() if self.ins_date else None,
+            'upt_user': self.upt_user,
+            'upt_date': self.upt_date.isoformat() if self.upt_date else None
+        }
 
 class MemberDept(db.Model):
     """사용자-부서 관계 - 레거시 tbl_memberdept 테이블"""
     __tablename__ = 'tbl_memberdept'
     
     seq = db.Column(db.Integer, primary_key=True)
-    member_seq = db.Column(db.Integer, db.ForeignKey('tbl_member.seq'))
-    dept_seq = db.Column(db.Integer, db.ForeignKey('tbl_department.seq'))
+    member_seq = db.Column('member_seq', db.Integer, db.ForeignKey('tbl_member.seq'))  # 실제 컬럼명
+    dept_seq = db.Column('dept_seq', db.Integer, db.ForeignKey('tbl_department.seq'))  # 실제 컬럼명
+    
+    # 별칭 속성 (하위 호환성)
+    @property 
+    def user_seq(self):
+        return self.member_seq
+        
+    @user_seq.setter
+    def user_seq(self, value):
+        self.member_seq = value
     
     # 관계 설정
-    member = db.relationship('User', backref='member_depts')
-    department = db.relationship('Department', backref='member_depts')
+    user = db.relationship('User', backref='user_departments', foreign_keys=[member_seq])
+    department = db.relationship('Department', backref='dept_users')
 
 class MemberAuth(db.Model):
     """사용자 권한 - 레거시 tbl_memberauth 테이블"""
@@ -677,6 +699,201 @@ class ErpiaOrderMaster(db.Model):
     # 관계 설정
     company = db.relationship('Company')
 
+class ErpiaCustomer(db.Model):
+    """ERPia 매장(거래처) 정보 모델"""
+    __tablename__ = 'erpia_customer'
+    
+    # 기본 키
+    seq = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    
+    # ERPia 기본 정보 (45개 필드)
+    customer_code = db.Column('g_code', db.String(50), index=True)  # ERPia 거래처 코드
+    customer_name = db.Column('g_name', db.String(200))  # 거래처명
+    ceo = db.Column('g_ceo', db.String(100))  # 대표자
+    business_number = db.Column('g_sano', db.String(50))  # 사업자번호
+    business_type = db.Column('g_up', db.String(100))  # 업태
+    business_item = db.Column('g_jong', db.String(100))  # 종목
+    
+    # 연락처 정보
+    phone = db.Column('g_tel', db.String(50))  # 전화
+    fax = db.Column('g_fax', db.String(50))  # 팩스
+    
+    # 담당자 정보
+    our_manager = db.Column('g_damdang', db.String(100))  # (우리회사의) 거래처 담당
+    customer_manager = db.Column('g_gdamdang', db.String(100))  # (상대회사) 거래처의 담당자
+    customer_manager_tel = db.Column('g_gdamdang_tel', db.String(50))  # 거래처 담당자 연락처
+    
+    # 주소 정보
+    location = db.Column('g_location', db.String(200))  # 위물도시선물
+    zip_code1 = db.Column('g_post1', db.String(20))  # 우편번호
+    address1 = db.Column('g_juso1', db.String(500))  # 주소
+    zip_code2 = db.Column('g_post2', db.String(20))  # 사업거치선 우편번호
+    address2 = db.Column('g_juso2', db.String(500))  # 사업거치선 주소
+    
+    # 관리 정보
+    remarks = db.Column('g_remk', db.Text)  # 비고
+    program_usage = db.Column('g_program_sayong', db.String(10))  # SCM 사용여부
+    input_user = db.Column('in_user', db.String(50))  # 등록자
+    edit_date = db.Column('edit_date', db.String(50))  # 최종수정일
+    status = db.Column('stts', db.String(10))  # 상태 (0:사용, 9:미사용)
+    online_code = db.Column('g_oncode', db.String(50))  # 자체거래처코드
+    
+    # 세금 관련 담당자
+    tax_manager = db.Column('tax_gdamdang', db.String(100))  # 사업거치선 담당자 이름
+    tax_manager_tel = db.Column('tax_gdamdang_tel', db.String(50))  # 사업거치선 담당자 연락처
+    tax_email = db.Column('tax_email', db.String(200))  # 사업거치선 담당자 이메일
+    
+    # 연계 정보
+    link_code_acct = db.Column('link_code_acct', db.String(50))  # 회계 연계코드
+    jo_type = db.Column('g_jo_type', db.String(50))  # 거래(업종)구분
+    
+    # 매입 단가 정보
+    dan_ga_gu = db.Column('g_danga_gu', db.String(50))  # 매입단가
+    discount_yul = db.Column('g_discount_yul', db.String(50))  # 매입단가 할인율등록
+    discount_or_up = db.Column('g_discount_or_up', db.String(50))  # 할인율등록구분
+    use_recent_danga_yn = db.Column('use_recent_danga_yn', db.String(10))  # 최근판단단가 우선적용률
+    
+    # 매입 단가 정보 (J 버전)
+    dan_ga_gu_j = db.Column('g_danga_gu_j', db.String(50))  # 매입단가
+    discount_yul_j = db.Column('g_discount_yul_j', db.String(50))  # 매입단가 할인율등록
+    discount_or_up_j = db.Column('g_discount_or_up_j', db.String(50))  # 할인율등록구분
+    use_recent_danga_yn_j = db.Column('use_recent_danga_yn_j', db.String(10))  # 최근판단단가 우선적용률
+    
+    # 계좌 정보
+    account = db.Column('g_account', db.String(100))  # 계좌번호
+    bank_name = db.Column('g_bank_name', db.String(100))  # 은행명
+    bank_holder = db.Column('g_bank_holder', db.String(100))  # 예금주
+    
+    # 배송 정보
+    tag_code = db.Column('g_tag_code', db.String(50))  # 택배사코드
+    tag_cust_code = db.Column('g_tag_cust_code', db.String(50))  # 택배 연계코드
+    direct_shipping_type = db.Column('g_direct_shipping_type', db.String(50))  # 직배송업체구분
+    
+    # 추가 메모
+    memo = db.Column('g_memo', db.Text)  # 메모
+    
+    # ERPia 수집 정보
+    admin_code = db.Column('admin_code', db.String(50))  # ERPia 관리자 코드 (회사 식별용)
+    company_id = db.Column('company_id', db.Integer, default=1)  # 회사 ID
+    
+    # ========== 추가 분류 필드 (MIS v2 확장) ==========
+    # 레거시 분류 (CST 그룹)
+    distribution_type = db.Column('distribution_type', db.String(50))  # 유통 (DIS)
+    channel_type = db.Column('channel_type', db.String(50))  # 채널 (CH)
+    sales_type = db.Column('sales_type', db.String(50))  # 매출 (SL)
+    business_form = db.Column('business_form', db.String(50))  # 매장형태 (TY)
+    
+    # 신규 분류 (이미지 기반)
+    brand_zone = db.Column('brand_zone', db.String(50))  # 브랜드존 (BZ)
+    nuna_zoning = db.Column('nuna_zoning', db.String(50))  # 뉴나 브랜드 조닝 (NZ)
+    region = db.Column('region', db.String(50))  # 지역 (RG)
+    financial_group = db.Column('financial_group', db.String(50))  # 가결산 구분값 (FG)
+    
+    # 매장 사용 여부 (레거시 호환)
+    shop_yn = db.Column('shop_yn', db.String(1), default='Y')  # 매장 사용 여부
+    
+    # 생성/수정 정보
+    ins_user = db.Column('ins_user', db.String(50))
+    ins_date = db.Column('ins_date', db.DateTime, default=datetime.utcnow)
+    upt_user = db.Column('upt_user', db.String(50))
+    upt_date = db.Column('upt_date', db.DateTime, default=datetime.utcnow)
+    
+    def to_dict(self):
+        """매장 정보를 딕셔너리로 변환"""
+        return {
+            'seq': self.seq,
+            'customer_code': self.customer_code,
+            'customer_name': self.customer_name,
+            'ceo': self.ceo,
+            'business_number': self.business_number,
+            'business_type': self.business_type,
+            'business_item': self.business_item,
+            'phone': self.phone,
+            'fax': self.fax,
+            'our_manager': self.our_manager,
+            'customer_manager': self.customer_manager,
+            'customer_manager_tel': self.customer_manager_tel,
+            'location': self.location,
+            'zip_code1': self.zip_code1,
+            'address1': self.address1,
+            'zip_code2': self.zip_code2,
+            'address2': self.address2,
+            'remarks': self.remarks,
+            'program_usage': self.program_usage,
+            'input_user': self.input_user,
+            'edit_date': self.edit_date,
+            'status': self.status,
+            'online_code': self.online_code,
+            'tax_manager': self.tax_manager,
+            'tax_manager_tel': self.tax_manager_tel,
+            'tax_email': self.tax_email,
+            'link_code_acct': self.link_code_acct,
+            'jo_type': self.jo_type,
+            'dan_ga_gu': self.dan_ga_gu,
+            'discount_yul': self.discount_yul,
+            'discount_or_up': self.discount_or_up,
+            'use_recent_danga_yn': self.use_recent_danga_yn,
+            'dan_ga_gu_j': self.dan_ga_gu_j,
+            'discount_yul_j': self.discount_yul_j,
+            'discount_or_up_j': self.discount_or_up_j,
+            'use_recent_danga_yn_j': self.use_recent_danga_yn_j,
+            'account': self.account,
+            'bank_name': self.bank_name,
+            'bank_holder': self.bank_holder,
+            'tag_code': self.tag_code,
+            'tag_cust_code': self.tag_cust_code,
+            'direct_shipping_type': self.direct_shipping_type,
+            'memo': self.memo,
+            'admin_code': self.admin_code,
+            'company_id': self.company_id,
+            # 분류 정보
+            'distribution_type': self.distribution_type,
+            'channel_type': self.channel_type,
+            'sales_type': self.sales_type,
+            'business_form': self.business_form,
+            'brand_zone': self.brand_zone,
+            'nuna_zoning': self.nuna_zoning,
+            'region': self.region,
+            'financial_group': self.financial_group,
+            'shop_yn': self.shop_yn,
+            # 시스템 정보
+            'ins_user': self.ins_user,
+            'ins_date': self.ins_date.isoformat() if self.ins_date else None,
+            'upt_user': self.upt_user,
+            'upt_date': self.upt_date.isoformat() if self.upt_date else None,
+        }
+    
+    @classmethod
+    def get_by_customer_code(cls, customer_code: str, company_id: int = None):
+        """거래처 코드로 매장 정보 조회"""
+        query = cls.query.filter_by(customer_code=customer_code)
+        if company_id:
+            query = query.filter_by(company_id=company_id)
+        return query.first()
+    
+    @classmethod
+    def get_active_shops(cls, company_id: int = None):
+        """활성 매장 목록 조회"""
+        query = cls.query.filter_by(shop_yn='Y', status='0')
+        if company_id:
+            query = query.filter_by(company_id=company_id)
+        return query.order_by(cls.customer_name.asc()).all()
+    
+    @classmethod
+    def search_shops(cls, keyword: str, company_id: int = None):
+        """매장 검색"""
+        query = cls.query.filter(
+            db.or_(
+                cls.customer_name.like(f'%{keyword}%'),
+                cls.customer_code.like(f'%{keyword}%'),
+                cls.our_manager.like(f'%{keyword}%'),
+                cls.address1.like(f'%{keyword}%')
+            )
+        )
+        if company_id:
+            query = query.filter_by(company_id=company_id)
+        return query.order_by(cls.customer_name.asc()).all()
+
 # =============================================================================
 # 초기화 함수
 # =============================================================================
@@ -724,7 +941,7 @@ def create_default_data():
         db.session.flush()  # ID 생성을 위해
         
         # 2. chjeon 사용자의 주소속을 에이원으로 설정
-        chjeon = User.query.filter_by(id='chjeon').first()
+        chjeon = User.query.filter_by(login_id='chjeon').first()
         if chjeon:
             # 기존 회사 관계 삭제
             UserCompany.query.filter_by(user_seq=chjeon.seq).delete()
@@ -752,7 +969,7 @@ def create_default_data():
             print(f"✅ {chjeon.name} 사용자의 주소속을 에이원으로 설정했습니다.")
         
         # 3. admin 사용자도 동일하게 설정
-        admin = User.query.filter_by(id='admin').first()
+        admin = User.query.filter_by(login_id='admin').first()
         if admin:
             UserCompany.query.filter_by(user_seq=admin.seq).delete()
             
@@ -954,3 +1171,6 @@ def create_erpia_default_settings():
 
 # Company 모델에 관계 추가
 Company.erpia_config = db.relationship("CompanyErpiaConfig", back_populates="company", uselist=False) 
+
+# 별칭 설정 (하위 호환성)
+UserDepartment = MemberDept 

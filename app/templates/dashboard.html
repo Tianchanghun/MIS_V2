@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block title %}MIS v2 대시보드{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 회사 정보 표시 -->
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">📊 {{ current_company.company_name }} MIS v2 대시보드</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            {% if user_companies|length > 1 %}
+                <div class="dropdown me-2">
+                    <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-building"></i> {{ current_company.company_name }}
+                    </button>
+                    <ul class="dropdown-menu">
+                        {% for uc in user_companies %}
+                            <li><a class="dropdown-item" href="#" onclick="switchCompany({{ uc.company_id }})">
+                                {{ uc.company.company_name }}
+                            </a></li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+            <div class="btn-group me-2">
+                <small class="text-muted">{{ current_time }}</small>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 핵심 메뉴 카드 -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5><i class="bi bi-clock-history"></i> 배치 관리</h5>
+                </div>
+                <div class="card-body">
+                    <p class="card-text">ERPia 자동 데이터 수집 및 배치 작업 관리</p>
+                    <div class="list-group list-group-flush">
+                        <a href="/batch" class="list-group-item list-group-item-action">
+                            <i class="bi bi-speedometer2"></i> 배치 대시보드
+                        </a>
+                        <a href="/batch/jobs" class="list-group-item list-group-item-action">
+                            <i class="bi bi-list-task"></i> 배치 작업 관리
+                        </a>
+                        <a href="/batch/settings" class="list-group-item list-group-item-action">
+                            <i class="bi bi-gear"></i> 배치 설정
+                        </a>
+                    </div>
+                    <div class="mt-3">
+                        <small class="text-muted">상태: <span class="badge bg-{{ 'success' if batch_status == '실행중' else 'warning' }}">{{ batch_status }}</span></small><br>
+                        <small class="text-muted">등록된 작업: {{ batch_jobs_count }}개</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-header bg-success text-white">
+                    <h5><i class="bi bi-gift"></i> 사은품 관리</h5>
+                </div>
+                <div class="card-body">
+                    <p class="card-text">고객 사은품 및 이벤트 관리</p>
+                    <div class="list-group list-group-flush">
+                        <a href="/gift" class="list-group-item list-group-item-action">
+                            <i class="bi bi-gift"></i> 사은품 관리
+                        </a>
+                        <a href="/gift/settings" class="list-group-item list-group-item-action">
+                            <i class="bi bi-gear"></i> 사은품 설정
+                        </a>
+                    </div>
+                    <div class="mt-3">
+                        <small class="text-muted">상태: <span class="badge bg-{{ 'success' if gift_status == '활성' else 'warning' }}">{{ gift_status }}</span></small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-header bg-info text-white">
+                    <h5><i class="bi bi-gear"></i> 관리자 기능</h5>
+                </div>
+                <div class="card-body">
+                    <p class="card-text">시스템 관리 및 설정</p>
+                    <div class="list-group list-group-flush">
+                        <a href="/admin/" class="list-group-item list-group-item-action">
+                            <i class="bi bi-speedometer2"></i> 관리자 대시보드
+                        </a>
+                        <a href="/admin/user_management" class="list-group-item list-group-item-action">
+                            <i class="bi bi-people"></i> 사용자 관리
+                        </a>
+                        <a href="/admin/department_management" class="list-group-item list-group-item-action">
+                            <i class="bi bi-building"></i> 부서 관리
+                        </a>
+                    </div>
+                    <div class="mt-3">
+                        <small class="text-muted">Redis: <span class="badge bg-{{ 'success' if redis_status else 'danger' }}">{{ ' 연결됨' if redis_status else '연결 실패' }}</span></small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 시스템 상태 -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-info-circle"></i> 시스템 상태</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h6>데이터베이스</h6>
+                                <span class="badge bg-success fs-6">정상</span>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h6>Redis 캐시</h6>
+                                <span class="badge bg-{{ 'success' if redis_status else 'danger' }} fs-6">{{ '정상' if redis_status else '오류' }}</span>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h6>배치 스케줄러</h6>
+                                <span class="badge bg-warning fs-6">{{ batch_status }}</span>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h6>사은품 분류기</h6>
+                                <span class="badge bg-{{ 'success' if gift_status == '활성' else 'warning' }} fs-6">{{ gift_status }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="text-center">
+                        <small class="text-muted">마지막 업데이트: {{ current_time }}</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

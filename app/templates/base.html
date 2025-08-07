@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="current-company-id" content="{{ session.get('current_company_id', 1) }}">
     <title>{% block title %}MIS v2.0{% endblock %}</title>
     
     <!-- Bootstrap CSS -->
@@ -51,21 +52,23 @@
         }
         
         .card-header {
-            background-color: #fff;
+            background-color: #f8f9fa;
             border-bottom: 1px solid #dee2e6;
-            font-weight: 600;
+            border-radius: 0.5rem 0.5rem 0 0 !important;
         }
         
         /* 테이블 스타일 */
         .table {
-            font-size: 0.9rem;
+            margin-bottom: 0;
         }
         
         .table th {
-            background-color: #f8f9fa;
-            border-color: #dee2e6;
+            border-top: none;
             font-weight: 600;
+            background-color: #f8f9fa;
         }
+        
+        /* 사이드바 스타일은 별도 파일에서 처리 */
         
         /* 버튼 스타일 */
         .btn {
@@ -89,14 +92,14 @@
 
 <body>
     <!-- 사이드바 포함 -->
-    {% if current_user.is_authenticated %}
+    {% if session.member_seq %}
         {% include 'partials/sidebar.html' %}
     {% endif %}
 
     <!-- 메인 콘텐츠 영역 -->
     <div class="main-content">
         <!-- 상단 네비게이션 바 (옵션) -->
-        {% if current_user.is_authenticated %}
+        {% if session.member_seq %}
         <nav class="navbar navbar-expand-lg navbar-light bg-white mb-4 shadow-sm">
             <div class="container-fluid">
                 <span class="navbar-brand mb-0 h1">
@@ -120,7 +123,7 @@
                     <div class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                             <i class="fas fa-user-circle me-1"></i>
-                            {{ current_user.name }}
+                            {{ session.member_name or '사용자' }}
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" href="#"><i class="fas fa-user me-2"></i>내 정보</a></li>
@@ -167,53 +170,49 @@
         
         // 로그아웃 확인
         function confirmLogout() {
-            if (confirm('정말로 로그아웃 하시겠습니까?')) {
-                window.location.href = '{{ url_for("auth.logout") }}';
-            }
+            return confirm('정말 로그아웃하시겠습니까?');
         }
         
-        // DataTable 초기화 헬퍼
-        function initDataTable(selector, options = {}) {
-            const defaultOptions = {
-                pageLength: 25,
-                lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "전체"]],
-                language: {
-                    url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/ko.json'
+        // 회사 전환 함수
+        function switchCompany(companyId) {
+            fetch('/api/switch-company', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
                 },
-                responsive: true,
-                order: [],
-                columnDefs: [
-                    { orderable: false, targets: 'no-sort' }
-                ]
-            };
-            
-            return $(selector).DataTable({...defaultOptions, ...options});
+                body: JSON.stringify({company_id: companyId})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 회사 전환 완료 이벤트 발생
+                    $(window).trigger('companyChanged');
+                    // 페이지 새로고침으로 UI 업데이트
+                    location.reload();
+                } else {
+                    alert('회사 전환에 실패했습니다: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('회사 전환 중 오류가 발생했습니다.');
+            });
         }
         
-        // AJAX 에러 핸들러
-        $(document).ajaxError(function(event, xhr, settings, thrownError) {
-            if (xhr.status === 401) {
-                alert('로그인이 필요합니다.');
-                window.location.href = '{{ url_for("auth.login") }}';
-            } else if (xhr.status === 403) {
-                alert('권한이 없습니다.');
-            } else if (xhr.status >= 500) {
-                alert('서버 오류가 발생했습니다. 관리자에게 문의하세요.');
-            }
-        });
-        
-        // 페이지 로드 완료 후 실행
+        // 페이지 로드 시 실행
         $(document).ready(function() {
-            // 툴팁 초기화
-            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-                return new bootstrap.Tooltip(tooltipTriggerEl);
-            });
-            
-            // 자동 닫히는 알림
-            setTimeout(function() {
-                $('.alert.alert-info').fadeOut();
-            }, 5000);
+            // DataTables 기본 설정
+            if ($.fn.DataTable) {
+                $.extend(true, $.fn.dataTable.defaults, {
+                    language: {
+                        url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/ko.json'
+                    },
+                    responsive: true,
+                    pageLength: 25,
+                    lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "전체"]],
+                    dom: '<"row"<"col-sm-6"l><"col-sm-6"f>>rtip'
+                });
+            }
         });
     </script>
     

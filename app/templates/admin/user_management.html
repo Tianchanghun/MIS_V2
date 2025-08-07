@@ -11,63 +11,73 @@
         </button>
     </div>
     
+    <!-- 검색 및 필터 -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" class="form-control" id="searchInput" placeholder="이름, ID, 사번, 이메일로 검색...">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <button class="btn btn-outline-primary" onclick="searchUsers()">
+                        <i class="fas fa-search"></i> 검색
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="resetSearch()">
+                        <i class="fas fa-refresh"></i> 초기화
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 사용자 목록 -->
     <div class="card">
         <div class="card-header">
             <h5 class="mb-0">
                 <i class="fas fa-list"></i> 사용자 목록
+                <span id="userCount" class="badge bg-secondary ms-2">0</span>
             </h5>
         </div>
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table table-hover table-sm">
+                <table class="table table-hover table-sm" id="usersTable">
                     <thead class="table-light">
                         <tr>
                             <th>번호</th>
                             <th>ID</th>
                             <th>이름</th>
-                            <th>상태</th>
+                            <th>사번</th>
+                            <th>이메일</th>
+                            <th>핸드폰</th>
+                            <th>회사 소속</th>
+                            <th>부서</th>
                             <th>슈퍼유저</th>
-                            <th>근무그룹</th>
+                            <th>상태</th>
                             <th>관리</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        {% for user in users %}
-                        <tr>
-                            <td>{{ loop.index }}</td>
-                            <td>{{ user.id }}</td>
-                            <td>{{ user.name }}</td>
-                            <td>
-                                <span class="badge bg-{{ 'success' if user.member_status == 'A' else 'secondary' }}">
-                                    {{ '활성' if user.member_status == 'A' else '비활성' }}
-                                </span>
-                            </td>
-                            <td>
-                                <span class="badge bg-{{ 'warning' if user.super_user == 'Y' else 'secondary' }}">
-                                    {{ user.super_user or 'N' }}
-                                </span>
-                            </td>
-                            <td>{{ user.work_group or '-' }}</td>
-                            <td>
-                                <button class="btn btn-warning btn-sm" onclick="editUser({{ user.seq }})" title="수정">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button class="btn btn-danger btn-sm" onclick="deleteUser({{ user.seq }})" title="삭제">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </td>
-                        </tr>
-                        {% endfor %}
+                    <tbody id="usersTableBody">
+                        <!-- 동적으로 생성 -->
                     </tbody>
                 </table>
             </div>
+            
+            <!-- 페이징 -->
+            <nav aria-label="사용자 목록 페이지네이션">
+                <ul class="pagination justify-content-center" id="pagination">
+                    <!-- 동적으로 생성 -->
+                </ul>
+            </nav>
         </div>
     </div>
 </div>
 
 <!-- 사용자 추가/수정 모달 -->
 <div class="modal fade" id="userModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="userModalTitle">사용자 추가</h5>
@@ -77,28 +87,87 @@
                 <form id="userForm">
                     <input type="hidden" id="user_seq" name="user_seq">
                     
-                    <div class="mb-3">
-                        <label for="user_id" class="form-label">ID *</label>
-                        <input type="text" class="form-control" id="user_id" name="user_id" required>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="user_name" class="form-label">이름 *</label>
-                        <input type="text" class="form-control" id="user_name" name="user_name" required>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="password" class="form-label">비밀번호</label>
-                        <input type="password" class="form-control" id="password" name="password" placeholder="변경 시에만 입력">
+                    <!-- 기본 정보 -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="login_id" class="form-label">로그인 ID <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="login_id" name="login_id" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="name" class="form-label">이름 <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="name" name="name" required>
+                            </div>
+                        </div>
                     </div>
                     
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
+                                <label for="password" class="form-label">비밀번호 <span id="passwordRequired" class="text-danger">*</span></label>
+                                <input type="password" class="form-control" id="password" name="password">
+                                <div class="form-text">수정 시에는 변경할 때만 입력하세요.</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_number" class="form-label">사번</label>
+                                <input type="text" class="form-control" id="id_number" name="id_number">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 연락처 정보 -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="email" class="form-label">이메일</label>
+                                <input type="email" class="form-control" id="email" name="email">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="mobile" class="form-label">핸드폰</label>
+                                <input type="text" class="form-control" id="mobile" name="mobile">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="extension_number" class="form-label">내선번호</label>
+                                <input type="text" class="form-control" id="extension_number" name="extension_number">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 회사 소속 -->
+                    <div class="mb-3">
+                        <label class="form-label">회사 소속</label>
+                        <div id="companiesSection">
+                            <!-- 동적으로 생성 -->
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="addCompanySelection()">
+                            <i class="fas fa-plus"></i> 회사 추가
+                        </button>
+                    </div>
+                    
+                    <!-- 부서 선택 -->
+                    <div class="mb-3">
+                        <label class="form-label">부서 (다중 선택 가능)</label>
+                        <div id="departmentsSection">
+                            <!-- 동적으로 생성 -->
+                        </div>
+                    </div>
+                    
+                    <!-- 시스템 설정 -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
                                 <label for="member_status" class="form-label">상태</label>
                                 <select class="form-control" id="member_status" name="member_status">
-                                    <option value="A">활성</option>
-                                    <option value="D">비활성</option>
+                                    <option value="Y">재직</option>
+                                    <option value="N">퇴사</option>
                                 </select>
                             </div>
                         </div>
@@ -106,94 +175,558 @@
                             <div class="mb-3">
                                 <label for="super_user" class="form-label">슈퍼유저</label>
                                 <select class="form-control" id="super_user" name="super_user">
-                                    <option value="N">N</option>
-                                    <option value="Y">Y</option>
+                                    <option value="N">일반 사용자</option>
+                                    <option value="Y">슈퍼유저</option>
                                 </select>
                             </div>
                         </div>
                     </div>
-                    
-                    <div class="mb-3">
-                        <label for="work_group" class="form-label">근무그룹</label>
-                        <input type="text" class="form-control" id="work_group" name="work_group">
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="biz_card_num" class="form-label">명함번호</label>
-                        <input type="text" class="form-control" id="biz_card_num" name="biz_card_num">
-                    </div>
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-primary" onclick="saveUser()">
-                    <i class="fas fa-save"></i> 저장
-                </button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-primary" onclick="saveUser()">저장</button>
             </div>
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
+<!-- 비밀번호 변경 모달 -->
+<div class="modal fade" id="passwordModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">비밀번호 변경</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="passwordForm">
+                    <input type="hidden" id="pwd_user_seq">
+                    <div class="mb-3">
+                        <label for="new_password" class="form-label">새 비밀번호 <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="new_password" name="new_password" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="confirm_password" class="form-label">비밀번호 확인 <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-primary" onclick="changePassword()">변경</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
-let isEditMode = false;
+let currentPage = 1;
+let usersData = [];
+let companiesData = [];
+let departmentsData = [];
 
+// 페이지 로드 시 초기화
+$(document).ready(function() {
+    loadInitialData();
+    loadUsers();
+    
+    // 엔터키 검색 지원
+    $('#searchInput').on('keypress', function(e) {
+        if (e.which === 13) {
+            searchUsers();
+        }
+    });
+
+    // 부서 목록 로드 (사용자 회사별 필터링)
+    loadDepartments();
+
+    // 회사 전환 이벤트 리스너 추가
+    $(window).on('companyChanged', function() {
+        console.log('회사 전환 감지 - 부서 목록 다시 로드');
+        loadDepartments();
+    });
+});
+
+// 초기 데이터 로드
+function loadInitialData() {
+    // 회사 목록 로드
+    $.get('/admin/api/companies')
+        .done(function(response) {
+            if (response.success) {
+                companiesData = response.data;
+            }
+        })
+        .fail(function() {
+            showAlert('회사 목록 로드에 실패했습니다.', 'danger');
+        });
+}
+
+// 사용자 목록 로드
+function loadUsers(page = 1, search = '') {
+    const params = new URLSearchParams({
+        page: page,
+        per_page: 20
+    });
+    
+    if (search) {
+        params.append('search', search);
+    }
+    
+    $.get(`/admin/api/users?${params.toString()}`)
+        .done(function(response) {
+            if (response.success) {
+                usersData = response.data;
+                renderUsersTable(response.data);
+                renderPagination(response.pagination);
+                $('#userCount').text(response.pagination.total);
+            } else {
+                showAlert(response.message, 'danger');
+            }
+        })
+        .fail(function() {
+            showAlert('사용자 목록을 불러오는데 실패했습니다.', 'danger');
+        });
+}
+
+// 부서 목록 로드 함수 (별도 분리)
+function loadDepartments() {
+    $.get('/admin/api/departments/dropdown')
+        .done(function(response) {
+            if (response.success) {
+                departmentsData = response.data;
+                console.log('부서 목록 로드 완료:', departmentsData.length + '개 부서');
+                console.log('현재 회사 ID:', response.current_company_id);
+                
+                // 현재 열려있는 모달이 있다면 부서 섹션 다시 렌더링
+                if ($('#userModal').hasClass('show')) {
+                    const currentUserDepartments = [];
+                    $('input[name="department_ids"]:checked').each(function() {
+                        const deptSeq = parseInt($(this).val());
+                        const deptName = $(this).next('label').text();
+                        currentUserDepartments.push({seq: deptSeq, name: deptName});
+                    });
+                    renderDepartmentsSection(currentUserDepartments);
+                }
+            }
+        })
+        .fail(function() {
+            showAlert('부서 목록 로드에 실패했습니다.', 'danger');
+        });
+}
+
+// 회사 전환 이벤트 리스너 추가
+$(document).ready(function() {
+    // 회사 전환 완료 시 부서 목록 다시 로드
+    $(window).on('companyChanged', function() {
+        console.log('회사 전환 감지 - 부서 목록 다시 로드');
+        loadDepartments();
+    });
+});
+
+// 사용자 테이블 렌더링
+function renderUsersTable(users) {
+    const tbody = $('#usersTableBody');
+    tbody.empty();
+    
+    if (users.length === 0) {
+        tbody.append(`
+            <tr>
+                <td colspan="11" class="text-center text-muted">등록된 사용자가 없습니다.</td>
+            </tr>
+        `);
+        return;
+    }
+    
+    users.forEach((user, index) => {
+        const companiesText = user.companies.map(c => {
+            const primary = c.is_primary ? ' (주)' : '';
+            return c.company_name + primary;
+        }).join(', ');
+        
+        const departmentsText = user.departments.map(d => d.name).join(', ');
+        
+        const statusBadge = user.member_status === 'Y' ? 
+            '<span class="badge bg-success">재직</span>' : 
+            '<span class="badge bg-secondary">퇴사</span>';
+            
+        const superUserBadge = user.super_user === 'Y' ?
+            '<span class="badge bg-warning">슈퍼유저</span>' :
+            '<span class="badge bg-light text-dark">일반</span>';
+        
+        tbody.append(`
+            <tr>
+                <td>${(currentPage - 1) * 20 + index + 1}</td>
+                <td>${user.login_id}</td>
+                <td>${user.name}</td>
+                <td>${user.id_number || '-'}</td>
+                <td>${user.email || '-'}</td>
+                <td>${user.mobile || '-'}</td>
+                <td class="small">${companiesText || '-'}</td>
+                <td class="small">${departmentsText || '-'}</td>
+                <td>${superUserBadge}</td>
+                <td>${statusBadge}</td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-primary" onclick="editUser(${user.seq})" title="수정">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-outline-warning" onclick="changeUserPassword(${user.seq})" title="비밀번호 변경">
+                            <i class="fas fa-key"></i>
+                        </button>
+                        <button class="btn btn-outline-danger" onclick="deleteUser(${user.seq})" title="삭제">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `);
+    });
+}
+
+// 페이지네이션 렌더링
+function renderPagination(pagination) {
+    const paginationEl = $('#pagination');
+    paginationEl.empty();
+    
+    if (pagination.pages <= 1) return;
+    
+    // 이전 페이지
+    const prevDisabled = pagination.page === 1 ? 'disabled' : '';
+    paginationEl.append(`
+        <li class="page-item ${prevDisabled}">
+            <a class="page-link" href="#" onclick="loadUsers(${pagination.page - 1})">이전</a>
+        </li>
+    `);
+    
+    // 페이지 번호들
+    const startPage = Math.max(1, pagination.page - 2);
+    const endPage = Math.min(pagination.pages, pagination.page + 2);
+    
+    for (let i = startPage; i <= endPage; i++) {
+        const active = i === pagination.page ? 'active' : '';
+        paginationEl.append(`
+            <li class="page-item ${active}">
+                <a class="page-link" href="#" onclick="loadUsers(${i})">${i}</a>
+            </li>
+        `);
+    }
+    
+    // 다음 페이지
+    const nextDisabled = pagination.page === pagination.pages ? 'disabled' : '';
+    paginationEl.append(`
+        <li class="page-item ${nextDisabled}">
+            <a class="page-link" href="#" onclick="loadUsers(${pagination.page + 1})">다음</a>
+        </li>
+    `);
+    
+    currentPage = pagination.page;
+}
+
+// 검색
+function searchUsers() {
+    const search = $('#searchInput').val().trim();
+    currentPage = 1;
+    loadUsers(1, search);
+}
+
+// 검색 초기화
+function resetSearch() {
+    $('#searchInput').val('');
+    currentPage = 1;
+    loadUsers();
+}
+
+// 사용자 추가 모달 표시
 function showAddUserModal() {
-    isEditMode = false;
     $('#userModalTitle').text('사용자 추가');
     $('#userForm')[0].reset();
     $('#user_seq').val('');
-    $('#user_id').prop('disabled', false);
+    $('#passwordRequired').show();
+    $('#password').prop('required', true);
+    
+    renderCompaniesSection([]);
+    renderDepartmentsSection([]);
+    
     $('#userModal').modal('show');
 }
 
-function editUser(seq) {
-    isEditMode = true;
-    $('#userModalTitle').text('사용자 수정');
+// 회사 선택 섹션 렌더링
+function renderCompaniesSection(userCompanies = []) {
+    const section = $('#companiesSection');
+    section.empty();
     
-    // 임시로 테이블에서 데이터 추출
-    const row = $(`tr:has(button[onclick="editUser(${seq})"])`);
-    const userId = row.find('td:nth-child(2)').text();
-    const userName = row.find('td:nth-child(3)').text();
+    if (userCompanies.length === 0) {
+        // 신규 사용자: 현재 회사를 기본값으로
+        const currentCompanyId = parseInt($('meta[name="current-company-id"]').attr('content')) || 1;
+        userCompanies = [{
+            company_id: currentCompanyId,
+            is_primary: true,
+            role: 'user'
+        }];
+    }
     
-    $('#user_seq').val(seq);
-    $('#user_id').val(userId).prop('disabled', true);
-    $('#user_name').val(userName);
-    $('#member_status').val('A');
-    $('#super_user').val('N');
-    $('#work_group').val('');
-    $('#biz_card_num').val('');
-    $('#password').val('');
-    $('#userModal').modal('show');
+    userCompanies.forEach((uc, index) => {
+        section.append(`
+            <div class="row mb-2" data-company-index="${index}">
+                <div class="col-md-4">
+                    <select class="form-control company-select" name="companies[${index}][company_id]">
+                        ${companiesData.map(c => 
+                            `<option value="${c.id}" ${c.id === uc.company_id ? 'selected' : ''}>${c.company_name}</option>`
+                        ).join('')}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-control" name="companies[${index}][role]">
+                        <option value="user" ${uc.role === 'user' ? 'selected' : ''}>일반 사용자</option>
+                        <option value="manager" ${uc.role === 'manager' ? 'selected' : ''}>관리자</option>
+                        <option value="admin" ${uc.role === 'admin' ? 'selected' : ''}>최고관리자</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-check">
+                        <input class="form-check-input primary-check" type="checkbox" name="companies[${index}][is_primary]" ${uc.is_primary ? 'checked' : ''}>
+                        <label class="form-check-label">주 소속</label>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeCompanySelection(${index})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `);
+    });
 }
 
-function deleteUser(seq) {
-    if (!confirm('정말로 이 사용자를 삭제하시겠습니까?')) {
+// 부서 선택 섹션 렌더링
+function renderDepartmentsSection(userDepartments = []) {
+    const section = $('#departmentsSection');
+    section.empty();
+    
+    departmentsData.forEach(dept => {
+        const checked = userDepartments.some(ud => ud.seq === dept.seq) ? 'checked' : '';
+        section.append(`
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="checkbox" id="dept_${dept.seq}" name="department_ids" value="${dept.seq}" ${checked}>
+                <label class="form-check-label" for="dept_${dept.seq}">${dept.dept_name}</label>
+            </div>
+        `);
+    });
+}
+
+// 회사 선택 추가
+function addCompanySelection() {
+    const section = $('#companiesSection');
+    const index = section.find('[data-company-index]').length;
+    
+    section.append(`
+        <div class="row mb-2" data-company-index="${index}">
+            <div class="col-md-4">
+                <select class="form-control company-select" name="companies[${index}][company_id]">
+                    ${companiesData.map(c => `<option value="${c.id}">${c.company_name}</option>`).join('')}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="form-control" name="companies[${index}][role]">
+                    <option value="user">일반 사용자</option>
+                    <option value="manager">관리자</option>
+                    <option value="admin">최고관리자</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <div class="form-check">
+                    <input class="form-check-input primary-check" type="checkbox" name="companies[${index}][is_primary]">
+                    <label class="form-check-label">주 소속</label>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeCompanySelection(${index})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `);
+}
+
+// 회사 선택 제거
+function removeCompanySelection(index) {
+    $(`[data-company-index="${index}"]`).remove();
+}
+
+// 사용자 수정
+function editUser(userSeq) {
+    const user = usersData.find(u => u.seq === userSeq);
+    if (!user) {
+        showAlert('사용자 정보를 찾을 수 없습니다.', 'danger');
         return;
     }
-    alert('사용자 삭제 기능은 준비 중입니다.');
+    
+    // 상세 정보 로드
+    $.get(`/admin/api/users/${userSeq}`)
+        .done(function(response) {
+            if (response.success) {
+                const userData = response.data;
+                
+                $('#userModalTitle').text('사용자 수정');
+                $('#user_seq').val(userData.seq);
+                $('#login_id').val(userData.login_id);
+                $('#name').val(userData.name);
+                $('#id_number').val(userData.id_number);
+                $('#email').val(userData.email);
+                $('#mobile').val(userData.mobile);
+                $('#extension_number').val(userData.extension_number);
+                $('#member_status').val(userData.member_status);
+                $('#super_user').val(userData.super_user);
+                
+                $('#passwordRequired').hide();
+                $('#password').prop('required', false);
+                
+                renderCompaniesSection(userData.companies);
+                renderDepartmentsSection(userData.departments);
+                
+                $('#userModal').modal('show');
+            } else {
+                showAlert(response.message, 'danger');
+            }
+        })
+        .fail(function() {
+            showAlert('사용자 정보를 불러오는데 실패했습니다.', 'danger');
+        });
 }
 
+// 사용자 저장
 function saveUser() {
-    const formData = {
-        seq: $('#user_seq').val(),
-        id: $('#user_id').val().trim(),
-        name: $('#user_name').val().trim(),
-        password: $('#password').val(),
-        member_status: $('#member_status').val(),
-        super_user: $('#super_user').val(),
-        work_group: $('#work_group').val().trim(),
-        biz_card_num: $('#biz_card_num').val().trim()
-    };
+    const formData = new FormData($('#userForm')[0]);
+    const userData = {};
     
-    if (!formData.id || !formData.name) {
-        alert('ID와 이름은 필수입니다.');
+    // 기본 필드
+    ['login_id', 'name', 'password', 'id_number', 'email', 'mobile', 'extension_number', 'member_status', 'super_user'].forEach(field => {
+        const value = formData.get(field);
+        if (value !== null && value !== '') {
+            userData[field] = value;
+        }
+    });
+    
+    // 회사 소속 정보
+    userData.companies = [];
+    $('#companiesSection [data-company-index]').each(function() {
+        const companyData = {
+            company_id: parseInt($(this).find('.company-select').val()),
+            role: $(this).find('select[name*="[role]"]').val(),
+            is_primary: $(this).find('.primary-check').is(':checked')
+        };
+        userData.companies.push(companyData);
+    });
+    
+    // 부서 정보
+    userData.department_ids = [];
+    $('input[name="department_ids"]:checked').each(function() {
+        userData.department_ids.push(parseInt($(this).val()));
+    });
+    
+    const userSeq = $('#user_seq').val();
+    const method = userSeq ? 'PUT' : 'POST';
+    const url = userSeq ? `/admin/api/users/${userSeq}` : '/admin/api/users';
+    
+    $.ajax({
+        url: url,
+        method: method,
+        contentType: 'application/json',
+        data: JSON.stringify(userData)
+    })
+    .done(function(response) {
+        if (response.success) {
+            showAlert(response.message, 'success');
+            $('#userModal').modal('hide');
+            loadUsers(currentPage);
+        } else {
+            showAlert(response.message, 'danger');
+        }
+    })
+    .fail(function() {
+        showAlert('사용자 저장에 실패했습니다.', 'danger');
+    });
+}
+
+// 비밀번호 변경
+function changeUserPassword(userSeq) {
+    $('#pwd_user_seq').val(userSeq);
+    $('#passwordForm')[0].reset();
+    $('#passwordModal').modal('show');
+}
+
+function changePassword() {
+    const newPassword = $('#new_password').val();
+    const confirmPassword = $('#confirm_password').val();
+    
+    if (newPassword !== confirmPassword) {
+        showAlert('비밀번호가 일치하지 않습니다.', 'danger');
         return;
     }
     
-    alert((isEditMode ? '사용자 수정' : '사용자 등록') + ' 기능은 준비 중입니다.');
-    $('#userModal').modal('hide');
+    const userSeq = $('#pwd_user_seq').val();
+    
+    $.ajax({
+        url: `/admin/api/users/${userSeq}/password`,
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ new_password: newPassword })
+    })
+    .done(function(response) {
+        if (response.success) {
+            showAlert(response.message, 'success');
+            $('#passwordModal').modal('hide');
+        } else {
+            showAlert(response.message, 'danger');
+        }
+    })
+    .fail(function() {
+        showAlert('비밀번호 변경에 실패했습니다.', 'danger');
+    });
+}
+
+// 사용자 삭제
+function deleteUser(userSeq) {
+    const user = usersData.find(u => u.seq === userSeq);
+    if (!user) return;
+    
+    if (!confirm(`'${user.name}' 사용자를 삭제하시겠습니까?`)) return;
+    
+    $.ajax({
+        url: `/admin/api/users/${userSeq}`,
+        method: 'DELETE'
+    })
+    .done(function(response) {
+        if (response.success) {
+            showAlert(response.message, 'success');
+            loadUsers(currentPage);
+        } else {
+            showAlert(response.message, 'danger');
+        }
+    })
+    .fail(function() {
+        showAlert('사용자 삭제에 실패했습니다.', 'danger');
+    });
+}
+
+// 알림 표시
+function showAlert(message, type) {
+    const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    // 기존 알림 제거 후 추가
+    $('.alert').remove();
+    $('.container-fluid').prepend(alertHtml);
+    
+    // 3초 후 자동 제거
+    setTimeout(() => {
+        $('.alert').fadeOut();
+    }, 3000);
 }
 </script>
 {% endblock %} 

@@ -16,9 +16,11 @@ from sqlalchemy import and_, or_, func, desc
 from app.common.multitenant import MultiTenantQueryBuilder
 
 @bp.route('/')
-@login_required 
+ 
 def index():
     """고객 관리 메인 페이지"""
+    if 'member_seq' not in session:
+        return redirect('/auth/login')
     try:
         # 고객 관리 통계
         stats = {
@@ -293,9 +295,10 @@ def index():
 # ============================================
 
 @bp.route('/carseat-change')
-@login_required
 def carseat_change():
     """카시트 무상교환 관리 페이지"""
+    if 'member_seq' not in session:
+        return redirect('/auth/login')
     try:
         # 페이지 설정
         page = int(request.args.get('page', 1))
@@ -595,9 +598,10 @@ def carseat_change():
 # ============================================
 
 @bp.route('/serial-search')
-@login_required
 def serial_search():
     """시리얼 검색 페이지"""
+    if 'member_seq' not in session:
+        return redirect('/auth/login')
     try:
         search_type = request.args.get('search_type', '')
         search_text = request.args.get('search_text', '')
@@ -785,9 +789,10 @@ def serial_search():
 # ============================================
 
 @bp.route('/serial-list')
-@login_required
 def serial_list():
     """시리얼 등록 목록 페이지"""
+    if 'member_seq' not in session:
+        return redirect('/auth/login')
     try:
         # 페이지 설정
         page = int(request.args.get('page', 1))
@@ -1040,9 +1045,10 @@ def serial_list():
 # ============================================
 
 @bp.route('/targeting', methods=['GET', 'POST'])
-@login_required
 def targeting():
     """고객 타겟팅 페이지"""
+    if 'member_seq' not in session:
+        return redirect('/auth/login')
     try:
         # POST 요청일 때 타겟팅 실행
         if request.method == 'POST':
@@ -1390,9 +1396,11 @@ def targeting():
 # ============================================
 
 @bp.route('/send-log')
-@login_required 
+ 
 def send_log():
     """발송 내역 페이지"""
+    if 'member_seq' not in session:
+        return redirect('/auth/login')
     try:
         # 페이지 설정
         page = int(request.args.get('page', 1))
@@ -1705,9 +1713,10 @@ def send_log():
 # ============================================
 
 @bp.route('/as-list')
-@login_required
 def as_list():
     """A/S 접수 내역 페이지"""
+    if 'member_seq' not in session:
+        return redirect('/auth/login')
     try:
         # 페이지 설정
         page = int(request.args.get('page', 1))
@@ -2040,6 +2049,8 @@ def as_list():
 @bp.route('/store-management')
 def store_management():
     """정품 등록 매장 관리"""
+    if 'member_seq' not in session:
+        return redirect('/auth/login')
     try:
         # 회사별 데이터 필터링
         company_id = MultiTenantQueryBuilder.get_current_company_id()
@@ -2451,9 +2462,10 @@ def store_management():
         return f"매장 관리 조회 중 오류: {e}", 500
 
 @bp.route('/send-sms', methods=['POST'])
-@login_required
 def send_sms():
     """SMS 발송 처리"""
+    if 'member_seq' not in session:
+        return redirect('/auth/login')
     try:
         from flask_login import current_user
         
@@ -2477,7 +2489,7 @@ def send_sms():
             sms_body=sms_body,
             send_cnt=len(target_mobiles),
             ins_user_name=current_user.name,
-            ins_user=current_user.id
+            ins_user=current_user.login_id
         )
         
         db.session.add(sms_log)
@@ -2496,6 +2508,8 @@ def send_sms():
 @bp.route('/status')
 def status():
     """고객 관리 시스템 상태"""
+    if 'member_seq' not in session:
+        return redirect('/auth/login')
     return jsonify({
         'status': 'customer system fully implemented',
         'modules': {

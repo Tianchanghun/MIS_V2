@@ -5,7 +5,7 @@
 ERPia 자동 배치 시스템의 웹 인터페이스
 """
 
-from flask import render_template, request, jsonify, flash, redirect, url_for, current_app
+from flask import render_template, request, jsonify, flash, redirect, url_for, current_app, session
 from flask_login import login_required, current_user
 from datetime import datetime, timedelta
 import json
@@ -20,9 +20,10 @@ from app.common.models import db
 logger = logging.getLogger(__name__)
 
 @batch_bp.route('/')
-@login_required
 def index():
     """배치 관리 메인 페이지"""
+    if 'member_seq' not in session:
+        return redirect('/auth/login')
     try:
         # 등록된 배치 작업 목록 조회
         jobs = batch_scheduler.get_jobs()
@@ -51,9 +52,10 @@ def index():
         return render_template('batch/index.html', jobs=[], recent_executions=[], scheduler_status={})
 
 @batch_bp.route('/jobs')
-@login_required
 def job_list():
     """배치 작업 목록 페이지"""
+    if 'member_seq' not in session:
+        return redirect('/auth/login')
     try:
         jobs = batch_scheduler.get_jobs()
         
@@ -77,9 +79,10 @@ def job_list():
         return render_template('batch/job_list.html', job_details=[])
 
 @batch_bp.route('/jobs/add', methods=['GET', 'POST'])
-@login_required
 def add_job():
     """배치 작업 추가"""
+    if 'member_seq' not in session:
+        return redirect('/auth/login')
     if request.method == 'GET':
         # 작업 추가 폼 페이지
         job_types = [
@@ -129,7 +132,6 @@ def add_job():
         return redirect(url_for('batch.add_job'))
 
 @batch_bp.route('/jobs/<job_id>/run', methods=['POST'])
-@login_required
 def run_job(job_id):
     """배치 작업 즉시 실행"""
     try:
@@ -152,9 +154,10 @@ def run_job(job_id):
         }), 500
 
 @batch_bp.route('/gift/classify', methods=['POST'])
-@login_required
 def manual_gift_classify():
     """사은품 수동 분류"""
+    if 'member_seq' not in session:
+        return redirect('/auth/login')
     try:
         days_back = int(request.json.get('days_back', 7))
         
@@ -172,9 +175,10 @@ def manual_gift_classify():
         return jsonify({'success': False, 'message': str(e)}) 
 
 @batch_bp.route('/gift/statistics')
-@login_required
 def gift_statistics():
     """사은품 분류 통계"""
+    if 'member_seq' not in session:
+        return redirect('/auth/login')
     try:
         start_date = request.args.get('start_date', '2024-01-01')
         end_date = request.args.get('end_date', datetime.now().strftime('%Y-%m-%d'))
@@ -212,9 +216,11 @@ def gift_statistics():
         return jsonify({'success': False, 'message': str(e)})
 
 @batch_bp.route('/dashboard/data')
-@login_required  
+  
 def dashboard_data():
     """대시보드 데이터 API"""
+    if 'member_seq' not in session:
+        return redirect('/auth/login')
     try:
         # 스케줄러 상태
         scheduler_status = {
@@ -257,9 +263,10 @@ def dashboard_data():
         }), 500
 
 @batch_bp.route('/scheduler/start', methods=['POST'])
-@login_required
 def start_scheduler():
     """스케줄러 시작"""
+    if 'member_seq' not in session:
+        return redirect('/auth/login')
     try:
         if not batch_scheduler.is_running:
             batch_scheduler.start()
@@ -281,9 +288,10 @@ def start_scheduler():
         }), 500
 
 @batch_bp.route('/scheduler/stop', methods=['POST'])
-@login_required
 def stop_scheduler():
     """스케줄러 중지"""
+    if 'member_seq' not in session:
+        return redirect('/auth/login')
     try:
         if batch_scheduler.is_running:
             batch_scheduler.stop()
@@ -305,9 +313,10 @@ def stop_scheduler():
         }), 500 
 
 @batch_bp.route('/settings')
-@login_required
 def settings():
     """배치 설정 페이지"""
+    if 'member_seq' not in session:
+        return redirect('/auth/login')
     try:
         # 현재 배치 설정 조회
         current_settings = {
@@ -331,9 +340,10 @@ def settings():
         return redirect(url_for('batch.index'))
 
 @batch_bp.route('/api/status')
-@login_required
 def api_status():
     """시스템 상태 API"""
+    if 'member_seq' not in session:
+        return redirect('/auth/login')
     try:
         jobs = batch_scheduler.get_jobs()
         
@@ -358,9 +368,10 @@ def api_status():
         return jsonify({'success': False, 'message': str(e)})
 
 @batch_bp.route('/api/scheduler/start', methods=['POST'])
-@login_required
 def api_start_scheduler():
     """스케줄러 시작 API"""
+    if 'member_seq' not in session:
+        return redirect('/auth/login')
     try:
         if not batch_scheduler.is_running:
             batch_scheduler.start()
@@ -373,9 +384,10 @@ def api_start_scheduler():
         return jsonify({'success': False, 'message': str(e)})
 
 @batch_bp.route('/api/scheduler/stop', methods=['POST'])
-@login_required
 def api_stop_scheduler():
     """스케줄러 중지 API"""
+    if 'member_seq' not in session:
+        return redirect('/auth/login')
     try:
         if batch_scheduler.is_running:
             batch_scheduler.shutdown()
@@ -388,9 +400,10 @@ def api_stop_scheduler():
         return jsonify({'success': False, 'message': str(e)})
 
 @batch_bp.route('/api/run-erpia', methods=['POST'])
-@login_required
 def api_run_erpia():
     """ERPia 배치 실행 API"""
+    if 'member_seq' not in session:
+        return redirect('/auth/login')
     try:
         data_type = request.form.get('type', 'all')
         
@@ -420,9 +433,10 @@ def api_run_erpia():
         return jsonify({'success': False, 'message': str(e)})
 
 @batch_bp.route('/api/run-gift-classification', methods=['POST'])
-@login_required
 def api_run_gift_classification():
     """사은품 분류 실행 API"""
+    if 'member_seq' not in session:
+        return redirect('/auth/login')
     try:
         from app.services.gift_classifier import GiftClassifier
         classifier = GiftClassifier()
@@ -440,7 +454,6 @@ def api_run_gift_classification():
         return jsonify({'success': False, 'message': str(e)})
 
 @batch_bp.route('/api/job/run/<job_id>', methods=['POST'])
-@login_required
 def api_run_job(job_id):
     """작업 즉시 실행 API"""
     try:
@@ -454,7 +467,6 @@ def api_run_job(job_id):
         return jsonify({'success': False, 'message': str(e)})
 
 @batch_bp.route('/api/job/pause/<job_id>', methods=['POST'])
-@login_required
 def api_pause_job(job_id):
     """작업 일시정지 API"""
     try:
@@ -468,7 +480,6 @@ def api_pause_job(job_id):
         return jsonify({'success': False, 'message': str(e)})
 
 @batch_bp.route('/api/job/remove/<job_id>', methods=['POST'])
-@login_required
 def api_remove_job(job_id):
     """작업 삭제 API"""
     try:
@@ -484,7 +495,6 @@ def api_remove_job(job_id):
 # ==================== ERPia 설정 관리 API ====================
 
 @batch_bp.route('/api/erpia/settings/<int:company_id>', methods=['GET'])
-@login_required
 def get_erpia_settings(company_id):
     """ERPia 설정 조회"""
     try:
@@ -516,7 +526,6 @@ def get_erpia_settings(company_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @batch_bp.route('/api/erpia/settings/<int:company_id>', methods=['POST'])
-@login_required
 def update_erpia_settings(company_id):
     """ERPia 설정 업데이트"""
     try:
@@ -582,7 +591,6 @@ def update_erpia_settings(company_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @batch_bp.route('/api/erpia/test-connection/<int:company_id>', methods=['POST'])
-@login_required
 def test_erpia_connection_by_company(company_id):
     """ERPia 연결 테스트 (회사별)"""
     try:
@@ -633,7 +641,6 @@ def test_erpia_connection_by_company(company_id):
         }), 500
 
 @batch_bp.route('/api/erpia/manual-batch/<int:company_id>', methods=['POST'])
-@login_required
 def run_manual_batch(company_id):
     """수동 배치 실행"""
     try:
@@ -713,7 +720,6 @@ def run_manual_batch(company_id):
         }), 500
 
 @batch_bp.route('/api/erpia/batch-logs/<int:company_id>', methods=['GET'])
-@login_required
 def get_batch_logs(company_id):
     """배치 실행 로그 조회"""
     try:

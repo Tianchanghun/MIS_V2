@@ -1,145 +1,348 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 
-{% block page_title %}부서 관리{% endblock %}
-
-{% block extra_css %}
-<style>
-    .table-responsive {
-        max-height: 500px;
-        overflow-y: auto;
-    }
-    .color-preview {
-        width: 20px;
-        height: 20px;
-        border-radius: 3px;
-        display: inline-block;
-        border: 1px solid #ccc;
-        margin-right: 5px;
-    }
-    .dept-actions {
-        white-space: nowrap;
-    }
-    #dept-auth-table > tbody > tr:not(.depth-0) {
-        display: none;
-    }
-    #dept-auth-table {
-        display: none;
-    }
-    .depth-0 {
-        font-weight: bold;
-        background-color: #f8f9fa;
-    }
-    .depth-1 {
-        padding-left: 30px;
-        background-color: #fff;
-    }
-    .menu-name {
-        cursor: pointer;
-    }
-    .menu-name:hover {
-        background-color: #e3f2fd;
-    }
-</style>
-{% endblock %}
+{% block title %}부서 관리{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="fas fa-building"></i> 부서 관리</h2>
-    </div>
-    
-    <div class="row">
-        <!-- 좌측: 부서 목록 (6컬럼) -->
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-list"></i> 부서 목록
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover table-sm" id="deptTable">
-                            <thead class="table-light">
-                                <tr>
-                                    <th width="15%">순서</th>
-                                    <th width="30%">부서명</th>
-                                    <th width="15%">보고</th>
-                                    <th width="15%">사용</th>
-                                    <th width="15%">색상</th>
-                                    <th width="10%">관리</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for dept in departments %}
-                                <tr id="{{ dept.seq }}" data-seq="{{ dept.seq }}">
-                                    <td>{{ dept.sort }}</td>
-                                    <td>{{ dept.dept_name }}</td>
-                                    <td>
-                                        <span class="badge bg-{{ 'success' if dept.report_yn == 'Y' else 'secondary' }}">
-                                            {{ dept.report_yn or 'N' }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-{{ 'success' if dept.use_yn == 'Y' else 'secondary' }}">
-                                            {{ dept.use_yn or 'N' }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="color-preview" style="background-color: {{ dept.font_color or '#000000' }};" title="글자색"></div>
-                                            <div class="color-preview" style="background-color: {{ dept.bg_color or '#ffffff' }};" title="배경색"></div>
-                                        </div>
-                                    </td>
-                                    <td class="dept-actions">
-                                        <button class="btn btn-warning btn-sm" onclick="editDept({{ dept.seq }})" title="수정">
         <h1 class="h2">
             <i class="bi bi-building"></i> 부서 관리
         </h1>
-        <a href="{{ url_for('admin.index') }}" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left"></i> 관리자 대시보드
-        </a>
+        <div>
+            <button class="btn btn-primary" onclick="showAddDeptModal()">
+                <i class="bi bi-plus"></i> 부서 추가
+            </button>
+            <a href="{{ url_for('admin.index') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> 관리자 대시보드
+            </a>
+        </div>
+    </div>
+    
+    <!-- 검색 -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" id="searchInput" placeholder="부서명으로 검색..." onkeyup="searchDepartments()">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <button class="btn btn-outline-secondary" onclick="resetSearch()">
+                        <i class="bi bi-arrow-clockwise"></i> 초기화
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
     
     <div class="card">
         <div class="card-header">
-            <h5 class="card-title mb-0">부서 목록</h5>
+            <h5 class="card-title mb-0">
+                <i class="bi bi-list"></i> 부서 목록
+                <span id="deptCount" class="badge bg-secondary ms-2">0</span>
+            </h5>
         </div>
         <div class="card-body">
-            {% if departments %}
             <div class="table-responsive">
-                <table class="table table-striped table-hover">
-                    <thead>
+                <table class="table table-striped table-hover" id="departmentsTable">
+                    <thead class="table-light">
                         <tr>
-                            <th>SEQ</th>
-                            <th>부서명</th>
-                            <th>사용여부</th>
-                            <th>정렬</th>
+                            <th onclick="sortTable(0)">순서 <i class="bi bi-arrow-down-up"></i></th>
+                            <th onclick="sortTable(1)">부서명 <i class="bi bi-arrow-down-up"></i></th>
+                            <th onclick="sortTable(2)">사용 회사 <i class="bi bi-arrow-down-up"></i></th>
+                            <th onclick="sortTable(3)">사용 여부 <i class="bi bi-arrow-down-up"></i></th>
+                            <th>관리</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        {% for dept in departments %}
-                        <tr>
-                            <td>{{ dept.seq }}</td>
-                            <td>{{ dept.dept_name }}</td>
-                            <td>
-                                <span class="badge bg-{{ 'success' if dept.use_yn == 'Y' else 'secondary' }}">
-                                    {{ dept.use_yn }}
-                                </span>
-                            </td>
-                            <td>{{ dept.sort }}</td>
-                        </tr>
-                        {% endfor %}
+                    <tbody id="departmentsTableBody">
+                        <!-- 동적으로 생성 -->
                     </tbody>
                 </table>
             </div>
-            {% else %}
-            <div class="text-center py-4">
-                <i class="bi bi-building-x display-4 text-muted"></i>
-                <p class="text-muted mt-2">등록된 부서가 없습니다.</p>
-            </div>
-            {% endif %}
         </div>
     </div>
 </div>
-{% endblock %} 
+
+<!-- 부서 추가/수정 모달 -->
+<div class="modal fade" id="deptModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deptModalTitle">부서 추가</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="deptForm">
+                    <input type="hidden" id="dept_seq" name="dept_seq">
+                    
+                    <div class="mb-3">
+                        <label for="dept_name" class="form-label">부서명 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="dept_name" name="dept_name" required>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="sort" class="form-label">순서</label>
+                                <input type="number" class="form-control" id="sort" name="sort" value="1" min="1">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="use_yn" class="form-label">사용 여부</label>
+                                <select class="form-control" id="use_yn" name="use_yn">
+                                    <option value="Y">사용</option>
+                                    <option value="N">미사용</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="company_usage" class="form-label">사용 회사 <span class="text-danger">*</span></label>
+                        <select class="form-control" id="company_usage" name="company_usage" required>
+                            <option value="1">에이원</option>
+                            <option value="2">에이원 월드</option>
+                            <option value="0">모두 사용</option>
+                        </select>
+                        <div class="form-text">부서가 어느 회사에서 사용될지 선택하세요.</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-primary" onclick="saveDepartment()">저장</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let departmentsData = [];
+let currentSort = { column: 0, direction: 'asc' };
+
+$(document).ready(function() {
+    loadDepartments();
+});
+
+// 부서 목록 로드
+function loadDepartments() {
+    $.get('/admin/api/departments')
+        .done(function(response) {
+            if (response.success) {
+                departmentsData = response.data;
+                renderDepartmentsTable(response.data);
+                $('#deptCount').text(response.data.length);
+            } else {
+                showAlert(response.message, 'danger');
+            }
+        })
+        .fail(function() {
+            showAlert('부서 목록을 불러오는데 실패했습니다.', 'danger');
+        });
+}
+
+// 부서 테이블 렌더링
+function renderDepartmentsTable(departments) {
+    const tbody = $('#departmentsTableBody');
+    tbody.empty();
+
+    if (departments.length === 0) {
+        tbody.append(`
+            <tr>
+                <td colspan="5" class="text-center text-muted">등록된 부서가 없습니다.</td>
+            </tr>
+        `);
+        return;
+    }
+
+    departments.forEach((dept, index) => {
+        const useBadge = dept.use_yn === 'Y' ?
+            '<span class="badge bg-success">사용</span>' :
+            '<span class="badge bg-secondary">미사용</span>';
+
+        // 사용 회사 표시
+        let companyBadge = '';
+        if (dept.company_id === 1) {
+            companyBadge = '<span class="badge bg-primary">에이원</span>';
+        } else if (dept.company_id === 2) {
+            companyBadge = '<span class="badge bg-info">에이원 월드</span>';
+        } else {
+            companyBadge = '<span class="badge bg-success">모든 회사</span>';
+        }
+
+        tbody.append(`
+            <tr>
+                <td>${dept.sort}</td>
+                <td>${dept.dept_name}</td>
+                <td>${companyBadge}</td>
+                <td>${useBadge}</td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-primary" onclick="editDepartment(${dept.seq})" title="수정">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-outline-danger" onclick="deleteDepartment(${dept.seq})" title="삭제">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `);
+    });
+}
+
+// 검색 기능
+function searchDepartments() {
+    const search = $('#searchInput').val().toLowerCase();
+    const filtered = departmentsData.filter(dept => 
+        dept.dept_name.toLowerCase().includes(search)
+    );
+    renderDepartmentsTable(filtered);
+    $('#deptCount').text(filtered.length);
+}
+
+function resetSearch() {
+    $('#searchInput').val('');
+    renderDepartmentsTable(departmentsData);
+    $('#deptCount').text(departmentsData.length);
+}
+
+// 정렬 기능
+function sortTable(columnIndex) {
+    const columns = ['sort', 'dept_name', 'company_id', 'use_yn'];
+    const column = columns[columnIndex];
+    
+    if (currentSort.column === columnIndex) {
+        currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+    } else {
+        currentSort.column = columnIndex;
+        currentSort.direction = 'asc';
+    }
+    
+    const sorted = [...departmentsData].sort((a, b) => {
+        const aVal = a[column];
+        const bVal = b[column];
+        
+        if (currentSort.direction === 'asc') {
+            return aVal > bVal ? 1 : -1;
+        } else {
+            return aVal < bVal ? 1 : -1;
+        }
+    });
+    
+    renderDepartmentsTable(sorted);
+}
+
+// 부서 추가 모달
+function showAddDeptModal() {
+    $('#deptModalTitle').text('부서 추가');
+    $('#deptForm')[0].reset();
+    $('#dept_seq').val('');
+    $('#company_usage').val('1'); // 기본값: 에이원
+    $('#deptModal').modal('show');
+}
+
+// 부서 수정
+function editDepartment(deptSeq) {
+    const dept = departmentsData.find(d => d.seq === deptSeq);
+    if (!dept) return;
+
+    $('#deptModalTitle').text('부서 수정');
+    $('#dept_seq').val(dept.seq);
+    $('#dept_name').val(dept.dept_name);
+    $('#sort').val(dept.sort);
+    $('#use_yn').val(dept.use_yn);
+    $('#company_usage').val(dept.company_id || 1);
+
+    $('#deptModal').modal('show');
+}
+
+// 부서 저장
+function saveDepartment() {
+    const formData = new FormData($('#deptForm')[0]);
+    const deptData = {
+        dept_name: formData.get('dept_name'),
+        sort: parseInt(formData.get('sort')),
+        use_yn: formData.get('use_yn'),
+        company_id: parseInt(formData.get('company_usage'))
+    };
+
+    const deptSeq = $('#dept_seq').val();
+    const method = deptSeq ? 'PUT' : 'POST';
+    const url = deptSeq ? `/admin/api/departments/${deptSeq}` : '/admin/api/departments';
+
+    $.ajax({
+        url: url,
+        method: method,
+        contentType: 'application/json',
+        data: JSON.stringify(deptData)
+    })
+    .done(function(response) {
+        if (response.success) {
+            showAlert(response.message, 'success');
+            $('#deptModal').modal('hide');
+            loadDepartments();
+        } else {
+            showAlert(response.message, 'danger');
+        }
+    })
+    .fail(function() {
+        showAlert('부서 저장에 실패했습니다.', 'danger');
+    });
+}
+
+// 부서 삭제
+function deleteDepartment(deptSeq) {
+    const dept = departmentsData.find(d => d.seq === deptSeq);
+    if (!dept) return;
+
+    if (!confirm(`'${dept.dept_name}' 부서를 삭제하시겠습니까?`)) return;
+
+    $.ajax({
+        url: `/admin/api/departments/${deptSeq}`,
+        method: 'DELETE'
+    })
+    .done(function(response) {
+        if (response.success) {
+            showAlert(response.message, 'success');
+            loadDepartments();
+        } else {
+            showAlert(response.message, 'danger');
+        }
+    })
+    .fail(function() {
+        showAlert('부서 삭제에 실패했습니다.', 'danger');
+    });
+}
+
+// 알림 표시
+function showAlert(message, type) {
+    const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+
+    $('.alert').remove();
+    $('.container-fluid').prepend(alertHtml);
+
+    setTimeout(() => {
+        $('.alert').fadeOut();
+    }, 3000);
+}
+</script>
+
+<style>
+th {
+    cursor: pointer;
+    user-select: none;
+}
+th:hover {
+    background-color: #e9ecef;
+}
+</style>
+{% endblock %}

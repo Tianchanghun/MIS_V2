@@ -8,7 +8,7 @@ Flask 애플리케이션 팩토리
 import os
 import urllib.parse
 from datetime import datetime
-from flask import Flask, render_template_string, session, redirect, url_for, g, request, jsonify
+from flask import Flask, render_template_string, render_template, session, redirect, url_for, g, request, jsonify
 from flask_login import LoginManager, login_required, current_user
 from flask_session import Session
 from redis import Redis
@@ -90,12 +90,14 @@ def create_app(config_name='development'):
     from app.customer import customer_bp
     # 사은품 관리 블루프린트 등록 (임시)
     from app.gift import gift_bp
+    from app.shop import shop_bp  # Shop Management 모듈 추가
     
     app.register_blueprint(auth_bp)
     app.register_blueprint(batch_bp)  # /batch 프리픽스는 Blueprint에서 설정됨
     app.register_blueprint(admin_bp)  # /admin 프리픽스는 Blueprint에서 설정됨
     app.register_blueprint(customer_bp)
     app.register_blueprint(gift_bp)
+    app.register_blueprint(shop_bp)  # Shop Management 블루프린트 등록
     
     # 멀티테넌트 미들웨어 초기화 (블루프린트 등록 후)
     try:
@@ -132,6 +134,15 @@ def create_app(config_name='development'):
             'app_version': '2.0.0',
             'current_year': datetime.now().year,
         }
+        
+        # 로그인되지 않은 사용자는 기본값만 반환
+        if 'member_seq' not in session:
+            context_vars.update({
+                'current_company': None,
+                'user_companies': [],
+                'show_company_switcher': False
+            })
+            return context_vars
         
         # 멀티테넌트 정보 (강화된 방식)
         try:
@@ -282,9 +293,13 @@ def create_app(config_name='development'):
     
     # 메인 대시보드
     @app.route('/')
-    @login_required
     def index():
         """메인 대시보드"""
+        if 'member_seq' not in session:
+            return redirect('/auth/login')
+        # 수동 로그인 체크
+        if 'member_seq' not in session:
+            return redirect('/auth/login')
         try:
             # 시스템 상태 확인
             redis_client = None
@@ -321,221 +336,14 @@ def create_app(config_name='development'):
             except:
                 pass
             
-            return render_template_string("""
-            {% extends "base.html" %}
-            
-            {% block title %}MIS v2 대시보드{% endblock %}
-            
-            {% block content %}
-            <div class="container-fluid">
-                <!-- 회사 정보 표시 -->
-                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                    <h1 class="h2">📊 {{ current_company.company_name }} MIS v2 대시보드</h1>
-                    <div class="btn-toolbar mb-2 mb-md-0">
-                        {% if user_companies|length > 1 %}
-                            <div class="dropdown me-2">
-                                <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                    <i class="bi bi-building"></i> {{ current_company.company_name }}
-                                </button>
-                                <ul class="dropdown-menu">
-                                    {% for uc in user_companies %}
-                                        <li><a class="dropdown-item" href="#" onclick="switchCompany({{ uc.company_id }})">
-                                            {{ uc.company.company_name }}
-                                        </a></li>
-                                    {% endfor %}
-                                </ul>
-                            </div>
-                        {% endif %}
-                        <div class="btn-group me-2">
-                            <small class="text-muted">{{ current_time }}</small>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- 핵심 메뉴 카드 -->
-                <div class="row mb-4">
-                    <div class="col-md-4">
-                        <div class="card h-100">
-                            <div class="card-header bg-primary text-white">
-                                <h5><i class="bi bi-clock-history"></i> 배치 관리</h5>
-                            </div>
-                            <div class="card-body">
-                                <p class="card-text">ERPia 자동 데이터 수집 및 배치 작업 관리</p>
-                                <div class="list-group list-group-flush">
-                                    <a href="/batch" class="list-group-item list-group-item-action">
-                                        <i class="bi bi-speedometer2"></i> 배치 대시보드
-                                    </a>
-                                    <a href="/batch/jobs" class="list-group-item list-group-item-action">
-                                        <i class="bi bi-list-task"></i> 배치 작업 관리
-                                    </a>
-                                    <a href="/batch/settings" class="list-group-item list-group-item-action">
-                                        <i class="bi bi-gear"></i> 배치 설정
-                                    </a>
-                                </div>
-                                <div class="mt-3">
-                                    <small class="text-muted">상태: <span class="badge bg-{{ 'success' if batch_status == '실행중' else 'warning' }}">{{ batch_status }}</span></small><br>
-                                    <small class="text-muted">등록된 작업: {{ batch_jobs_count }}개</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-md-4">
-                        <div class="card h-100">
-                            <div class="card-header bg-success text-white">
-                                <h5><i class="bi bi-gift"></i> 사은품 관리</h5>
-                            </div>
-                            <div class="card-body">
-                                <p class="card-text">사은품 자동 분류 및 매출 정확도 향상</p>
-                                <div class="list-group list-group-flush">
-                                    <span class="list-group-item list-group-item-action text-muted">
-                                        <i class="bi bi-graph-up"></i> 사은품 분석 (준비중)
-                                    </span>
-                                    <span class="list-group-item list-group-item-action text-muted">
-                                        <i class="bi bi-funnel"></i> 분류 규칙 관리 (준비중)
-                                    </span>
-                                    <span class="list-group-item list-group-item-action text-muted">
-                                        <i class="bi bi-bar-chart"></i> 분류 통계 (준비중)
-                                    </span>
-                                </div>
-                                <div class="mt-3">
-                                    <small class="text-muted">상태: <span class="badge bg-success">{{ gift_status }}</span></small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-md-4">
-                        <div class="card h-100">
-                            <div class="card-header bg-info text-white">
-                                <h5><i class="bi bi-gear"></i> 관리자</h5>
-                            </div>
-                            <div class="card-body">
-                                <p class="card-text">시스템 설정 및 사용자 관리</p>
-                                <div class="list-group list-group-flush">
-                                    <a href="{{ url_for('admin.user_management') }}" class="list-group-item list-group-item-action">
-                                        <i class="bi bi-people"></i> 사용자 관리
-                                    </a>
-                                    <a href="{{ url_for('admin.department_management') }}" class="list-group-item list-group-item-action">
-                                        <i class="bi bi-building"></i> 부서 관리
-                                    </a>
-                                    <a href="{{ url_for('admin.code_management') }}" class="list-group-item list-group-item-action">
-                                        <i class="bi bi-code-square"></i> 코드 관리
-                                    </a>
-                                    <a href="{{ url_for('admin.menu_management') }}" class="list-group-item list-group-item-action">
-                                        <i class="bi bi-list"></i> 메뉴 관리
-                                    </a>
-                                    <a href="{{ url_for('admin.brand_management') }}" class="list-group-item list-group-item-action">
-                                        <i class="bi bi-award"></i> 브랜드 관리
-                                    </a>
-                                    <a href="{{ url_for('admin.permissions') }}" class="list-group-item list-group-item-action">
-                                        <i class="bi bi-shield-check"></i> 권한 관리
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5><i class="bi bi-people"></i> 고객 관리</h5>
-                            </div>
-                            <div class="card-body">
-                                <p class="card-text">고객 서비스 및 A/S 관리</p>
-                                <div class="list-group list-group-flush">
-                                    <span class="list-group-item list-group-item-action text-muted">
-                                        <i class="bi bi-arrow-repeat"></i> 무상 교환 접수 (준비중)
-                                    </span>
-                                    <span class="list-group-item list-group-item-action text-muted">
-                                        <i class="bi bi-search"></i> 시리얼 검색 (준비중)
-                                    </span>
-                                    <span class="list-group-item list-group-item-action text-muted">
-                                        <i class="bi bi-tools"></i> A/S 접수 내역 (준비중)
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5><i class="bi bi-activity"></i> 시스템 상태</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="row text-center">
-                                    <div class="col-md-6 mb-3">
-                                        <div class="card text-white bg-success">
-                                            <div class="card-body">
-                                                <h6>데이터베이스</h6>
-                                                <p><i class="bi bi-check-circle"></i> 정상</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6 mb-3">
-                                        <div class="card text-white bg-{{ 'success' if redis_client else 'warning' }}">
-                                            <div class="card-body">
-                                                <h6>Redis 캐시</h6>
-                                                <p><i class="bi bi-{{ 'check-circle' if redis_client else 'exclamation-triangle' }}"></i> {{ '정상' if redis_client else '파일캐시' }}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="card text-white bg-{{ 'success' if batch_status == '실행중' else 'warning' }}">
-                                            <div class="card-body">
-                                                <h6>배치 시스템</h6>
-                                                <p><i class="bi bi-clock"></i> {{ batch_status }}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="card text-white bg-success">
-                                            <div class="card-body">
-                                                <h6>사은품 분류</h6>
-                                                <p><i class="bi bi-gift"></i> {{ gift_status }}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <script>
-            async function switchCompany(companyId) {
-                try {
-                    const response = await fetch('/api/switch-company', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            company_id: companyId
-                        })
-                    });
-                    
-                    if (response.ok) {
-                        window.location.reload();
-                    } else {
-                        alert('회사 전환에 실패했습니다.');
-                    }
-                } catch (error) {
-                    alert('회사 전환 중 오류가 발생했습니다.');
-                }
-            }
-            </script>
-            {% endblock %}
-            """, 
-            current_time=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            redis_client=redis_client,
-            batch_status=batch_status,
-            batch_jobs_count=batch_jobs_count,
-            gift_status=gift_status
+            current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+            return render_template('dashboard.html',
+                current_time=current_time,
+                redis_status=(redis_client is not None),
+                batch_status=batch_status,
+                batch_jobs_count=batch_jobs_count,
+                gift_status=gift_status
             )
         
         except Exception as e:
@@ -544,9 +352,11 @@ def create_app(config_name='development'):
     
     # 회사 전환 API
     @app.route('/api/switch-company', methods=['POST'])
-    @login_required
     def switch_company():
         """회사 전환 API"""
+        if 'member_seq' not in session:
+            return redirect('/auth/login')
+        
         try:
             # JSON과 Form data 둘 다 처리
             if request.is_json:
@@ -578,6 +388,9 @@ def create_app(config_name='development'):
     @app.route('/health')
     def health():
         """헬스 체크 엔드포인트"""
+        if 'member_seq' not in session:
+            return redirect('/auth/login')
+        
         health_info = {
             'status': 'healthy',
             'timestamp': datetime.now().isoformat(),

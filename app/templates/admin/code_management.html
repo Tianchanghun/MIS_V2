@@ -15,6 +15,14 @@
     .parent-code:hover {
         background-color: #e3f2fd;
     }
+    .group-code {
+        background-color: #fff3cd;
+        cursor: pointer;
+        font-weight: bold;
+    }
+    .group-code:hover {
+        background-color: #ffeaa7;
+    }
     .code-actions {
         white-space: nowrap;
     }
@@ -39,6 +47,12 @@
     .table tr.selected {
         background-color: #d1ecf1 !important;
     }
+    
+    /* 계층별 들여쓰기 */
+    .depth-0 { padding-left: 8px; }
+    .depth-1 { padding-left: 24px; }
+    .depth-2 { padding-left: 40px; }
+    .depth-3 { padding-left: 56px; }
 </style>
 {% endblock %}
 
@@ -83,23 +97,26 @@
                                     <td>-</td>
                                 </tr>
                                 {% for code in codes %}
-                                <tr class="{{ 'parent-code' if code.depth == 0 else 'child-code' }}" 
+                                <tr class="{{ 'parent-code' if code.depth == 0 else ('group-code' if code.depth == 1 else 'child-code') }}" 
                                     id="{{ code.seq }}"
                                     data-seq="{{ code.seq }}" 
                                     data-depth="{{ code.depth }}" 
-                                    data-parent-seq="{{ code.parent_seq }}">
-                                    <td class="text-truncate">
+                                    data-parent-seq="{{ code.parent_seq or 0 }}"
+                                    style="{{ 'display: none;' if code.depth >= 1 else '' }}">
+                                    <td class="text-truncate depth-{{ code.depth }}">
                                         {% if code.depth == 0 %}
                                             <i class="fas fa-folder text-warning"></i> <strong>{{ code.code }}</strong>
+                                        {% elif code.depth == 1 %}
+                                            <i class="fas fa-folder-open text-info"></i> <strong>{{ code.code }}</strong>
                                         {% else %}
-                                            <i class="fas fa-file text-info"></i> {{ code.code }}
+                                            <i class="fas fa-file text-success"></i> {{ code.code }}
                                         {% endif %}
                                     </td>
                                     <td class="text-truncate">{{ code.code_name }}</td>
                                     <td class="text-truncate">{{ code.code_info or '-' }}</td>
                                     <td>{{ code.depth }}</td>
                                     <td class="code-actions">
-                                        {% if code.depth == 0 %}
+                                        {% if code.depth <= 1 %}
                                         <button class="btn btn-success btn-sm" onclick="addChildCode({{ code.seq }})" title="하위 코드 추가">
                                             <i class="fas fa-plus"></i>
                                         </button>
@@ -196,64 +213,87 @@
 <script>
 // 전역 변수
 let isEditMode = false;
-let arrCodeClick = [];
+let expandedNodes = new Set(); // 확장된 노드 추적
 
 // 페이지 로드 시 초기화
 $(document).ready(function() {
-    // 초기에 모든 하위 코드 숨김
-    $('.child-code').hide();
+    // 초기에는 최상위 그룹(depth=0)만 표시, 나머지는 모두 숨김
+    $('tr[data-depth="0"]').show();
+    $('tr[data-depth="1"], tr[data-depth="2"], tr[data-depth="3"]').hide();
 });
 
-// 상위 코드 클릭 시 하위 코드 표시/숨김 (레거시 방식)
+// 코드 행 클릭 시 하위 코드 표시/숨김
 $(document).on("click", "#codeTable > tbody > tr", function() {
     var seq = $(this).attr("id");
     var parentSeq = $(this).attr("data-parent-seq");
-    var depth = $(this).attr("data-depth");
+    var depth = parseInt($(this).attr("data-depth"));
     
     // 클릭 코드 하이라이트
     $("#codeTable > tbody > tr").removeClass("selected");
     $(this).addClass("selected");
     
     // 코드 등록 폼 표시 및 설정
-    var currentDepth = parseInt(depth);
-    showInsertPanel(seq, currentDepth);
+    showInsertPanel(seq, depth);
     
-    // 상위 코드인 경우 하위 코드 토글
-    if ($(this).hasClass("parent-code")) {
-        arrCodeClick = [];
+    // Root나 depth 0,1인 경우 하위 코드 토글
+    if (seq === "Root" || depth <= 1) {
+        toggleChildCodes(seq);
     }
-    arrCodeClick.push(seq);
-    
-    // 하위 코드 표시/숨김 로직 (레거시와 동일)
-    $(".child-code").each(function() {
-        var childParentSeq = $(this).attr("data-parent-seq");
-        if (childParentSeq == seq || childParentSeq == parentSeq || $.inArray(childParentSeq, arrCodeClick) >= 0) {
-            $(this).fadeIn("slow");
-        } else {
-            $(this).hide();
-        }
-    });
 });
+
+// 하위 코드 토글 함수
+function toggleChildCodes(parentSeq) {
+    var isExpanded = expandedNodes.has(parentSeq);
+    
+    if (isExpanded) {
+        // 축소: 하위 코드 숨기기
+        expandedNodes.delete(parentSeq);
+        $(`tr[data-parent-seq="${parentSeq}"]`).fadeOut("fast");
+        // 하위의 하위도 숨기기
+        $(`tr[data-parent-seq="${parentSeq}"]`).each(function() {
+            var childSeq = $(this).attr("data-seq");
+            expandedNodes.delete(childSeq);
+            $(`tr[data-parent-seq="${childSeq}"]`).hide();
+        });
+    } else {
+        // 확장: 직접 하위 코드만 표시
+        expandedNodes.add(parentSeq);
+        $(`tr[data-parent-seq="${parentSeq}"]`).fadeIn("slow");
+    }
+}
 
 // 등록 패널 표시
 function showInsertPanel(parentSeq, depth) {
     resetForm();
     $('#code-insert-panel').slideUp(200).slideDown(400);
-    $('#form-title').text(depth === 0 ? '코드 그룹 등록' : '하위 코드 등록');
+    
+    if (parentSeq === "Root" || parentSeq === "0") {
+        $('#form-title').text('최상위 코드 그룹 등록');
+        $('#parent_seq').val('0');
+        $('#depth').val('0');
+    } else {
+        var nextDepth = depth + 1;
+        $('#form-title').text(`${depth === 0 ? '분류 그룹' : '하위 코드'} 등록`);
+        $('#parent_seq').val(parentSeq);
+        $('#depth').val(nextDepth);
+    }
+    
     $('#btn-text').text('등록');
-    $('#parent_seq').val(parentSeq);
-    $('#depth').val(depth);
     isEditMode = false;
 }
 
 // 하위 코드 추가
 function addChildCode(parentSeq) {
+    var parentRow = $(`tr[data-seq="${parentSeq}"]`);
+    var parentDepth = parseInt(parentRow.attr("data-depth"));
+    var nextDepth = parentDepth + 1;
+    
     resetForm();
     $('#code-insert-panel').slideUp(200).slideDown(400);
-    $('#form-title').text('하위 코드 등록');
+    $('#form-title').text(`${parentDepth === 0 ? '분류 그룹' : '하위 코드'} 등록`);
     $('#btn-text').text('등록');
     $('#parent_seq').val(parentSeq);
-    $('#depth').val('1');
+    $('#depth').val(nextDepth);
     isEditMode = false;
 }
 
@@ -304,7 +344,7 @@ function editCode(seq) {
             $('#form-title').text('코드 수정');
             $('#btn-text').text('수정');
             $('#edit_seq').val(code.seq);
-            $('#parent_seq').val(code.parent_seq);
+            $('#parent_seq').val(code.parent_seq || '0');
             $('#depth').val(code.depth);
             $('#code').val(code.code);
             $('#code_name').val(code.code_name);
@@ -378,4 +418,4 @@ function cancelForm() {
     resetForm();
 }
 </script>
-{% endblock %} 
+{% endblock %}

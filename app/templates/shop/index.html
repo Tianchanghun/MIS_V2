@@ -1,0 +1,878 @@
+{% extends 'base.html' %}
+
+{% block page_title %}매장 관리{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 페이지 헤더 -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-store"></i> 매장 관리</h2>
+        <div class="d-flex gap-2">
+            <!-- 동기화 버튼 -->
+            <button type="button" class="btn btn-primary" id="btnSyncShops" onclick="syncShopsFromErpia()">
+                <i class="fas fa-sync-alt"></i> ERPia 동기화
+            </button>
+            
+            <!-- 엑셀 다운로드 버튼 -->
+            <button type="button" class="btn btn-success" id="btnExportExcel" onclick="exportToExcel()">
+                <i class="fas fa-file-excel"></i> 엑셀 다운로드
+            </button>
+            
+            <div>
+                <span id="shopStats" class="text-muted"></span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 필터 및 검색 -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row">
+                <!-- 매장 유형 필터 -->
+                <div class="col-md-6">
+                    <ul class="nav nav-pills">
+                        <li class="nav-item">
+                            <a class="nav-link {{ 'active' if shop_type == 'All' else '' }}" 
+                               href="?ty=All">전체</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ 'active' if shop_type == 'Shop' else '' }}" 
+                               href="?ty=Shop">매장</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ 'active' if shop_type == 'NoShop' else '' }}" 
+                               href="?ty=NoShop">매장아님</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ 'active' if shop_type == 'Nothing' else '' }}" 
+                               href="?ty=Nothing">미분류</a>
+                        </li>
+                    </ul>
+                </div>
+                
+                <!-- 검색 -->
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" class="form-control" id="searchInput" 
+                               placeholder="거래처명, 코드, 담당자, 주소로 검색...">
+                        <button class="btn btn-outline-primary" onclick="searchShops()">
+                            <i class="fas fa-search"></i> 검색
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="resetSearch()">
+                            <i class="fas fa-refresh"></i> 초기화
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 매장 목록 -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-list"></i> 거래처 리스트
+                <span id="shopCount" class="badge bg-secondary ms-2">0</span>
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover table-sm" id="shopsTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>번호</th>
+                            <th>거래처 코드</th>
+                            <th>판매채널</th>
+                            <th>거래처명</th>
+                            <th>전화번호</th>
+                            <th>시/도</th>
+                            <th>구</th>
+                            <th>담당자</th>
+                            <th>거래처 등급</th>
+                            <th>매장사용</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- 동적으로 로드 -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- 페이징 -->
+            <nav aria-label="매장 목록 페이징">
+                <ul class="pagination justify-content-center" id="pagination">
+                    <!-- 동적으로 생성 -->
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+<!-- 매장 정보 수정 모달 -->
+<div class="modal fade" id="shopModal" tabindex="-1" aria-labelledby="shopModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="shopModalLabel">거래처 정보 수정</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- 탭 네비게이션 -->
+                <nav>
+                    <div class="nav nav-tabs" id="nav-tab" role="tablist">
+                        <button class="nav-link active" id="nav-basic-tab" data-bs-toggle="tab" 
+                                data-bs-target="#nav-basic" type="button" role="tab">기본정보</button>
+                        <button class="nav-link" id="nav-contact-tab" data-bs-toggle="tab" 
+                                data-bs-target="#nav-contact" type="button" role="tab">연락처</button>
+                        <button class="nav-link" id="nav-address-tab" data-bs-toggle="tab" 
+                                data-bs-target="#nav-address" type="button" role="tab">주소정보</button>
+                        <button class="nav-link" id="nav-category-tab" data-bs-toggle="tab" 
+                                data-bs-target="#nav-category" type="button" role="tab">분류정보</button>
+                        <button class="nav-link" id="nav-etc-tab" data-bs-toggle="tab" 
+                                data-bs-target="#nav-etc" type="button" role="tab">기타정보</button>
+                    </div>
+                </nav>
+                
+                <!-- 탭 내용 -->
+                <div class="tab-content" id="nav-tabContent">
+                    <!-- 기본정보 탭 -->
+                    <div class="tab-pane fade show active" id="nav-basic" role="tabpanel">
+                        <div class="row mt-3">
+                            <!-- Hidden field for shop seq -->
+                            <input type="hidden" id="shop_seq">
+                            
+                            <div class="col-md-6">
+                                <label for="customer_code" class="form-label">거래처 코드</label>
+                                <input type="text" class="form-control" id="customer_code" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="customer_name" class="form-label">거래처명</label>
+                                <input type="text" class="form-control" id="customer_name">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="ceo" class="form-label">대표자</label>
+                                <input type="text" class="form-control" id="ceo">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="business_number" class="form-label">사업자번호</label>
+                                <input type="text" class="form-control" id="business_number">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="business_type" class="form-label">업태</label>
+                                <input type="text" class="form-control" id="business_type">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="business_item" class="form-label">종목</label>
+                                <input type="text" class="form-control" id="business_item">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="shop_yn" class="form-label">매장사용</label>
+                                <select class="form-control" id="shop_yn">
+                                    <option value="">선택</option>
+                                    <option value="Y">매장사용</option>
+                                    <option value="N">매장사용안함</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 연락처 탭 -->
+                    <div class="tab-pane fade" id="nav-contact" role="tabpanel">
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <label for="phone" class="form-label">전화</label>
+                                <input type="text" class="form-control" id="phone">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="fax" class="form-label">팩스</label>
+                                <input type="text" class="form-control" id="fax">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="our_manager" class="form-label">거래처 담당자</label>
+                                <input type="text" class="form-control" id="our_manager">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="customer_manager" class="form-label">상대방 담당자</label>
+                                <input type="text" class="form-control" id="customer_manager">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="customer_manager_tel" class="form-label">상대방 담당자 전화</label>
+                                <input type="text" class="form-control" id="customer_manager_tel">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="tax_manager" class="form-label">세금계산서 담당자</label>
+                                <input type="text" class="form-control" id="tax_manager">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="tax_manager_tel" class="form-label">세금계산서 담당자 전화</label>
+                                <input type="text" class="form-control" id="tax_manager_tel">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="tax_email" class="form-label">세금계산서 담당자 이메일</label>
+                                <input type="email" class="form-control" id="tax_email">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 주소정보 탭 -->
+                    <div class="tab-pane fade" id="nav-address" role="tabpanel">
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <label for="zip_code1" class="form-label">세금계산서 우편번호</label>
+                                <input type="text" class="form-control" id="zip_code1">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="location" class="form-label">로케이션</label>
+                                <input type="text" class="form-control" id="location">
+                            </div>
+                            <div class="col-md-12">
+                                <label for="address1" class="form-label">세금계산서 주소</label>
+                                <input type="text" class="form-control" id="address1">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="zip_code2" class="form-label">배송지 우편번호</label>
+                                <input type="text" class="form-control" id="zip_code2">
+                            </div>
+                            <div class="col-md-6">
+                                <!-- 공백 -->
+                            </div>
+                            <div class="col-md-12">
+                                <label for="address2" class="form-label">배송지 주소</label>
+                                <input type="text" class="form-control" id="address2">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Classification Tab (동적 생성) -->
+                    <div class="tab-pane fade" id="nav-category" role="tabpanel">
+                        <div class="row mt-3" id="classificationsContainer">
+                            <div class="col-12 text-center">
+                                <i class="fas fa-spinner fa-spin"></i> 분류 정보 로딩 중...
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 기타정보 탭 -->
+                    <div class="tab-pane fade" id="nav-etc" role="tabpanel">
+                        <div class="row mt-3">
+                            <div class="col-md-12">
+                                <label for="remarks" class="form-label">비고</label>
+                                <textarea class="form-control" id="remarks" rows="3"></textarea>
+                            </div>
+                            <div class="col-md-12">
+                                <label for="memo" class="form-label">메모</label>
+                                <textarea class="form-control" id="memo" rows="3"></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="admin_code" class="form-label">ERPia 관리자 코드</label>
+                                <input type="text" class="form-control" id="admin_code" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="edit_date" class="form-label">최종수정일</label>
+                                <input type="text" class="form-control" id="edit_date" readonly>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+                <button type="button" class="btn btn-primary" id="btnSaveShop">
+                    <i class="fas fa-save"></i> 저장
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 로딩 오버레이 -->
+<div id="loadingOverlay" class="loading-overlay" style="display: none;">
+    <div class="loading-spinner">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">로딩 중...</span>
+        </div>
+        <div class="mt-2">매장 정보 로딩 중...</div>
+    </div>
+</div>
+
+<style>
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+}
+
+.loading-spinner {
+    background: white;
+    padding: 2rem;
+    border-radius: 0.5rem;
+    text-align: center;
+}
+
+.table tbody tr {
+    cursor: pointer;
+}
+
+.table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+</style>
+
+<script>
+        // 전역 변수
+        let shopClassifications = {};
+        let classificationGroups = [];
+        let currentShopSeq = null;
+        let currentPage = 1;
+        let currentShopType = '{{ shop_type }}';
+        let currentSearch = '';
+        
+        // 페이지 로드시 초기화
+        $(document).ready(function() {
+            loadShopStats();
+            loadShops();
+            loadClassificationGroups(); // 분류 그룹 정보 먼저 로드
+            
+            // 엔터키 검색 지원
+            $('#searchInput').on('keypress', function(e) {
+                if (e.which === 13) {
+                    searchShops();
+                }
+            });
+            
+            // 테이블 행 클릭 이벤트
+            $(document).on('click', '#shopsTable tbody tr', function() {
+                const shopSeq = $(this).data('seq');
+                if (shopSeq) {
+                    showShopModal(shopSeq);
+                }
+            });
+            
+            // 저장 버튼 클릭
+            $('#btnSaveShop').on('click', saveShop);
+        });
+        
+        // 분류 그룹 정보 로드 (UI 구성용)
+        function loadClassificationGroups() {
+            $.get('/shop/api/classifications/groups')
+                .done(function(response) {
+                    if (response.success) {
+                        classificationGroups = response.data;
+                        console.log(`📂 분류 그룹 로드 완료: ${response.total}개 그룹`);
+                        
+                        // 분류 정보 상세 로드
+                        loadClassifications();
+                        
+                        // 분류 UI 생성
+                        buildClassificationUI();
+                    } else {
+                        console.error('❌ 분류 그룹 로드 실패:', response.message);
+                        showClassificationError('분류 그룹 정보를 불러올 수 없습니다.');
+                    }
+                })
+                .fail(function() {
+                    console.error('❌ 분류 그룹 로드 서버 오류');
+                    showClassificationError('서버 연결 오류가 발생했습니다.');
+                });
+        }
+        
+        // 분류 정보 로드
+        function loadClassifications() {
+            $.get('/shop/api/classifications')
+                .done(function(response) {
+                    if (response.success) {
+                        shopClassifications = response.data;
+                        console.log(`🏷️ 분류 정보 로드 완료: ${response.meta?.total_groups || 0}개 그룹`);
+                        
+                        // 드롭다운 옵션 채우기
+                        populateClassificationDropdowns();
+                    } else {
+                        console.error('❌ 분류 정보 로드 실패:', response.message);
+                        showClassificationError('분류 정보를 불러올 수 없습니다.');
+                    }
+                })
+                .fail(function() {
+                    console.error('❌ 분류 정보 로드 서버 오류');
+                    showClassificationError('분류 정보 로딩 중 오류가 발생했습니다.');
+                });
+        }
+        
+        // 분류 UI 동적 생성
+        function buildClassificationUI() {
+            const container = $('#classificationsContainer');
+            
+            if (!classificationGroups || classificationGroups.length === 0) {
+                container.html(`
+                    <div class="col-12 text-center text-muted">
+                        <i class="fas fa-info-circle"></i> 사용 가능한 분류 정보가 없습니다.
+                        <br><small>코드 관리에서 CST 그룹에 분류를 추가해주세요.</small>
+                    </div>
+                `);
+                return;
+            }
+            
+            let html = '';
+            
+            // 분류 그룹별로 드롭다운 생성 (2열 레이아웃)
+            classificationGroups.forEach(function(group, index) {
+                const fieldId = group.key; // 소문자 키 사용
+                const fieldName = group.name;
+                
+                html += `
+                    <div class="col-md-6 mb-3">
+                        <label for="${fieldId}" class="form-label">
+                            <i class="fas fa-tag text-primary"></i> ${fieldName}
+                            <small class="text-muted">(${group.sub_codes_count}개 옵션)</small>
+                        </label>
+                        <select class="form-control classification-select" 
+                                id="${fieldId}" 
+                                data-group-code="${group.code}"
+                                data-group-seq="${group.seq}">
+                            <option value="">선택하세요</option>
+                        </select>
+                    </div>
+                `;
+            });
+            
+            // 추가 정보 표시
+            html += `
+                <div class="col-12 mt-3">
+                    <div class="alert alert-info alert-sm">
+                        <i class="fas fa-lightbulb"></i> 
+                        <strong>분류 정보 안내:</strong> 
+                        총 ${classificationGroups.length}개의 분류 그룹이 있습니다. 
+                        분류는 <a href="/admin/code_management" target="_blank">코드 관리 > CST</a>에서 관리할 수 있습니다.
+                    </div>
+                </div>
+            `;
+            
+            container.html(html);
+            console.log(`🎨 분류 UI 생성 완료: ${classificationGroups.length}개 드롭다운`);
+        }
+        
+        // 분류 드롭다운 옵션 채우기
+        function populateClassificationDropdowns() {
+            classificationGroups.forEach(function(group) {
+                const selectElement = $(`#${group.key}`);
+                if (selectElement.length === 0) return;
+                
+                // 기존 옵션 제거 (첫 번째 "선택하세요" 제외)
+                selectElement.find('option:not(:first)').remove();
+                
+                // 해당 그룹의 분류 정보 가져오기
+                const classificationData = shopClassifications[group.key];
+                if (!classificationData || !classificationData.codes) {
+                    console.warn(`⚠️ ${group.key} 분류 데이터 없음`);
+                    return;
+                }
+                
+                // 옵션 추가
+                classificationData.codes.forEach(function(code) {
+                    selectElement.append(`
+                        <option value="${code.code}" title="${code.code_info || code.code_name}">
+                            ${code.code_name}
+                        </option>
+                    `);
+                });
+                
+                console.log(`  ✅ ${group.key}(${group.name}): ${classificationData.codes.length}개 옵션 추가`);
+            });
+        }
+        
+        // 분류 오류 표시
+        function showClassificationError(message) {
+            $('#classificationsContainer').html(`
+                <div class="col-12">
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i> ${message}
+                        <br><small>페이지를 새로고침하거나 관리자에게 문의하세요.</small>
+                    </div>
+                </div>
+            `);
+        }
+        
+        // 매장 통계 로드
+        function loadShopStats() {
+            $.get('/shop/api/stats')
+                .done(function(response) {
+                    if (response.success) {
+                        const stats = response.data;
+                        $('#shopStats').html(`
+                            전체: ${stats.total} | 
+                            매장: ${stats.shops} | 
+                            매장아님: ${stats.no_shops} | 
+                            미분류: ${stats.nothing}
+                        `);
+                    }
+                })
+                .fail(function() {
+                    showAlert('통계 정보 로드에 실패했습니다.', 'danger');
+                });
+        }
+
+        // 매장 목록 로드
+        function loadShops(page = 1) {
+            currentPage = page;
+            
+            const params = {
+                ty: currentShopType,
+                search: currentSearch,
+                page: page,
+                per_page: 20
+            };
+            
+            $.get('/shop/api/shops', params)
+                .done(function(response) {
+                    if (response.success) {
+                        renderShopsTable(response.data);
+                        renderPagination(response.pagination);
+                    } else {
+                        showAlert('danger', '매장 목록을 불러올 수 없습니다.');
+                    }
+                })
+                .fail(function() {
+                    showAlert('danger', '서버 연결 오류가 발생했습니다.');
+                });
+        }
+        
+        // 매장 검색
+        function searchShops() {
+            currentSearch = $('#searchInput').val().trim();
+            currentPage = 1;
+            loadShops(1);
+        }
+        
+        // 검색 초기화
+        function resetSearch() {
+            $('#searchInput').val('');
+            currentSearch = '';
+            currentPage = 1;
+            loadShops(1);
+        }
+        
+        // 매장 유형 필터 변경
+        function filterShops(shopType) {
+            currentShopType = shopType;
+            currentPage = 1;
+            loadShops(1);
+            
+            // 활성 버튼 스타일 업데이트
+            $('.filter-btn').removeClass('btn-primary').addClass('btn-outline-primary');
+            $(`[onclick="filterShops('${shopType}')"]`).removeClass('btn-outline-primary').addClass('btn-primary');
+        }
+
+        // 매장 테이블 렌더링
+        function renderShopsTable(shops) {
+            const tbody = $('#shopsTable tbody');
+            tbody.empty();
+            
+            shops.forEach((shop, index) => {
+                const shopYnBadge = shop.shop_yn === 'Y' ? 
+                    '<span class="badge bg-success">매장</span>' : 
+                    shop.shop_yn === 'N' ? 
+                    '<span class="badge bg-secondary">매장아님</span>' : 
+                    '<span class="badge bg-warning">미분류</span>';
+            
+                // 주소에서 시/도, 구 추출
+                let sido = '', gungu = '';
+                if (shop.address1) {
+                    const addressParts = shop.address1.split(' ');
+                    if (addressParts.length >= 2) {
+                        sido = addressParts[0];
+                        gungu = addressParts[1];
+                    }
+                }
+                
+                const row = `
+                    <tr data-seq="${shop.seq}">
+                        <td>${(currentPage - 1) * 20 + index + 1}</td>
+                        <td>${shop.customer_code || ''}</td>
+                        <td>${shop.channel_type || ''}</td>
+                        <td><strong>${shop.customer_name || ''}</strong></td>
+                        <td>${shop.phone || ''}</td>
+                        <td>${sido}</td>
+                        <td>${gungu}</td>
+                        <td>${shop.our_manager || ''}</td>
+                        <td></td>
+                        <td>${shopYnBadge}</td>
+                    </tr>
+                `;
+                tbody.append(row);
+            });
+        }
+
+        // 페이징 렌더링
+        function renderPagination(pagination) {
+            const nav = $('#pagination');
+            nav.empty();
+            
+            // 이전 페이지
+            if (pagination.has_prev) {
+                nav.append(`
+                    <li class="page-item">
+                        <a class="page-link" href="#" onclick="loadShops(${pagination.page - 1})">이전</a>
+                    </li>
+                `);
+            }
+            
+            // 페이지 번호들
+            const startPage = Math.max(1, pagination.page - 2);
+            const endPage = Math.min(pagination.pages, pagination.page + 2);
+            
+            for (let i = startPage; i <= endPage; i++) {
+                nav.append(`
+                    <li class="page-item ${i === pagination.page ? 'active' : ''}">
+                        <a class="page-link" href="#" onclick="loadShops(${i})">${i}</a>
+                    </li>
+                `);
+            }
+            
+            // 다음 페이지
+            if (pagination.has_next) {
+                nav.append(`
+                    <li class="page-item">
+                        <a class="page-link" href="#" onclick="loadShops(${pagination.page + 1})">다음</a>
+                    </li>
+                `);
+            }
+        }
+        
+        // 매장 모달 표시
+        function showShopModal(shopSeq) {
+            currentShopSeq = shopSeq;
+            $('#shopModal').modal('show');
+            
+            // 매장 정보 로드
+            $.get(`/shop/api/shop/${shopSeq}`)
+                .done(function(response) {
+                    if (response.success) {
+                        populateShopModal(response.data);
+                    } else {
+                        showAlert('danger', '매장 정보를 불러올 수 없습니다.');
+                    }
+                })
+                .fail(function() {
+                    showAlert('danger', '서버 연결 오류가 발생했습니다.');
+                });
+        }
+        
+        // 매장 정보 모달에 분류 정보 채우기
+        function populateShopModal(shop) {
+            // 기본 정보 채우기
+            $('#shop_seq').val(shop.seq || '');
+            $('#customer_code').val(shop.customer_code || '');
+            $('#customer_name').val(shop.customer_name || '');
+            $('#ceo').val(shop.ceo || '');
+            $('#business_number').val(shop.business_number || '');
+            $('#business_type').val(shop.business_type || '');
+            $('#business_item').val(shop.business_item || '');
+            
+            // 연락처 정보
+            $('#phone').val(shop.phone || '');
+            $('#fax').val(shop.fax || '');
+            $('#our_manager').val(shop.our_manager || '');
+            $('#customer_manager').val(shop.customer_manager || '');
+            $('#customer_manager_tel').val(shop.customer_manager_tel || '');
+            
+            // 주소 정보
+            $('#location').val(shop.location || '');
+            $('#zip_code1').val(shop.zip_code1 || '');
+            $('#address1').val(shop.address1 || '');
+            $('#zip_code2').val(shop.zip_code2 || '');
+            $('#address2').val(shop.address2 || '');
+            $('#remarks').val(shop.remarks || '');
+            
+            // 기타 정보
+            $('#tax_manager').val(shop.tax_manager || '');
+            $('#tax_manager_tel').val(shop.tax_manager_tel || '');
+            $('#tax_email').val(shop.tax_email || '');
+            $('#memo').val(shop.memo || '');
+            $('#shop_yn').val(shop.shop_yn || '');
+            
+            // 분류 정보 동적 설정
+            classificationGroups.forEach(function(group) {
+                const fieldId = group.key;
+                const selectElement = $(`#${fieldId}`);
+                
+                if (selectElement.length > 0) {
+                    // 매장 데이터에서 해당 분류 값 가져오기
+                    const fieldValue = shop[fieldId] || '';
+                    selectElement.val(fieldValue);
+                    
+                    if (fieldValue) {
+                        console.log(`🏷️ ${group.name}: ${fieldValue} 설정`);
+                    }
+                }
+            });
+        }
+        
+        // 매장 정보 저장시 분류 정보 포함
+        function saveShop() {
+            const shopSeq = $('#shop_seq').val();
+            
+            if (!shopSeq) {
+                showAlert('danger', '매장 정보가 올바르지 않습니다.');
+                return;
+            }
+            
+            // 기본 정보 수집
+            const shopData = {
+                customer_name: $('#customer_name').val(),
+                ceo: $('#ceo').val(),
+                business_number: $('#business_number').val(),
+                business_type: $('#business_type').val(),
+                business_item: $('#business_item').val(),
+                phone: $('#phone').val(),
+                fax: $('#fax').val(),
+                our_manager: $('#our_manager').val(),
+                customer_manager: $('#customer_manager').val(),
+                customer_manager_tel: $('#customer_manager_tel').val(),
+                location: $('#location').val(),
+                zip_code1: $('#zip_code1').val(),
+                address1: $('#address1').val(),
+                zip_code2: $('#zip_code2').val(),
+                address2: $('#address2').val(),
+                remarks: $('#remarks').val(),
+                tax_manager: $('#tax_manager').val(),
+                tax_manager_tel: $('#tax_manager_tel').val(),
+                tax_email: $('#tax_email').val(),
+                memo: $('#memo').val(),
+                shop_yn: $('#shop_yn').val()
+            };
+            
+            // 분류 정보 동적 수집
+            classificationGroups.forEach(function(group) {
+                const fieldId = group.key;
+                const selectElement = $(`#${fieldId}`);
+                
+                if (selectElement.length > 0) {
+                    shopData[fieldId] = selectElement.val() || '';
+                }
+            });
+            
+            showLoading(true);
+            
+            $.ajax({
+                url: `/shop/api/shop/${shopSeq}`,
+                method: 'PUT',
+                contentType: 'application/json',
+                data: JSON.stringify(shopData),
+                success: function(response) {
+                    showLoading(false);
+                    if (response.success) {
+                        showAlert('success', '매장 정보가 성공적으로 저장되었습니다.');
+                        $('#shopModal').modal('hide');
+                        loadShops(); // 목록 새로고침
+                        loadShopStats(); // 통계 새로고침
+                    } else {
+                        showAlert('danger', '저장 실패: ' + response.message);
+                    }
+                },
+                error: function() {
+                    showLoading(false);
+                    showAlert('danger', '서버 연결 오류가 발생했습니다.');
+                }
+            });
+        }
+
+        // 알림 표시
+        function showAlert(type = 'info', message) {
+            const alertHtml = `
+                <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            $('.container-fluid').prepend(alertHtml);
+            
+            // 3초 후 자동 제거
+            setTimeout(() => {
+                $('.alert').fadeOut();
+            }, 3000);
+        }
+
+        // 로딩 오버레이 표시/숨김
+        function showLoading(show) {
+            $('#loadingOverlay').toggle(show);
+        }
+        
+        // ERPia 매장 정보 동기화
+        function syncShopsFromErpia() {
+            if (!confirm('ERPia에서 매장 정보를 동기화하시겠습니까?\n이 작업은 몇 분이 소요될 수 있습니다.')) {
+                return;
+            }
+            
+            // 버튼 비활성화 및 로딩 상태
+            $('#btnSyncShops').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> 동기화 중...');
+            showLoading(true);
+            
+            $.ajax({
+                url: '/shop/api/sync-erpia',
+                method: 'POST',
+                timeout: 300000, // 5분 타임아웃
+                success: function(response) {
+                    if (response.success) {
+                        showAlert('success', `✅ 동기화 완료: ${response.data.updated}개 업데이트, ${response.data.inserted}개 신규 추가`);
+                        loadShops(); // 목록 새로고침
+                        loadShopStats(); // 통계 새로고침
+                    } else {
+                        showAlert('danger', '❌ 동기화 실패: ' + response.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    if (status === 'timeout') {
+                        showAlert('warning', '⏰ 동기화 작업이 시간 초과되었습니다. 백그라운드에서 계속 진행될 수 있습니다.');
+                    } else {
+                        showAlert('danger', '❌ 서버 연결 오류: ' + error);
+                    }
+                },
+                complete: function() {
+                    // 버튼 복원
+                    $('#btnSyncShops').prop('disabled', false).html('<i class="fas fa-sync-alt"></i> ERPia 동기화');
+                    showLoading(false);
+                }
+            });
+        }
+        
+        // 엑셀 다운로드
+        function exportToExcel() {
+            // 현재 필터 조건 수집
+            const params = {
+                ty: currentShopType,
+                search: currentSearch,
+                format: 'excel'
+            };
+            
+            // 파라미터를 쿼리 스트링으로 변환
+            const queryString = new URLSearchParams(params).toString();
+            
+            // 다운로드 링크 생성 및 클릭
+            const downloadUrl = `/shop/api/export-excel?${queryString}`;
+            
+            // 버튼 일시 비활성화
+            $('#btnExportExcel').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> 생성 중...');
+            
+            // iframe을 이용한 파일 다운로드
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = downloadUrl;
+            document.body.appendChild(iframe);
+            
+            // 3초 후 버튼 복원 및 iframe 제거
+            setTimeout(() => {
+                $('#btnExportExcel').prop('disabled', false).html('<i class="fas fa-file-excel"></i> 엑셀 다운로드');
+                document.body.removeChild(iframe);
+                showAlert('success', '📊 엑셀 파일 다운로드가 시작되었습니다.');
+            }, 3000);
+        }
+</script>
+{% endblock %} 

@@ -2,12 +2,14 @@
 <div id="sidebar" class="d-flex flex-column bg-light border-end vh-100 position-fixed" style="width: 250px; z-index: 1000;">
     <!-- 로고 섹션 -->
     <div class="p-3 border-bottom bg-primary text-white text-center">
-        <div class="mb-2">
-            <img src="{{ url_for('static', filename='img/logo.png') }}" alt="MIS v2 Logo" style="max-width: 80px; max-height: 50px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-            <i class="fas fa-building fa-2x" style="display: none;"></i>
-        </div>
-        <h5 class="mb-0">MIS v2</h5>
-        <small>Management Information System</small>
+        <a href="{{ url_for('index') }}" class="text-white text-decoration-none" style="cursor: pointer; transition: opacity 0.3s ease;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+            <div class="mb-2">
+                <img src="{{ url_for('static', filename='img/logo.png') }}" alt="MIS v2 Logo" style="max-width: 80px; max-height: 50px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                <i class="fas fa-building fa-2x" style="display: none;"></i>
+            </div>
+            <h5 class="mb-0">MIS v2</h5>
+            <small>Management Information System</small>
+        </a>
     </div>
     
     <!-- 사용자 패널 -->
@@ -150,22 +152,68 @@
                 </div>
             </li>
             
-            <!-- 고객 관리 -->
+            <!-- 영업 관리 -->
             <li class="nav-item">
-                <a class="nav-link text-dark dropdown-toggle" href="#customerMenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
-                    <i class="fas fa-user-friends me-2"></i> 고객 관리
+                <a class="nav-link" href="#sales-menu" data-bs-toggle="collapse">
+                    <i class="fas fa-chart-line"></i>
+                    <span>영업 관리</span>
+                    <i class="fas fa-chevron-down ms-auto"></i>
                 </a>
-                <div class="collapse" id="customerMenu">
-                    <div class="ms-3">
-                        <a class="nav-link text-dark py-1" href="{{ url_for('customer.index') }}">
-                            <i class="fas fa-list me-2"></i> 고객 목록
-                        </a>
-                        <a class="nav-link text-dark py-1" href="{{ url_for('customer.analysis') }}">
-                            <i class="fas fa-chart-bar me-2"></i> 고객 분석
-                </a>
-                    </div>
+                <div class="collapse" id="sales-menu">
+                    <ul class="nav nav-pills flex-column ms-3">
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('shop.index') }}">
+                                <i class="fas fa-store"></i> 매장 관리
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#">
+                                <i class="fas fa-users"></i> 영업사원 관리
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#">
+                                <i class="fas fa-chart-bar"></i> 영업 실적
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#">
+                                <i class="fas fa-handshake"></i> 거래처 관리
+                            </a>
+                        </li>
+                    </ul>
                 </div>
             </li>
+
+            <!-- 고객 관리 -->
+            <li class="nav-item">
+                <a class="nav-link" href="#customer-menu" data-bs-toggle="collapse">
+                    <i class="fas fa-users-cog"></i>
+                    <span>고객 관리</span>
+                    <i class="fas fa-chevron-down ms-auto"></i>
+                </a>
+                <div class="collapse" id="customer-menu">
+                    <ul class="nav nav-pills flex-column ms-3">
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('customer.index') }}">
+                                <i class="fas fa-user-friends"></i> 고객 목록
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('customer.as_list') }}">
+                                <i class="fas fa-list"></i> A/S 접수 목록
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('customer.analysis') }}">
+                                <i class="fas fa-chart-line"></i> 고객 분석
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </li>
+
+            <!-- 매장 관리 (기존 독립 메뉴 제거) -->
         </ul>
     </nav>
     
