@@ -26,3 +26,7 @@ gunicorn==21.2.0
 
 # 개발 도구
 python-dotenv==1.0.0 
+
+# 엑셀 처리를 위한 추가 라이브러리
+pandas>=2.0.0
+openpyxl>=3.1.0 

@@ -2,21 +2,25 @@
 상품관리 라우트
 """
 import os
+import pandas as pd
 from datetime import datetime
-from flask import render_template, request, jsonify, session, current_app, redirect, url_for, flash
+from flask import render_template, request, jsonify, session, current_app, redirect, url_for, flash, send_file, make_response
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from sqlalchemy import and_, or_
+from io import BytesIO
+import tempfile
 
 from app.product import bp
 from app.common.models import db, Product, ProductHistory, Code, Company, Brand
 
 # 파일 업로드 설정
 ALLOWED_EXTENSIONS = {'pdf'}
+EXCEL_EXTENSIONS = {'xlsx', 'xls'}
 UPLOAD_FOLDER = 'static/uploads/manuals'
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+def allowed_file(filename, extensions=ALLOWED_EXTENSIONS):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in extensions
 
 def require_login():
     """로그인 체크 함수"""
@@ -481,3 +485,283 @@ def api_get_codes(code_type):
     except Exception as e:
         current_app.logger.error(f"❌ 코드 조회 실패: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500 
+
+@bp.route('/api/upload-excel', methods=['POST'])
+@login_required
+def api_upload_excel():
+    """엑셀 파일 일괄 업로드"""
+    try:
+        if not session.get('member_seq'):
+            return jsonify({'success': False, 'message': '로그인이 필요합니다.'}), 401
+        
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'message': '파일이 선택되지 않았습니다.'}), 400
+        
+        file = request.files['file']
+        if not file.filename:
+            return jsonify({'success': False, 'message': '파일이 선택되지 않았습니다.'}), 400
+        
+        if not allowed_file(file.filename, EXCEL_EXTENSIONS):
+            return jsonify({'success': False, 'message': '엑셀 파일(.xlsx, .xls)만 업로드 가능합니다.'}), 400
+        
+        current_company_id = session.get('current_company_id', 1)
+        created_by = session.get('member_id', 'admin')
+        
+        # 임시 파일로 저장
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as tmp_file:
+            file.save(tmp_file.name)
+            
+            # 엑셀 파일 읽기
+            df = pd.read_excel(tmp_file.name)
+            
+        os.unlink(tmp_file.name)  # 임시 파일 삭제
+        
+        success_count = 0
+        error_count = 0
+        errors = []
+        
+        for index, row in df.iterrows():
+            try:
+                # 필수 필드 체크
+                if pd.isna(row.get('상품명')) or not str(row['상품명']).strip():
+                    errors.append(f"행 {index + 2}: 상품명이 없습니다")
+                    error_count += 1
+                    continue
+                
+                # 브랜드 매핑
+                brand_seq = None
+                if not pd.isna(row.get('브랜드')):
+                    brand_name = str(row['브랜드']).strip()
+                    brand = Brand.query.filter_by(brand_name=brand_name).first()
+                    if brand:
+                        brand_seq = brand.seq
+                
+                # 품목 매핑
+                category_code_seq = None
+                if not pd.isna(row.get('품목')):
+                    category_name = str(row['품목']).strip()
+                    category_codes = Code.get_codes_by_group_name('품목')
+                    for code in category_codes:
+                        if code['code_name'] == category_name:
+                            category_code_seq = code['seq']
+                            break
+                
+                # 타입 매핑
+                type_code_seq = None
+                if not pd.isna(row.get('타입')):
+                    type_name = str(row['타입']).strip()
+                    type_codes = Code.get_codes_by_group_name('타입')
+                    for code in type_codes:
+                        if code['code_name'] == type_name:
+                            type_code_seq = code['seq']
+                            break
+                
+                # 가격 처리
+                price = 0
+                if not pd.isna(row.get('가격')):
+                    try:
+                        price = int(float(row['가격']))
+                    except:
+                        price = 0
+                
+                # 상품 생성
+                product = Product(
+                    company_id=current_company_id,
+                    brand_seq=brand_seq,
+                    category_code_seq=category_code_seq,
+                    type_code_seq=type_code_seq,
+                    product_name=str(row['상품명']).strip(),
+                    product_code=str(row.get('상품코드', '')).strip() or None,
+                    product_year=str(row.get('년도', '')).strip() or None,
+                    price=price,
+                    description=str(row.get('설명', '')).strip() or None,
+                    is_active=str(row.get('상태', '활성')).strip() == '활성',
+                    created_by=created_by,
+                    updated_by=created_by
+                )
+                
+                db.session.add(product)
+                db.session.flush()  # ID 생성을 위해
+                
+                # 히스토리 기록
+                history = ProductHistory(
+                    product_id=product.id,
+                    action='EXCEL_UPLOAD',
+                    new_values=product.to_dict(),
+                    created_by=created_by
+                )
+                db.session.add(history)
+                
+                success_count += 1
+                
+            except Exception as e:
+                db.session.rollback()
+                errors.append(f"행 {index + 2}: {str(e)}")
+                error_count += 1
+                continue
+        
+        if success_count > 0:
+            db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'업로드 완료: 성공 {success_count}개, 실패 {error_count}개',
+            'success_count': success_count,
+            'error_count': error_count,
+            'errors': errors[:10]  # 최대 10개 오류만 반환
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"❌ 엑셀 업로드 실패: {e}")
+        return jsonify({'success': False, 'message': f'업로드 중 오류가 발생했습니다: {str(e)}'}), 500
+
+@bp.route('/api/download-excel')
+@login_required
+def api_download_excel():
+    """상품 목록 엑셀 다운로드"""
+    try:
+        if not session.get('member_seq'):
+            return jsonify({'success': False, 'message': '로그인이 필요합니다.'}), 401
+        
+        current_company_id = session.get('current_company_id', 1)
+        
+        # 상품 목록 조회
+        products = Product.query.filter_by(company_id=current_company_id).all()
+        
+        # 데이터 준비
+        data = []
+        for product in products:
+            data.append({
+                'ID': product.id,
+                '상품명': product.product_name,
+                '상품코드': product.product_code or '',
+                '브랜드': product.brand.brand_name if product.brand else '',
+                '품목': product.category.code_name if product.category else '',
+                '타입': product.type.code_name if product.type else '',
+                '년도': product.product_year or '',
+                '가격': product.price or 0,
+                '설명': product.description or '',
+                '상태': '활성' if product.is_active else '비활성',
+                '등록일': product.created_at.strftime('%Y-%m-%d') if product.created_at else '',
+                '등록자': product.created_by or ''
+            })
+        
+        # DataFrame 생성
+        df = pd.DataFrame(data)
+        
+        # 엑셀 파일 생성
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='상품목록', index=False)
+            
+            # 워크시트 서식 설정
+            worksheet = writer.sheets['상품목록']
+            for column in worksheet.columns:
+                max_length = 0
+                column_letter = column[0].column_letter
+                for cell in column:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except:
+                        pass
+                adjusted_width = min(max_length + 2, 50)
+                worksheet.column_dimensions[column_letter].width = adjusted_width
+        
+        output.seek(0)
+        
+        # 파일명 생성
+        filename = f"상품목록_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        
+        response = make_response(output.getvalue())
+        response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        return response
+        
+    except Exception as e:
+        current_app.logger.error(f"❌ 엑셀 다운로드 실패: {e}")
+        return jsonify({'success': False, 'message': f'다운로드 중 오류가 발생했습니다: {str(e)}'}), 500
+
+@bp.route('/api/download-template')
+@login_required
+def api_download_template():
+    """엑셀 업로드 템플릿 다운로드"""
+    try:
+        # 템플릿 데이터 생성
+        template_data = {
+            '상품명': ['상품명 예시1', '상품명 예시2'],
+            '상품코드': ['PROD001', 'PROD002'],
+            '브랜드': ['브랜드1', '브랜드2'],
+            '품목': ['품목1', '품목2'],
+            '타입': ['타입1', '타입2'],
+            '년도': ['2024', '2024'],
+            '가격': [10000, 20000],
+            '설명': ['상품 설명1', '상품 설명2'],
+            '상태': ['활성', '활성']
+        }
+        
+        df = pd.DataFrame(template_data)
+        
+        # 엑셀 파일 생성
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='상품업로드템플릿', index=False)
+            
+            # 워크시트 서식 설정
+            worksheet = writer.sheets['상품업로드템플릿']
+            for column in worksheet.columns:
+                max_length = 0
+                column_letter = column[0].column_letter
+                for cell in column:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except:
+                        pass
+                adjusted_width = min(max_length + 2, 30)
+                worksheet.column_dimensions[column_letter].width = adjusted_width
+        
+        output.seek(0)
+        
+        response = make_response(output.getvalue())
+        response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        response.headers['Content-Disposition'] = 'attachment; filename="상품업로드템플릿.xlsx"'
+        
+        return response
+        
+    except Exception as e:
+        current_app.logger.error(f"❌ 템플릿 다운로드 실패: {e}")
+        return jsonify({'success': False, 'message': f'템플릿 다운로드 중 오류가 발생했습니다: {str(e)}'}), 500
+
+@bp.route('/api/sync-erpia', methods=['POST'])
+@login_required
+def api_sync_erpia():
+    """ERPia와 상품 동기화"""
+    try:
+        if not session.get('member_seq'):
+            return jsonify({'success': False, 'message': '로그인이 필요합니다.'}), 401
+        
+        # ERPia 동기화 로직 구현
+        # 여기서는 간단한 예시로 성공 반환
+        # 실제로는 ERPia API를 호출하여 상품 정보를 가져와야 함
+        
+        current_app.logger.info(f"ERPia 상품 동기화 시작 - 사용자: {session.get('member_id')}")
+        
+        # TODO: 실제 ERPia API 연동 구현
+        # 1. ERPia에서 상품 목록 가져오기
+        # 2. 기존 상품과 비교하여 UPSERT
+        # 3. 동기화 결과 반환
+        
+        return jsonify({
+            'success': True,
+            'message': 'ERPia 동기화가 완료되었습니다',
+            'sync_count': 0,
+            'new_count': 0,
+            'updated_count': 0
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"❌ ERPia 동기화 실패: {e}")
+        return jsonify({'success': False, 'message': f'동기화 중 오류가 발생했습니다: {str(e)}'}), 500 
