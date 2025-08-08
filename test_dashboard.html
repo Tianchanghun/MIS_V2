@@ -1,0 +1,604 @@
+
+            <!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="current-company-id" content="1">
+    <title>MIS v2 대시보드</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+    
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- DataTables JS -->
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+    
+    <!-- Custom CSS -->
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #f8f9fa;
+        }
+        
+        /* 메인 콘텐츠 영역을 사이드바 너비만큼 오른쪽으로 이동 */
+        .main-content {
+            margin-left: 250px;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        /* 반응형: 모바일에서는 사이드바가 숨겨지므로 마진 제거 */
+        @media (max-width: 768px) {
+            .main-content {
+                margin-left: 0;
+            }
+        }
+        
+        /* 카드 스타일 */
+        .card {
+            border: none;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            border-radius: 0.5rem;
+        }
+        
+        .card-header {
+            background-color: #fff;
+            border-bottom: 1px solid #dee2e6;
+            font-weight: 600;
+        }
+        
+        /* 테이블 스타일 */
+        .table {
+            font-size: 0.9rem;
+        }
+        
+        .table th {
+            background-color: #f8f9fa;
+            border-color: #dee2e6;
+            font-weight: 600;
+        }
+        
+        /* 버튼 스타일 */
+        .btn {
+            border-radius: 0.375rem;
+        }
+        
+        /* 배지 스타일 */
+        .badge {
+            font-size: 0.75rem;
+        }
+        
+        /* 플래시 메시지 스타일 */
+        .alert {
+            border-radius: 0.5rem;
+            border: none;
+        }
+    </style>
+    
+    
+</head>
+
+<body>
+    <!-- 사이드바 포함 -->
+    
+        <!-- 좌측 사이드바 -->
+<div id="sidebar" class="d-flex flex-column bg-light border-end vh-100 position-fixed" style="width: 250px; z-index: 1000;">
+    <!-- 로고 섹션 -->
+    <div class="p-3 border-bottom bg-primary text-white text-center">
+        <div class="mb-2">
+            <img src="/static/img/logo.png" alt="MIS v2 Logo" style="max-width: 80px; max-height: 50px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+            <i class="fas fa-building fa-2x" style="display: none;"></i>
+        </div>
+        <h5 class="mb-0">MIS v2</h5>
+        <small>Management Information System</small>
+    </div>
+    
+    <!-- 사용자 패널 -->
+    <div class="p-3 border-bottom">
+        <div class="d-flex align-items-center">
+            <div class="me-3">
+                <i class="fas fa-user-circle fa-2x text-primary"></i>
+            </div>
+            <div>
+                <div class="fw-bold"></div>
+                <small class="text-muted"></small>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 회사 전환 (멀티테넌트) -->
+    
+    <!-- 단일 회사 표시 -->
+    <div class="p-3 border-bottom bg-light">
+        <div class="mb-2">
+            <small class="text-muted fw-bold">현재 회사</small>
+        </div>
+        <div class="d-flex align-items-center">
+            <i class="fas fa-building me-2 text-primary"></i>
+            <span class="fw-bold">
+                
+                    에이원
+                
+            </span>
+        </div>
+    </div>
+    
+        
+    <!-- 메인 네비게이션 -->
+    <nav class="flex-grow-1 overflow-auto">
+        <ul class="nav nav-pills flex-column p-2" id="sidebar-menu">
+            <li class="nav-item"><small class="text-muted fw-bold px-2">NAVIGATION</small></li>
+            
+            <!-- 대시보드 -->
+            <li class="nav-item">
+                <a class="nav-link text-dark" href="/">
+                    <i class="fas fa-tachometer-alt me-2"></i> 대시보드
+                </a>
+            </li>
+            
+            <!-- 관리자 메뉴 -->
+            <li class="nav-item">
+                <a class="nav-link text-dark dropdown-toggle" href="#adminMenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
+                    <i class="fas fa-cog me-2"></i> 관리자
+                </a>
+                <div class="collapse" id="adminMenu">
+                    <div class="ms-3">
+                        <a class="nav-link text-dark py-1" href="/admin/menu_management">
+                            <i class="fas fa-sitemap me-2"></i> 메뉴 관리
+                        </a>
+                        <a class="nav-link text-dark py-1" href="/admin/code_management">
+                            <i class="fas fa-code me-2"></i> 코드 관리
+                            </a>
+                        <a class="nav-link text-dark py-1" href="/admin/department_management">
+                            <i class="fas fa-building me-2"></i> 부서 관리
+                            </a>
+                        <a class="nav-link text-dark py-1" href="/admin/user_management">
+                            <i class="fas fa-users me-2"></i> 사용자 관리
+                            </a>
+                        <a class="nav-link text-dark py-1" href="/admin/permissions">
+                            <i class="fas fa-key me-2"></i> 권한 관리
+                            </a>
+                        <a class="nav-link text-dark py-1" href="/admin/brand_management">
+                            <i class="fas fa-tags me-2"></i> 브랜드 관리
+                            </a>
+                    </div>
+                </div>
+            </li>
+            
+            <!-- ERPia 배치 -->
+            <li class="nav-item">
+                <a class="nav-link text-dark dropdown-toggle" href="#batchMenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
+                    <i class="fas fa-clock me-2"></i> ERPia 배치
+                </a>
+                <div class="collapse" id="batchMenu">
+                    <div class="ms-3">
+                        <a class="nav-link text-dark py-1" href="/batch/">
+                            <i class="fas fa-tachometer-alt me-2"></i> 배치 대시보드
+                            </a>
+                        <a class="nav-link text-dark py-1" href="/batch/settings">
+                            <i class="fas fa-cog me-2"></i> 배치 설정
+                            </a>
+                    </div>
+                </div>
+            </li>
+            
+            <!-- 사은품 관리 -->
+            <li class="nav-item">
+                <a class="nav-link text-dark dropdown-toggle" href="#giftMenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
+                    <i class="fas fa-gift me-2"></i> 사은품 관리
+                </a>
+                <div class="collapse" id="giftMenu">
+                    <div class="ms-3">
+                        <a class="nav-link text-dark py-1" href="/gift/">
+                            <i class="fas fa-list me-2"></i> 분류 관리
+                        </a>
+                        <a class="nav-link text-dark py-1" href="/gift/settings">
+                            <i class="fas fa-cog me-2"></i> 분류 설정
+                </a>
+                    </div>
+                </div>
+            </li>
+            
+            <!-- 고객 관리 -->
+            <li class="nav-item">
+                <a class="nav-link text-dark dropdown-toggle" href="#customerMenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
+                    <i class="fas fa-user-friends me-2"></i> 고객 관리
+                </a>
+                <div class="collapse" id="customerMenu">
+                    <div class="ms-3">
+                        <a class="nav-link text-dark py-1" href="/customer/">
+                            <i class="fas fa-list me-2"></i> 고객 목록
+                        </a>
+                        <a class="nav-link text-dark py-1" href="/customer/analysis">
+                            <i class="fas fa-chart-bar me-2"></i> 고객 분석
+                </a>
+                    </div>
+                </div>
+            </li>
+        </ul>
+    </nav>
+    
+    <!-- 하단 로그아웃 -->
+    <div class="p-3 border-top">
+        <a href="/auth/logout" class="btn btn-outline-danger w-100">
+            <i class="fas fa-sign-out-alt me-2"></i> 로그아웃
+        </a>
+    </div>
+</div>
+
+<!-- 사이드바 토글 버튼 -->
+<button class="btn btn-light d-md-none position-fixed" style="top: 10px; left: 10px; z-index: 1001;" id="sidebar-toggle">
+    <i class="fas fa-bars"></i>
+</button>
+
+<!-- 사이드바 JavaScript -->
+<script>
+// 회사 전환 함수
+function switchCompany(companyId) {
+    $.post('/api/switch-company', {
+        company_id: companyId
+    }, function(data) {
+        if (data.success) {
+            // 성공 시 페이지 새로고침
+            location.reload();
+        } else {
+            alert('회사 전환 실패: ' + data.message);
+        }
+    }).fail(function() {
+        alert('회사 전환 중 오류가 발생했습니다.');
+    });
+}
+
+// 사이드바 토글 (모바일)
+document.getElementById('sidebar-toggle')?.addEventListener('click', function() {
+    const sidebar = document.getElementById('sidebar');
+    sidebar.classList.toggle('d-none');
+});
+</script>
+
+<style>
+@media (max-width: 768px) {
+    #sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+    }
+    #sidebar.show {
+        transform: translateX(0);
+    }
+    .main-content {
+        margin-left: 0 !important;
+    }
+}
+
+@media (min-width: 769px) {
+    .main-content {
+        margin-left: 250px;
+    }
+}
+</style> 
+    
+
+    <!-- 메인 콘텐츠 영역 -->
+    <div class="main-content">
+        <!-- 상단 네비게이션 바 (옵션) -->
+        
+        <nav class="navbar navbar-expand-lg navbar-light bg-white mb-4 shadow-sm">
+            <div class="container-fluid">
+                <span class="navbar-brand mb-0 h1">
+                    <i class="fas fa-tachometer-alt me-2"></i>
+                    대시보드
+                </span>
+                
+                <div class="navbar-nav ms-auto">
+                    <!-- 알림 -->
+                    <div class="nav-item dropdown">
+                        <a class="nav-link" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-bell"></i>
+                            <span class="badge bg-danger">3</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><span class="dropdown-item-text">새로운 알림이 없습니다.</span></li>
+                        </ul>
+                    </div>
+                    
+                    <!-- 사용자 메뉴 -->
+                    <div class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle me-1"></i>
+                            
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="#"><i class="fas fa-user me-2"></i>내 정보</a></li>
+                            <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>설정</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="/auth/logout"><i class="fas fa-sign-out-alt me-2"></i>로그아웃</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </nav>
+        
+
+        <!-- 플래시 메시지 -->
+        
+            
+                <div class="container-fluid mb-4">
+                    
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            
+                                <i class="fas fa-check-circle me-2"></i>
+                            
+                            로그인 성공
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    
+                </div>
+            
+        
+
+        <!-- 메인 콘텐츠 -->
+        <main class="container-fluid">
+            
+            <div class="container-fluid">
+                <!-- 회사 정보 표시 -->
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2">📊 에이원 MIS v2 대시보드</h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        
+                        <div class="btn-group me-2">
+                            <small class="text-muted">2025-08-07 13:25:26</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 핵심 메뉴 카드 -->
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <div class="card h-100">
+                            <div class="card-header bg-primary text-white">
+                                <h5><i class="bi bi-clock-history"></i> 배치 관리</h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="card-text">ERPia 자동 데이터 수집 및 배치 작업 관리</p>
+                                <div class="list-group list-group-flush">
+                                    <a href="/batch" class="list-group-item list-group-item-action">
+                                        <i class="bi bi-speedometer2"></i> 배치 대시보드
+                                    </a>
+                                    <a href="/batch/jobs" class="list-group-item list-group-item-action">
+                                        <i class="bi bi-list-task"></i> 배치 작업 관리
+                                    </a>
+                                    <a href="/batch/settings" class="list-group-item list-group-item-action">
+                                        <i class="bi bi-gear"></i> 배치 설정
+                                    </a>
+                                </div>
+                                <div class="mt-3">
+                                    <small class="text-muted">상태: <span class="badge bg-warning">중지됨</span></small><br>
+                                    <small class="text-muted">등록된 작업: 0개</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="card h-100">
+                            <div class="card-header bg-success text-white">
+                                <h5><i class="bi bi-gift"></i> 사은품 관리</h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="card-text">사은품 자동 분류 및 매출 정확도 향상</p>
+                                <div class="list-group list-group-flush">
+                                    <span class="list-group-item list-group-item-action text-muted">
+                                        <i class="bi bi-graph-up"></i> 사은품 분석 (준비중)
+                                    </span>
+                                    <span class="list-group-item list-group-item-action text-muted">
+                                        <i class="bi bi-funnel"></i> 분류 규칙 관리 (준비중)
+                                    </span>
+                                    <span class="list-group-item list-group-item-action text-muted">
+                                        <i class="bi bi-bar-chart"></i> 분류 통계 (준비중)
+                                    </span>
+                                </div>
+                                <div class="mt-3">
+                                    <small class="text-muted">상태: <span class="badge bg-success">활성</span></small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="card h-100">
+                            <div class="card-header bg-info text-white">
+                                <h5><i class="bi bi-gear"></i> 관리자</h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="card-text">시스템 설정 및 사용자 관리</p>
+                                <div class="list-group list-group-flush">
+                                    <a href="/admin/user_management" class="list-group-item list-group-item-action">
+                                        <i class="bi bi-people"></i> 사용자 관리
+                                    </a>
+                                    <a href="/admin/department_management" class="list-group-item list-group-item-action">
+                                        <i class="bi bi-building"></i> 부서 관리
+                                    </a>
+                                    <a href="/admin/code_management" class="list-group-item list-group-item-action">
+                                        <i class="bi bi-code-square"></i> 코드 관리
+                                    </a>
+                                    <a href="/admin/menu_management" class="list-group-item list-group-item-action">
+                                        <i class="bi bi-list"></i> 메뉴 관리
+                                    </a>
+                                    <a href="/admin/brand_management" class="list-group-item list-group-item-action">
+                                        <i class="bi bi-award"></i> 브랜드 관리
+                                    </a>
+                                    <a href="/admin/permissions" class="list-group-item list-group-item-action">
+                                        <i class="bi bi-shield-check"></i> 권한 관리
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="bi bi-people"></i> 고객 관리</h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="card-text">고객 서비스 및 A/S 관리</p>
+                                <div class="list-group list-group-flush">
+                                    <span class="list-group-item list-group-item-action text-muted">
+                                        <i class="bi bi-arrow-repeat"></i> 무상 교환 접수 (준비중)
+                                    </span>
+                                    <span class="list-group-item list-group-item-action text-muted">
+                                        <i class="bi bi-search"></i> 시리얼 검색 (준비중)
+                                    </span>
+                                    <span class="list-group-item list-group-item-action text-muted">
+                                        <i class="bi bi-tools"></i> A/S 접수 내역 (준비중)
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="bi bi-activity"></i> 시스템 상태</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row text-center">
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card text-white bg-success">
+                                            <div class="card-body">
+                                                <h6>데이터베이스</h6>
+                                                <p><i class="bi bi-check-circle"></i> 정상</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card text-white bg-success">
+                                            <div class="card-body">
+                                                <h6>Redis 캐시</h6>
+                                                <p><i class="bi bi-check-circle"></i> 정상</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="card text-white bg-warning">
+                                            <div class="card-body">
+                                                <h6>배치 시스템</h6>
+                                                <p><i class="bi bi-clock"></i> 중지됨</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="card text-white bg-success">
+                                            <div class="card-body">
+                                                <h6>사은품 분류</h6>
+                                                <p><i class="bi bi-gift"></i> 활성</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <script>
+            async function switchCompany(companyId) {
+                try {
+                    const response = await fetch('/api/switch-company', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            company_id: companyId
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        window.location.reload();
+                    } else {
+                        alert('회사 전환에 실패했습니다.');
+                    }
+                } catch (error) {
+                    alert('회사 전환 중 오류가 발생했습니다.');
+                }
+            }
+            </script>
+            
+        </main>
+    </div>
+
+    <!-- 커스텀 JavaScript -->
+    <script>
+        // 전역 JavaScript 함수들
+        
+        // 로그아웃 확인
+        function confirmLogout() {
+            if (confirm('정말로 로그아웃 하시겠습니까?')) {
+                window.location.href = '/auth/logout';
+            }
+        }
+        
+        // DataTable 초기화 헬퍼
+        function initDataTable(selector, options = {}) {
+            const defaultOptions = {
+                pageLength: 25,
+                lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "전체"]],
+                language: {
+                    url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/ko.json'
+                },
+                responsive: true,
+                order: [],
+                columnDefs: [
+                    { orderable: false, targets: 'no-sort' }
+                ]
+            };
+            
+            return $(selector).DataTable({...defaultOptions, ...options});
+        }
+        
+        // AJAX 에러 핸들러
+        $(document).ajaxError(function(event, xhr, settings, thrownError) {
+            if (xhr.status === 401) {
+                alert('로그인이 필요합니다.');
+                window.location.href = '/auth/login';
+            } else if (xhr.status === 403) {
+                alert('권한이 없습니다.');
+            } else if (xhr.status >= 500) {
+                alert('서버 오류가 발생했습니다. 관리자에게 문의하세요.');
+            }
+        });
+        
+        // 페이지 로드 완료 후 실행
+        $(document).ready(function() {
+            // 툴팁 초기화
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+            
+            // 자동 닫히는 알림
+            setTimeout(function() {
+                $('.alert.alert-info').fadeOut();
+            }, 5000);
+        });
+    </script>
+    
+    
+</body>
+</html> 

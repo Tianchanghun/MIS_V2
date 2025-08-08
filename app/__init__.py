@@ -82,22 +82,29 @@ def create_app(config_name='development'):
             print(f"❌ 데이터베이스 연결 실패: {e}")
     
     # 블루프린트 등록
-    from app.auth.routes import auth_bp
-    from app.batch.routes import batch_bp  # 새로운 배치 모듈
+    from app.auth import bp as auth_bp
+    app.register_blueprint(auth_bp)
+    
+    from app.shop import shop_bp
+    app.register_blueprint(shop_bp)
+    
+    from app.batch import batch_bp
+    app.register_blueprint(batch_bp)
+    
+    # 상품관리 블루프린트 등록
+    from app.product import bp as product_bp
+    app.register_blueprint(product_bp)
+
     # 관리자 블루프린트 등록
     from app.admin import admin_bp
     # 고객 관리 블루프린트 등록 (임시)
     from app.customer import customer_bp
     # 사은품 관리 블루프린트 등록 (임시)
     from app.gift import gift_bp
-    from app.shop import shop_bp  # Shop Management 모듈 추가
     
-    app.register_blueprint(auth_bp)
-    app.register_blueprint(batch_bp)  # /batch 프리픽스는 Blueprint에서 설정됨
     app.register_blueprint(admin_bp)  # /admin 프리픽스는 Blueprint에서 설정됨
     app.register_blueprint(customer_bp)
     app.register_blueprint(gift_bp)
-    app.register_blueprint(shop_bp)  # Shop Management 블루프린트 등록
     
     # 멀티테넌트 미들웨어 초기화 (블루프린트 등록 후)
     try:
@@ -382,6 +389,41 @@ def create_app(config_name='development'):
             else:
                 return jsonify({'success': False, 'message': '해당 회사에 접근 권한이 없습니다.'}), 403
                 
+        except Exception as e:
+            return jsonify({'success': False, 'message': f'오류: {e}'}), 500
+    
+    # 현재 사용자 정보 API
+    @app.route('/api/current-user', methods=['GET'])
+    def current_user():
+        """현재 사용자 정보 조회 API"""
+        if 'member_seq' not in session:
+            return jsonify({'success': False, 'message': '로그인이 필요합니다.'}), 401
+        
+        try:
+            from app.common.models import User, Company
+            
+            member_seq = session.get('member_seq')
+            current_company_id = session.get('current_company_id')
+            
+            user = User.query.filter_by(seq=member_seq).first()
+            if not user:
+                return jsonify({'success': False, 'message': '사용자를 찾을 수 없습니다.'}), 404
+            
+            current_company = None
+            if current_company_id:
+                current_company = Company.query.get(current_company_id)
+            
+            result = {
+                'success': True,
+                'user_id': user.seq,
+                'login_id': user.login_id,
+                'name': user.name,
+                'current_company_id': current_company_id,
+                'current_company_name': current_company.company_name if current_company else None
+            }
+            
+            return jsonify(result)
+            
         except Exception as e:
             return jsonify({'success': False, 'message': f'오류: {e}'}), 500
     

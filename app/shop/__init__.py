@@ -12,7 +12,7 @@ from sqlalchemy import or_, and_
 import logging
 from datetime import datetime
 import io
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 
 logger = logging.getLogger(__name__)
@@ -55,6 +55,8 @@ def api_get_shops():
             query = query.filter_by(shop_yn='Y')
         elif shop_type == 'NoShop':
             query = query.filter_by(shop_yn='N')
+        elif shop_type == 'NotUsed':
+            query = query.filter_by(shop_yn='NU')  # 매장사용안함
         elif shop_type == 'Nothing':
             query = query.filter(ErpiaCustomer.shop_yn.is_(None))
         
@@ -292,6 +294,7 @@ def api_get_shop_stats():
         total = ErpiaCustomer.query.filter_by(company_id=current_company_id).count()
         shops = ErpiaCustomer.query.filter_by(company_id=current_company_id, shop_yn='Y').count()
         no_shops = ErpiaCustomer.query.filter_by(company_id=current_company_id, shop_yn='N').count()
+        not_used = ErpiaCustomer.query.filter_by(company_id=current_company_id, shop_yn='NU').count() # 매장사용안함
         nothing = ErpiaCustomer.query.filter(
             and_(
                 ErpiaCustomer.company_id == current_company_id,
@@ -305,6 +308,7 @@ def api_get_shop_stats():
                 'total': total,
                 'shops': shops,
                 'no_shops': no_shops,
+                'not_used': not_used,
                 'nothing': nothing
             }
         })
@@ -517,11 +521,23 @@ def api_sync_erpia_customers():
                     if existing_customer:
                         # 업데이트
                         logger.info(f"📝 기존 고객 업데이트: {customer_code}")
+                        
+                        # 시스템 필드 제외하고 업데이트
+                        system_fields = {
+                            'seq', 'ins_user', 'ins_date', 'company_id'  # upt_user, upt_date는 수동 설정
+                        }
+                        
+                        updated_fields = 0
                         for key, value in customer_data.items():
-                            if hasattr(existing_customer, key):
+                            if hasattr(existing_customer, key) and key not in system_fields:
                                 setattr(existing_customer, key, value)
+                                updated_fields += 1
+                            elif key in system_fields:
+                                logger.debug(f"🔧 시스템 필드 건너뜀: {key}")
                             else:
                                 logger.warning(f"⚠️ 알 수 없는 필드: {key}")
+                        
+                        logger.info(f"📋 업데이트 완료: {updated_fields}개 필드")
                         
                         existing_customer.upt_user = member_id
                         existing_customer.upt_date = datetime.utcnow()
@@ -531,13 +547,21 @@ def api_sync_erpia_customers():
                         # 신규 삽입
                         logger.info(f"➕ 신규 고객 추가: {customer_code}")
                         
-                        # 필수 필드만 포함해서 생성
+                        # 시스템 필드 제외하고 필터링
+                        system_fields = {
+                            'seq', 'ins_user', 'ins_date', 'upt_user', 'upt_date', 'company_id'
+                        }
+                        
                         customer_data_filtered = {}
                         for key, value in customer_data.items():
-                            if hasattr(ErpiaCustomer, key):
+                            if hasattr(ErpiaCustomer, key) and key not in system_fields:
                                 customer_data_filtered[key] = value
+                            elif key in system_fields:
+                                logger.debug(f"🔧 시스템 필드 제외: {key}")
                             else:
                                 logger.warning(f"⚠️ 모델에 없는 필드 제외: {key} = {value}")
+                        
+                        logger.info(f"📋 필터링 완료: {len(customer_data_filtered)}개 필드")
                         
                         new_customer = ErpiaCustomer(
                             company_id=current_company_id,
@@ -598,7 +622,7 @@ def api_sync_erpia_customers():
 
 @shop_bp.route('/api/export-excel')
 def api_export_excel():
-    """매장 정보 엑셀 다운로드 API"""
+    """매장 정보 엑셀 다운로드 API - 동적 분류 완전 반영"""
     try:
         # 세션 체크
         if not session.get('member_seq'):
@@ -610,6 +634,33 @@ def api_export_excel():
         
         logger.info(f"📊 엑셀 다운로드 요청: company_id={current_company_id}, shop_type={shop_type}, search={search}")
         
+        # 현재 동적 분류 정보 조회
+        classifications = {}
+        classification_headers = []
+        
+        # CST 그룹 찾기
+        cst_group = Code.query.filter_by(code='CST', depth=0).first()
+        if cst_group:
+            # CST 하위의 모든 분류 그룹들을 동적으로 조회
+            classification_groups = Code.query.filter_by(
+                parent_seq=cst_group.seq, 
+                depth=1
+            ).order_by(Code.sort.asc()).all()
+            
+            for group in classification_groups:
+                group_key = group.code.lower()
+                classifications[group_key] = {
+                    'code': group.code,
+                    'name': group.code_name,
+                    'field_name': f'{group_key}_type' if group_key not in ['dis', 'ch', 'sl', 'ty'] else {
+                        'dis': 'distribution_type',
+                        'ch': 'channel_type', 
+                        'sl': 'sales_type',
+                        'ty': 'business_form'
+                    }.get(group_key, f'{group_key}_type')
+                }
+                classification_headers.append(group.code_name)
+        
         # 기본 쿼리
         query = ErpiaCustomer.query.filter_by(company_id=current_company_id)
         
@@ -618,6 +669,8 @@ def api_export_excel():
             query = query.filter_by(shop_yn='Y')
         elif shop_type == 'NoShop':
             query = query.filter_by(shop_yn='N')
+        elif shop_type == 'NotUsed':
+            query = query.filter_by(shop_yn='NU')  # 매장사용안함
         elif shop_type == 'Nothing':
             query = query.filter(ErpiaCustomer.shop_yn.is_(None))
         
@@ -651,13 +704,16 @@ def api_export_excel():
             bottom=Side(style='thin')
         )
         
-        # 헤더 정의
-        headers = [
+        # 동적 헤더 구성 (기본 정보 + 동적 분류)
+        base_headers = [
             "거래처코드", "거래처명", "대표자", "사업자번호", "업태", "종목",
-            "전화번호", "팩스번호", "우리담당자", "상대방담당자", "상대방담당자전화",
+            "전화번호", "팩스번호", "우리담당자", "상대방담당자", "상대방담당자전화", "상대방담당자전화2",
             "세금계산서우편번호", "세금계산서주소", "배송지우편번호", "배송지주소", 
-            "로케이션", "유통", "채널", "매출", "매장형태", "등급",
-            "브랜드존", "뉴나브랜드조닝", "지역", "가결산구분값",
+            "로케이션"
+        ]
+        
+        # 동적 분류 헤더 추가
+        headers = base_headers + classification_headers + [
             "세금담당자", "세금담당자전화", "세금담당자이메일", "매장사용", 
             "비고", "메모", "등록일", "수정일"
         ]
@@ -672,7 +728,8 @@ def api_export_excel():
         
         # 데이터 행 추가
         for row_idx, shop in enumerate(shops, 2):
-            data_row = [
+            # 기본 데이터
+            base_data = [
                 shop.customer_code or '',
                 shop.customer_name or '',
                 shop.ceo or '',
@@ -684,20 +741,23 @@ def api_export_excel():
                 shop.our_manager or '',
                 shop.customer_manager or '',
                 shop.customer_manager_tel or '',
+                shop.customer_manager_tel2 or '', # 새로운 필드 추가
                 shop.zip_code1 or '',
                 shop.address1 or '',
                 shop.zip_code2 or '',
                 shop.address2 or '',
-                shop.location or '',
-                shop.distribution_type or '',
-                shop.channel_type or '',
-                shop.sales_type or '',
-                shop.business_form or '',
-                '',  # 등급 (아직 구현안됨)
-                shop.brand_zone or '',
-                shop.nuna_zoning or '',
-                shop.region or '',
-                shop.financial_group or '',
+                shop.location or ''
+            ]
+            
+            # 동적 분류 데이터 추가
+            classification_data = []
+            for group_key, group_info in classifications.items():
+                field_name = group_info['field_name']
+                field_value = getattr(shop, field_name, '') or ''
+                classification_data.append(field_value)
+            
+            # 나머지 데이터
+            remaining_data = [
                 shop.tax_manager or '',
                 shop.tax_manager_tel or '',
                 shop.tax_email or '',
@@ -708,12 +768,16 @@ def api_export_excel():
                 shop.upt_date.strftime('%Y-%m-%d %H:%M') if shop.upt_date else ''
             ]
             
+            # 전체 데이터 행 구성
+            data_row = base_data + classification_data + remaining_data
+            
             for col, value in enumerate(data_row, 1):
                 cell = ws.cell(row=row_idx, column=col, value=value)
                 cell.border = border
                 
-                # 매장사용 컬럼 색상 설정
-                if col == 28:  # 매장사용 컬럼
+                # 매장사용 컬럼 색상 설정 (동적 위치 계산)
+                shop_yn_col = len(base_headers) + len(classification_headers) + 4  # 매장사용 컬럼 위치
+                if col == shop_yn_col:
                     if value == '매장':
                         cell.fill = PatternFill(start_color="D4EDDA", end_color="D4EDDA", fill_type="solid")
                     elif value == '매장아님':
@@ -721,20 +785,39 @@ def api_export_excel():
                     else:
                         cell.fill = PatternFill(start_color="FFF3CD", end_color="FFF3CD", fill_type="solid")
         
+        # 두 번째 시트에 분류 코드 정보 추가 (업로드 참조용)
+        ws_codes = wb.create_sheet("분류코드정보")
+        ws_codes.cell(row=1, column=1, value="분류그룹").font = header_font
+        ws_codes.cell(row=1, column=2, value="분류코드").font = header_font
+        ws_codes.cell(row=1, column=3, value="분류명").font = header_font
+        
+        code_row = 2
+        for group_key, group_info in classifications.items():
+            # 각 분류 그룹의 하위 코드들 조회
+            group = Code.query.filter_by(code=group_info['code'], depth=1).first()
+            if group:
+                sub_codes = Code.query.filter_by(parent_seq=group.seq, depth=2).order_by(Code.sort.asc()).all()
+                for sub_code in sub_codes:
+                    ws_codes.cell(row=code_row, column=1, value=group_info['name'])
+                    ws_codes.cell(row=code_row, column=2, value=sub_code.code)
+                    ws_codes.cell(row=code_row, column=3, value=sub_code.code_name)
+                    code_row += 1
+        
         # 컬럼 너비 자동 조정
-        for column in ws.columns:
-            max_length = 0
-            column_letter = column[0].column_letter
-            
-            for cell in column:
-                try:
-                    if len(str(cell.value)) > max_length:
-                        max_length = len(str(cell.value))
-                except:
-                    pass
-            
-            adjusted_width = min(max_length + 2, 50)  # 최대 50자로 제한
-            ws.column_dimensions[column_letter].width = adjusted_width
+        for sheet in [ws, ws_codes]:
+            for column in sheet.columns:
+                max_length = 0
+                column_letter = column[0].column_letter
+                
+                for cell in column:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except:
+                        pass
+                
+                adjusted_width = min(max_length + 2, 50)  # 최대 50자로 제한
+                sheet.column_dimensions[column_letter].width = adjusted_width
         
         # 메모리 파일로 저장
         excel_file = io.BytesIO()
@@ -748,7 +831,7 @@ def api_export_excel():
         filename = f"매장정보_{company_name}_{timestamp}.xlsx"
         encoded_filename = quote(filename.encode('utf-8'))
         
-        logger.info(f"✅ 엑셀 파일 생성 완료: {len(shops)}개 데이터, 파일명: {filename}")
+        logger.info(f"✅ 엑셀 파일 생성 완료: {len(shops)}개 데이터, {len(classifications)}개 동적 분류, 파일명: {filename}")
         
         return send_file(
             excel_file,
@@ -762,4 +845,249 @@ def api_export_excel():
         return jsonify({
             'success': False,
             'message': f'엑셀 생성 중 오류가 발생했습니다: {str(e)}'
+        }), 500
+
+@shop_bp.route('/api/upload-excel', methods=['POST'])
+def api_upload_excel():
+    """매장 정보 엑셀 일괄 업로드 API - 동적 분류 완전 지원"""
+    try:
+        # 세션 체크
+        if not session.get('member_seq'):
+            return jsonify({'success': False, 'message': '로그인이 필요합니다.'}), 401
+        
+        current_company_id = session.get('current_company_id', 1)
+        member_id = session.get('member_id', 'admin')
+        
+        logger.info(f"📤 엑셀 업로드 요청: company_id={current_company_id}, user={member_id}")
+        
+        # 파일 체크
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'message': '파일이 선택되지 않았습니다.'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'success': False, 'message': '파일이 선택되지 않았습니다.'}), 400
+        
+        if not file.filename.lower().endswith(('.xlsx', '.xls')):
+            return jsonify({'success': False, 'message': '엑셀 파일만 업로드 가능합니다.'}), 400
+        
+        # 현재 동적 분류 정보 조회
+        classifications = {}
+        classification_field_map = {}  # 헤더명 -> 필드명 매핑
+        
+        # CST 그룹 찾기
+        cst_group = Code.query.filter_by(code='CST', depth=0).first()
+        if cst_group:
+            classification_groups = Code.query.filter_by(
+                parent_seq=cst_group.seq, 
+                depth=1
+            ).order_by(Code.sort.asc()).all()
+            
+            for group in classification_groups:
+                group_key = group.code.lower()
+                field_name = f'{group_key}_type' if group_key not in ['dis', 'ch', 'sl', 'ty'] else {
+                    'dis': 'distribution_type',
+                    'ch': 'channel_type', 
+                    'sl': 'sales_type',
+                    'ty': 'business_form'
+                }.get(group_key, f'{group_key}_type')
+                
+                classifications[group_key] = {
+                    'code': group.code,
+                    'name': group.code_name,
+                    'field_name': field_name
+                }
+                classification_field_map[group.code_name] = field_name
+                
+                # 분류 코드별 유효한 값들 조회
+                sub_codes = Code.query.filter_by(parent_seq=group.seq, depth=2).all()
+                valid_codes = {code.code: code.code_name for code in sub_codes}
+                classifications[group_key]['valid_codes'] = valid_codes
+        
+        # 엑셀 파일 읽기
+        try:
+            wb = load_workbook(file.stream, read_only=True)
+            ws = wb.active
+        except Exception as e:
+            return jsonify({'success': False, 'message': f'엑셀 파일을 읽을 수 없습니다: {str(e)}'}), 400
+        
+        # 헤더 행 읽기
+        headers = []
+        header_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=True))
+        for cell in header_row:
+            headers.append(str(cell) if cell is not None else '')
+        
+        # 필수 컬럼 체크
+        required_columns = ['거래처코드', '거래처명']
+        missing_columns = [col for col in required_columns if col not in headers]
+        if missing_columns:
+            return jsonify({
+                'success': False, 
+                'message': f'필수 컬럼이 누락되었습니다: {", ".join(missing_columns)}'
+            }), 400
+        
+        # 데이터 처리
+        success_count = 0
+        update_count = 0
+        insert_count = 0
+        error_count = 0
+        error_details = []
+        
+        for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), 2):
+            try:
+                # 행 데이터를 헤더와 매핑
+                row_data = {}
+                for col_idx, value in enumerate(row):
+                    if col_idx < len(headers):
+                        header = headers[col_idx]
+                        row_data[header] = str(value).strip() if value is not None else ''
+                
+                # 거래처코드 필수 체크
+                customer_code = row_data.get('거래처코드', '').strip()
+                if not customer_code:
+                    error_details.append(f"행 {row_idx}: 거래처코드가 없습니다.")
+                    error_count += 1
+                    continue
+                
+                # 기존 데이터 찾기
+                existing_customer = ErpiaCustomer.query.filter_by(
+                    customer_code=customer_code,
+                    company_id=current_company_id
+                ).first()
+                
+                # 데이터 매핑
+                update_data = {}
+                
+                # 기본 필드 매핑
+                field_mapping = {
+                    '거래처명': 'customer_name',
+                    '대표자': 'ceo',
+                    '사업자번호': 'business_number',
+                    '업태': 'business_type',
+                    '종목': 'business_item',
+                    '전화번호': 'phone',
+                    '팩스번호': 'fax',
+                    '우리담당자': 'our_manager',
+                    '상대방담당자': 'customer_manager',
+                    '상대방담당자전화': 'customer_manager_tel',
+                    '상대방담당자전화2': 'customer_manager_tel2', # 새로운 필드 추가
+                    '세금계산서우편번호': 'zip_code1',
+                    '세금계산서주소': 'address1',
+                    '배송지우편번호': 'zip_code2',
+                    '배송지주소': 'address2',
+                    '로케이션': 'location',
+                    '세금담당자': 'tax_manager',
+                    '세금담당자전화': 'tax_manager_tel',
+                    '세금담당자이메일': 'tax_email',
+                    '비고': 'remarks',
+                    '메모': 'memo'
+                }
+                
+                for excel_col, db_field in field_mapping.items():
+                    if excel_col in row_data and row_data[excel_col]:
+                        update_data[db_field] = row_data[excel_col]
+                
+                # 매장사용 필드 처리
+                if '매장사용' in row_data:
+                    shop_status = row_data['매장사용'].strip()
+                    if shop_status == '매장':
+                        update_data['shop_yn'] = 'Y'
+                    elif shop_status == '매장아님':
+                        update_data['shop_yn'] = 'N'
+                    else:
+                        update_data['shop_yn'] = None
+                
+                # 동적 분류 필드 처리
+                for header_name, field_name in classification_field_map.items():
+                    if header_name in row_data and row_data[header_name]:
+                        classification_value = row_data[header_name].strip()
+                        
+                        # 분류 코드 유효성 검증
+                        group_key = next((k for k, v in classifications.items() 
+                                        if v['name'] == header_name), None)
+                        
+                        if group_key and classification_value:
+                            valid_codes = classifications[group_key]['valid_codes']
+                            
+                            # 코드명으로 입력된 경우 코드로 변환
+                            if classification_value in valid_codes.values():
+                                # 코드명에서 코드 찾기
+                                for code, name in valid_codes.items():
+                                    if name == classification_value:
+                                        update_data[field_name] = code
+                                        break
+                            elif classification_value in valid_codes:
+                                # 이미 코드로 입력된 경우
+                                update_data[field_name] = classification_value
+                            else:
+                                # 유효하지 않은 분류값
+                                error_details.append(f"행 {row_idx}: {header_name}의 값 '{classification_value}'은(는) 유효하지 않습니다.")
+                                continue
+                
+                if existing_customer:
+                    # 기존 데이터 업데이트
+                    for field, value in update_data.items():
+                        if hasattr(existing_customer, field):
+                            setattr(existing_customer, field, value)
+                    
+                    existing_customer.upt_user = member_id
+                    existing_customer.upt_date = datetime.utcnow()
+                    update_count += 1
+                    
+                else:
+                    # 신규 데이터 삽입
+                    new_customer = ErpiaCustomer(
+                        customer_code=customer_code,
+                        company_id=current_company_id,
+                        ins_user=member_id,
+                        ins_date=datetime.utcnow(),
+                        upt_user=member_id,
+                        upt_date=datetime.utcnow(),
+                        **update_data
+                    )
+                    db.session.add(new_customer)
+                    insert_count += 1
+                
+                success_count += 1
+                
+            except Exception as e:
+                error_details.append(f"행 {row_idx}: {str(e)}")
+                error_count += 1
+                continue
+        
+        # 변경사항 커밋
+        try:
+            db.session.commit()
+            logger.info(f"✅ 엑셀 업로드 완료: 성공 {success_count}개 (업데이트 {update_count}, 삽입 {insert_count}), 오류 {error_count}개")
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"❌ 엑셀 업로드 커밋 실패: {str(e)}")
+            return jsonify({
+                'success': False,
+                'message': f'데이터 저장 중 오류가 발생했습니다: {str(e)}'
+            }), 500
+        
+        result_message = f"업로드 완료: {success_count}개 성공 (업데이트 {update_count}개, 신규 {insert_count}개)"
+        if error_count > 0:
+            result_message += f", {error_count}개 오류"
+        
+        return jsonify({
+            'success': True,
+            'message': result_message,
+            'data': {
+                'total_processed': success_count + error_count,
+                'success_count': success_count,
+                'update_count': update_count,
+                'insert_count': insert_count,
+                'error_count': error_count,
+                'error_details': error_details[:10]  # 최대 10개만 반환
+            }
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"❌ 엑셀 업로드 실패: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': f'업로드 중 오류가 발생했습니다: {str(e)}'
         }), 500 

@@ -5,9 +5,8 @@
 로그인, 로그아웃, 권한 관리
 """
 
-from flask import Blueprint
+# routes.py에서 정의된 auth_bp를 import
+from app.auth.routes import auth_bp
 
-bp = Blueprint('auth', __name__)
-
-# 라우트 파일 import (순환 import 방지를 위해 Blueprint 생성 후 import)
-from app.auth import routes 
+# bp는 auth_bp의 별칭
+bp = auth_bp 

@@ -1,0 +1,518 @@
+{% extends "base.html" %}
+
+{% block title %}상품관리{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 페이지 헤더 -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2><i class="fas fa-box"></i> 상품관리</h2>
+                <button type="button" class="btn btn-primary" onclick="showProductModal()">
+                    <i class="fas fa-plus"></i> 상품 등록
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 검색 필터 -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" id="searchForm">
+                <div class="row">
+                    <div class="col-md-3">
+                        <label for="search" class="form-label">검색어</label>
+                        <input type="text" class="form-control" id="search" name="search" 
+                               value="{{ search_term }}" placeholder="상품명, 상품코드, 설명 검색">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="brand_seq" class="form-label">브랜드</label>
+                        <select class="form-select" id="brand_seq" name="brand_seq">
+                            <option value="">전체</option>
+                            {% for brand in brand_codes %}
+                            <option value="{{ brand.seq }}" {% if current_brand == brand.seq %}selected{% endif %}>
+                                {{ brand.code_name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="category_code_seq" class="form-label">품목</label>
+                        <select class="form-select" id="category_code_seq" name="category_code_seq">
+                            <option value="">전체</option>
+                            {% for code in category_codes %}
+                            <option value="{{ code.seq }}" {% if current_category == code.seq %}selected{% endif %}>
+                                {{ code.code_name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="type_code_seq" class="form-label">타입</label>
+                        <select class="form-select" id="type_code_seq" name="type_code_seq">
+                            <option value="">전체</option>
+                            {% for code in type_codes %}
+                            <option value="{{ code.seq }}" {% if current_type == code.seq %}selected{% endif %}>
+                                {{ code.code_name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">표시 옵션</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="show_inactive" 
+                                   name="show_inactive" value="true" {% if show_inactive %}checked{% endif %}>
+                            <label class="form-check-label" for="show_inactive">
+                                비활성 상품 포함
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-1">
+                        <label class="form-label">&nbsp;</label>
+                        <div>
+                            <button type="submit" class="btn btn-outline-primary">
+                                <i class="fas fa-search"></i> 검색
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 상품 목록 -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th style="width: 80px;">번호</th>
+                            <th>상품명</th>
+                            <th style="width: 120px;">상품코드</th>
+                            <th style="width: 100px;">브랜드</th>
+                            <th style="width: 100px;">품목</th>
+                            <th style="width: 100px;">타입</th>
+                            <th style="width: 80px;">년도</th>
+                            <th style="width: 120px;">가격</th>
+                            <th style="width: 80px;">상태</th>
+                            <th style="width: 150px;">관리</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in products %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td>
+                                <strong>{{ product.product_name }}</strong>
+                                {% if product.description %}
+                                <br><small class="text-muted">{{ product.description[:50] }}{% if product.description|length > 50 %}...{% endif %}</small>
+                                {% endif %}
+                            </td>
+                            <td>{{ product.product_code or '-' }}</td>
+                            <td>{{ product.brand_name or '-' }}</td>
+                            <td>{{ product.category_name or '-' }}</td>
+                            <td>{{ product.type_name or '-' }}</td>
+                            <td>{{ product.product_year or '-' }}</td>
+                            <td>
+                                {% if product.price %}
+                                ₩{{ "{:,}".format(product.price) }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if product.is_active %}
+                                <span class="badge bg-success">활성</span>
+                                {% else %}
+                                <span class="badge bg-secondary">비활성</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button type="button" class="btn btn-outline-info" 
+                                            onclick="viewProduct({{ product.id }})" title="상세 보기">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-warning" 
+                                            onclick="editProduct({{ product.id }})" title="수정">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-danger" 
+                                            onclick="deleteProduct({{ product.id }}, '{{ product.product_name|replace("'", "\\'") }}')" title="삭제">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                    {% if product.manual_file_path %}
+                                    <a href="{{ url_for('static', filename=product.manual_file_path) }}" 
+                                       target="_blank" class="btn btn-outline-secondary btn-sm" title="매뉴얼 다운로드">
+                                        <i class="fas fa-file-pdf"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="10" class="text-center text-muted py-4">
+                                등록된 상품이 없습니다.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 상품 등록/수정 모달 -->
+<div class="modal fade" id="productModal" tabindex="-1" aria-labelledby="productModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="productModalLabel">상품 등록</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="productForm" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <input type="hidden" id="product_id" name="product_id">
+                    
+                    <div class="row">
+                        <!-- 기본 정보 -->
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="product_name" class="form-label">상품명 <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="product_name" name="product_name" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="product_code" class="form-label">상품코드</label>
+                                <input type="text" class="form-control" id="product_code" name="product_code">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <!-- 분류 정보 -->
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="modal_brand_seq" class="form-label">브랜드</label>
+                                <select class="form-select" id="modal_brand_seq" name="brand_seq">
+                                    <option value="">선택하세요</option>
+                                    {% for brand in brand_codes %}
+                                    <option value="{{ brand.seq }}">{{ brand.code_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="category_code_seq" class="form-label">품목</label>
+                                <select class="form-select" id="modal_category_code_seq" name="category_code_seq">
+                                    <option value="">선택하세요</option>
+                                    {% for code in category_codes %}
+                                    <option value="{{ code.seq }}">{{ code.code_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="type_code_seq" class="form-label">타입</label>
+                                <select class="form-select" id="modal_type_code_seq" name="type_code_seq">
+                                    <option value="">선택하세요</option>
+                                    {% for code in type_codes %}
+                                    <option value="{{ code.seq }}">{{ code.code_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="product_year" class="form-label">제품 년도</label>
+                                <select class="form-select" id="product_year" name="product_year">
+                                    <option value="">선택하세요</option>
+                                    {% for code in year_codes %}
+                                    <option value="{{ code.code }}">{{ code.code_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="price" class="form-label">상품가격</label>
+                                <input type="number" class="form-control" id="price" name="price" min="0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">상품 정보</label>
+                        <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="manual_file" class="form-label">사용설명서 PDF</label>
+                        <input type="file" class="form-control" id="manual_file" name="manual_file" accept=".pdf">
+                        <div class="form-text">PDF 파일만 업로드 가능합니다.</div>
+                        <div id="current_manual" style="display: none;">
+                            <small class="text-muted">현재 파일: <span id="current_manual_name"></span></small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="is_active" name="is_active" value="true" checked>
+                            <label class="form-check-label" for="is_active">
+                                사용 여부
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="submit" class="btn btn-primary">저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 상품 상세 보기 모달 -->
+<div class="modal fade" id="productDetailModal" tabindex="-1" aria-labelledby="productDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="productDetailModalLabel">상품 상세 정보</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="productDetailContent">
+                <!-- 상세 내용이 여기에 로드됩니다 -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentEditingId = null;
+
+// 상품 등록 모달 표시
+function showProductModal(productId = null) {
+    currentEditingId = productId;
+    
+    // 모달 제목 및 폼 초기화
+    if (productId) {
+        document.getElementById('productModalLabel').textContent = '상품 수정';
+        loadProductData(productId);
+    } else {
+        document.getElementById('productModalLabel').textContent = '상품 등록';
+        document.getElementById('productForm').reset();
+        document.getElementById('product_id').value = '';
+        document.getElementById('current_manual').style.display = 'none';
+    }
+    
+    // 모달 표시
+    const modal = new bootstrap.Modal(document.getElementById('productModal'));
+    modal.show();
+}
+
+// 상품 데이터 로드 (수정 시)
+function loadProductData(productId) {
+    fetch('/product/api/get/' + productId)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const product = data.product;
+                
+                // 폼 필드 채우기
+                document.getElementById('product_id').value = product.id;
+                document.getElementById('product_name').value = product.product_name || '';
+                document.getElementById('product_code').value = product.product_code || '';
+                document.getElementById('modal_brand_seq').value = product.brand_seq || '';
+                document.getElementById('modal_category_code_seq').value = product.category_code_seq || '';
+                document.getElementById('modal_type_code_seq').value = product.type_code_seq || '';
+                document.getElementById('product_year').value = product.product_year || '';
+                document.getElementById('price').value = product.price || '';
+                document.getElementById('description').value = product.description || '';
+                document.getElementById('is_active').checked = product.is_active;
+                
+                // 현재 매뉴얼 파일 표시
+                if (product.manual_file_path) {
+                    document.getElementById('current_manual').style.display = 'block';
+                    document.getElementById('current_manual_name').textContent = 
+                        product.manual_file_path.split('/').pop();
+                } else {
+                    document.getElementById('current_manual').style.display = 'none';
+                }
+            } else {
+                alert('상품 정보를 불러오는데 실패했습니다: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('상품 정보를 불러오는데 실패했습니다.');
+        });
+}
+
+// 상품 등록/수정 처리
+document.getElementById('productForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const productId = document.getElementById('product_id').value;
+    
+    let url, method;
+    if (productId) {
+        url = '/product/api/update/' + productId;
+        method = 'PUT';
+    } else {
+        url = '/product/api/create';
+        method = 'POST';
+    }
+    
+    // FormData를 사용하여 파일 업로드 포함
+    fetch(url, {
+        method: method,
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload(); // 페이지 새로고침
+        } else {
+            alert('오류: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('처리 중 오류가 발생했습니다.');
+    });
+});
+
+// 상품 상세 보기
+function viewProduct(productId) {
+    fetch('/product/api/get/' + productId)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const product = data.product;
+                
+                let html = '<div class="row">' +
+                    '<div class="col-md-6">' +
+                    '<h6>기본 정보</h6>' +
+                    '<table class="table table-sm">' +
+                    '<tr><th width="120">상품명:</th><td>' + product.product_name + '</td></tr>' +
+                    '<tr><th>상품코드:</th><td>' + (product.product_code || '-') + '</td></tr>' +
+                    '<tr><th>제품년도:</th><td>' + (product.product_year || '-') + '</td></tr>' +
+                    '<tr><th>가격:</th><td>' + (product.price ? '₩' + product.price.toLocaleString() : '-') + '</td></tr>' +
+                    '<tr><th>상태:</th><td>' + (product.is_active ? '<span class="badge bg-success">활성</span>' : '<span class="badge bg-secondary">비활성</span>') + '</td></tr>' +
+                    '</table>' +
+                    '</div>' +
+                    '<div class="col-md-6">' +
+                    '<h6>분류 정보</h6>' +
+                    '<table class="table table-sm">' +
+                    '<tr><th width="120">회사:</th><td>' + (product.company_name || '-') + '</td></tr>' +
+                    '<tr><th>브랜드:</th><td>' + (product.brand_name || '-') + '</td></tr>' +
+                    '<tr><th>품목:</th><td>' + (product.category_name || '-') + '</td></tr>' +
+                    '<tr><th>타입:</th><td>' + (product.type_name || '-') + '</td></tr>' +
+                    '</table>' +
+                    '</div>' +
+                    '</div>';
+                
+                if (product.description) {
+                    html += '<div class="mt-3">' +
+                        '<h6>상품 정보</h6>' +
+                        '<div class="border p-3 rounded">' + product.description + '</div>' +
+                        '</div>';
+                }
+                
+                if (product.manual_file_path) {
+                    html += '<div class="mt-3">' +
+                        '<h6>사용설명서</h6>' +
+                        '<a href="' + product.manual_file_path + '" target="_blank" class="btn btn-outline-primary btn-sm">' +
+                        '<i class="fas fa-file-pdf"></i> PDF 다운로드</a>' +
+                        '</div>';
+                }
+                
+                html += '<div class="mt-3">' +
+                    '<h6>시스템 정보</h6>' +
+                    '<table class="table table-sm">' +
+                    '<tr><th width="120">등록일:</th><td>' + (product.created_at ? new Date(product.created_at).toLocaleString() : '-') + '</td></tr>' +
+                    '<tr><th>등록자:</th><td>' + (product.created_by || '-') + '</td></tr>' +
+                    '<tr><th>수정일:</th><td>' + (product.updated_at ? new Date(product.updated_at).toLocaleString() : '-') + '</td></tr>' +
+                    '<tr><th>수정자:</th><td>' + (product.updated_by || '-') + '</td></tr>' +
+                    '</table>' +
+                    '</div>';
+                
+                document.getElementById('productDetailContent').innerHTML = html;
+                
+                const modal = new bootstrap.Modal(document.getElementById('productDetailModal'));
+                modal.show();
+            } else {
+                alert('상품 정보를 불러오는데 실패했습니다: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('상품 정보를 불러오는데 실패했습니다.');
+        });
+}
+
+// 상품 수정
+function editProduct(productId) {
+    showProductModal(productId);
+}
+
+// 상품 삭제
+function deleteProduct(productId, productName) {
+    if (confirm('정말로 "' + productName + '" 상품을 삭제하시겠습니까?\n삭제된 상품은 복구할 수 없습니다.')) {
+        fetch('/product/api/delete/' + productId, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('오류: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('삭제 중 오류가 발생했습니다.');
+        });
+    }
+}
+
+// 검색 폼 자동 제출
+document.addEventListener('DOMContentLoaded', function() {
+    // 검색어 입력 시 엔터키로 검색
+    document.getElementById('search').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            document.getElementById('searchForm').submit();
+        }
+    });
+    
+    // 드롭다운 변경 시 자동 검색
+    const searchSelects = ['brand_code_seq', 'category_code_seq', 'type_code_seq', 'show_inactive'];
+    searchSelects.forEach(function(id) {
+        document.getElementById(id).addEventListener('change', function() {
+            document.getElementById('searchForm').submit();
+        });
+    });
+});
+</script>
+{% endblock %} 

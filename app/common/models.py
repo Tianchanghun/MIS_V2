@@ -310,6 +310,42 @@ class Code(db.Model):
             return cls.get_codes_by_parent_seq(group.seq)
         return []
     
+    @classmethod
+    def get_codes_by_parent(cls, parent_seq):
+        """상위 코드 기준 하위 코드 목록 조회"""
+        return cls.query.filter_by(parent_seq=parent_seq).order_by(cls.sort.asc(), cls.code_name.asc()).all()
+    
+    @classmethod
+    def get_codes_by_group_name(cls, group_name, company_id=None):
+        """그룹명으로 코드 목록 조회"""
+        # 특정 그룹명에 맞는 코드 그룹 찾기
+        if group_name == '브랜드':
+            # 브랜드는 별도 Brand 테이블 사용 (tbl_brand)
+            return []
+        elif group_name == '품목':
+            # 제품구분(PRT) 코드 사용
+            group = cls.query.filter_by(code='PRT', depth=0).first()
+        elif group_name == '타입':
+            # 타입(TP) 코드 사용
+            group = cls.query.filter_by(code='TP', depth=0).first()
+        elif group_name == '년도':
+            # 년도(YR) 코드 사용
+            group = cls.query.filter_by(code='YR', depth=0).first()
+        else:
+            group = None
+            
+        if group:
+            codes = cls.query.filter_by(parent_seq=group.seq).order_by(cls.sort.asc(), cls.code_name.asc()).all()
+            return [{'seq': code.seq, 'code': code.code, 'code_name': code.code_name} for code in codes]
+        
+        return []
+    
+    @classmethod
+    def get_child_codes(cls, parent_seq):
+        """상위 코드의 하위 코드 목록 조회"""
+        codes = cls.query.filter_by(parent_seq=parent_seq).order_by(cls.sort.asc(), cls.code_name.asc()).all()
+        return [{'seq': code.seq, 'code': code.code, 'code_name': code.code_name} for code in codes]
+
     def to_dict(self):
         """코드 정보를 딕셔너리로 변환"""
         return {
@@ -363,6 +399,21 @@ class Brand(db.Model):
             'upt_user': self.upt_user,
             'upt_date': self.upt_date.isoformat() if self.upt_date else None
         }
+    
+    @classmethod
+    def get_brands_by_company(cls, company_id=None):
+        """회사별 브랜드 목록 조회"""
+        query = cls.query
+        if company_id:
+            # 멀티테넌트 지원: 회사별 또는 공통 브랜드
+            query = query.filter(
+                db.or_(
+                    cls.company_id == company_id,
+                    cls.company_id.is_(None)  # 공통 브랜드
+                )
+            )
+        brands = query.order_by(cls.sort.asc(), cls.brand_name.asc()).all()
+        return [{'seq': brand.seq, 'code': brand.brand_code, 'code_name': brand.brand_name} for brand in brands]
 
 # =============================================================================
 # 멀티테넌트 확장 모델 (새로 추가, 기존 테이블과 연동)
@@ -720,8 +771,9 @@ class ErpiaCustomer(db.Model):
     
     # 담당자 정보
     our_manager = db.Column('g_damdang', db.String(100))  # (우리회사의) 거래처 담당
-    customer_manager = db.Column('g_gdamdang', db.String(100))  # (상대회사) 거래처의 담당자
+    customer_manager = db.Column('g_gdamdang', db.String(50))  # 거래처 담당자
     customer_manager_tel = db.Column('g_gdamdang_tel', db.String(50))  # 거래처 담당자 연락처
+    customer_manager_tel2 = db.Column('g_gdamdang_tel2', db.String(50))  # 거래처 담당자 연락처2 (알림톡 추가 발송용)
     
     # 주소 정보
     location = db.Column('g_location', db.String(200))  # 위물도시선물
@@ -813,6 +865,7 @@ class ErpiaCustomer(db.Model):
             'our_manager': self.our_manager,
             'customer_manager': self.customer_manager,
             'customer_manager_tel': self.customer_manager_tel,
+            'customer_manager_tel2': self.customer_manager_tel2,
             'location': self.location,
             'zip_code1': self.zip_code1,
             'address1': self.address1,
@@ -1174,3 +1227,130 @@ Company.erpia_config = db.relationship("CompanyErpiaConfig", back_populates="com
 
 # 별칭 설정 (하위 호환성)
 UserDepartment = MemberDept 
+
+# =============================================================================
+# 상품관리 모델 (신규)
+# =============================================================================
+
+class Product(db.Model):
+    """상품 마스터"""
+    __tablename__ = 'products'
+    
+    # 기본 정보
+    id = db.Column(db.Integer, primary_key=True)
+    company_id = db.Column(db.Integer, db.ForeignKey('companies.id'), nullable=False)
+    
+    # 분류 정보 (기존 코드 체계 활용)
+    brand_seq = db.Column(db.Integer, db.ForeignKey('tbl_brand.seq'))  # Brand 테이블 참조
+    category_code_seq = db.Column(db.Integer, db.ForeignKey('tbl_code.seq'))  # 품목
+    type_code_seq = db.Column(db.Integer, db.ForeignKey('tbl_code.seq'))      # 타입
+    
+    # 상품 정보
+    product_name = db.Column(db.String(100), nullable=False)
+    product_code = db.Column(db.String(50))
+    product_year = db.Column(db.String(4))  # 제품 년도 (예: "24", "25")
+    price = db.Column(db.Integer, default=0)  # 상품가격(Tag)
+    description = db.Column(db.Text)  # 상품 정보
+    manual_file_path = db.Column(db.String(500))  # 사용설명서 PDF 경로
+    
+    # 상태 관리
+    is_active = db.Column(db.Boolean, default=True, nullable=False)  # 사용여부
+    
+    # 시스템 필드
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_by = db.Column(db.String(50))
+    updated_by = db.Column(db.String(50))
+    
+    # 관계 설정
+    company = db.relationship('Company', backref='products')
+    brand = db.relationship('Brand', foreign_keys=[brand_seq], backref='brand_products')
+    category_code = db.relationship('Code', foreign_keys=[category_code_seq], backref='category_products')
+    type_code = db.relationship('Code', foreign_keys=[type_code_seq], backref='type_products')
+    
+    def __repr__(self):
+        return f'<Product {self.product_name}>'
+    
+    def to_dict(self):
+        """딕셔너리 변환"""
+        return {
+            'id': self.id,
+            'company_id': self.company_id,
+            'company_name': self.company.company_name if self.company else '',
+            'brand_seq': self.brand_seq,
+            'brand_name': self.brand.brand_name if self.brand else '',
+            'category_code_seq': self.category_code_seq,
+            'category_name': self.category_code.code_name if self.category_code else '',
+            'type_code_seq': self.type_code_seq,
+            'type_name': self.type_code.code_name if self.type_code else '',
+            'product_name': self.product_name,
+            'product_code': self.product_code,
+            'product_year': self.product_year,
+            'price': self.price,
+            'description': self.description,
+            'manual_file_path': self.manual_file_path,
+            'is_active': self.is_active,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'created_by': self.created_by,
+            'updated_by': self.updated_by
+        }
+    
+    @classmethod
+    def get_by_company(cls, company_id, active_only=True):
+        """회사별 상품 목록 조회"""
+        query = cls.query.filter_by(company_id=company_id)
+        if active_only:
+            query = query.filter_by(is_active=True)
+        return query.order_by(cls.product_name).all()
+    
+    @classmethod
+    def search_products(cls, company_id, search_term=None, brand_seq=None, 
+                       category_code_seq=None, type_code_seq=None, active_only=True):
+        """상품 검색"""
+        query = cls.query.filter_by(company_id=company_id)
+        
+        if active_only:
+            query = query.filter_by(is_active=True)
+        
+        if search_term:
+            search_pattern = f'%{search_term}%'
+            query = query.filter(
+                db.or_(
+                    cls.product_name.ilike(search_pattern),
+                    cls.product_code.ilike(search_pattern),
+                    cls.description.ilike(search_pattern)
+                )
+            )
+        
+        if brand_seq:
+            query = query.filter_by(brand_seq=brand_seq)
+            
+        if category_code_seq:
+            query = query.filter_by(category_code_seq=category_code_seq)
+            
+        if type_code_seq:
+            query = query.filter_by(type_code_seq=type_code_seq)
+        
+        return query.order_by(cls.product_name).all()
+
+class ProductHistory(db.Model):
+    """상품 변경 이력"""
+    __tablename__ = 'product_history'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+    action = db.Column(db.String(20), nullable=False)  # CREATE, UPDATE, DELETE
+    changed_fields = db.Column(db.JSON)  # 변경된 필드들
+    old_values = db.Column(db.JSON)      # 이전 값들
+    new_values = db.Column(db.JSON)      # 새로운 값들
+    
+    # 시스템 필드
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_by = db.Column(db.String(50))
+    
+    # 관계 설정
+    product = db.relationship('Product', backref='history')
+    
+    def __repr__(self):
+        return f'<ProductHistory {self.product_id}:{self.action}>' 

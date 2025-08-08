@@ -13,6 +13,11 @@
                 <i class="fas fa-sync-alt"></i> ERPia 동기화
             </button>
             
+            <!-- 엑셀 업로드 버튼 -->
+            <button type="button" class="btn btn-info" id="btnUploadExcel" onclick="showUploadModal()">
+                <i class="fas fa-file-upload"></i> 엑셀 업로드
+            </button>
+            
             <!-- 엑셀 다운로드 버튼 -->
             <button type="button" class="btn btn-success" id="btnExportExcel" onclick="exportToExcel()">
                 <i class="fas fa-file-excel"></i> 엑셀 다운로드
@@ -42,6 +47,10 @@
                         <li class="nav-item">
                             <a class="nav-link {{ 'active' if shop_type == 'NoShop' else '' }}" 
                                href="?ty=NoShop">매장아님</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ 'active' if shop_type == 'NotUsed' else '' }}" 
+                               href="?ty=NotUsed">매장사용안함</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link {{ 'active' if shop_type == 'Nothing' else '' }}" 
@@ -78,19 +87,36 @@
         </div>
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table table-hover table-sm" id="shopsTable">
+                <table class="table table-hover table-sm table-striped" id="shopsTable">
                     <thead class="table-light">
                         <tr>
-                            <th>번호</th>
-                            <th>거래처 코드</th>
-                            <th>판매채널</th>
-                            <th>거래처명</th>
-                            <th>전화번호</th>
-                            <th>시/도</th>
-                            <th>구</th>
-                            <th>담당자</th>
-                            <th>거래처 등급</th>
-                            <th>매장사용</th>
+                            <th onclick="sortTable(0)" style="cursor: pointer;">
+                                번호 <i class="bi bi-arrow-down-up"></i>
+                            </th>
+                            <th onclick="sortTable(1)" style="cursor: pointer;">
+                                거래처 코드 <i class="bi bi-arrow-down-up"></i>
+                            </th>
+                            <th onclick="sortTable(2)" style="cursor: pointer;">
+                                거래처명 <i class="bi bi-arrow-down-up"></i>
+                            </th>
+                            <th onclick="sortTable(3)" style="cursor: pointer;">
+                                상대방담당자전화 <i class="bi bi-arrow-down-up"></i>
+                            </th>
+                            <th onclick="sortTable(4)" style="cursor: pointer;">
+                                시/도 <i class="bi bi-arrow-down-up"></i>
+                            </th>
+                            <th onclick="sortTable(5)" style="cursor: pointer;">
+                                구 <i class="bi bi-arrow-down-up"></i>
+                            </th>
+                            <th onclick="sortTable(6)" style="cursor: pointer;">
+                                담당자 <i class="bi bi-arrow-down-up"></i>
+                            </th>
+                            <th onclick="sortTable(7)" style="cursor: pointer;">
+                                분류 <i class="bi bi-arrow-down-up"></i>
+                            </th>
+                            <th onclick="sortTable(8)" style="cursor: pointer;">
+                                매장사용 <i class="bi bi-arrow-down-up"></i>
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
@@ -172,6 +198,7 @@
                                     <option value="">선택</option>
                                     <option value="Y">매장사용</option>
                                     <option value="N">매장사용안함</option>
+                                    <option value="NU">매장아님</option>
                                 </select>
                             </div>
                         </div>
@@ -199,6 +226,10 @@
                             <div class="col-md-6">
                                 <label for="customer_manager_tel" class="form-label">상대방 담당자 전화</label>
                                 <input type="text" class="form-control" id="customer_manager_tel">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="customer_manager_tel2" class="form-label">상대방 담당자 전화2 (알림톡)</label>
+                                <input type="text" class="form-control" id="customer_manager_tel2">
                             </div>
                             <div class="col-md-6">
                                 <label for="tax_manager" class="form-label">세금계산서 담당자</label>
@@ -286,6 +317,91 @@
     </div>
 </div>
 
+<!-- 엑셀 업로드 모달 -->
+<div class="modal fade" id="uploadModal" tabindex="-1" aria-labelledby="uploadModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="uploadModalLabel">
+                    <i class="fas fa-file-upload"></i> 엑셀 일괄 업로드
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-info-circle"></i> 업로드 안내</h6>
+                    <ul class="mb-0">
+                        <li><strong>동적 분류 지원:</strong> 현재 설정된 모든 분류 항목 자동 반영</li>
+                        <li><strong>필수 컬럼:</strong> 거래처코드, 거래처명</li>
+                        <li><strong>분류 값:</strong> 코드 또는 코드명 모두 입력 가능</li>
+                        <li><strong>중복 처리:</strong> 기존 거래처는 업데이트, 신규는 추가</li>
+                        <li><strong>참조 정보:</strong> 다운로드한 엑셀의 "분류코드정보" 시트 참조</li>
+                    </ul>
+                </div>
+                
+                <!-- 파일 업로드 영역 -->
+                <div class="border-2 border-dashed border-primary rounded p-4 text-center mb-3" 
+                     id="uploadArea" 
+                     ondrop="handleDrop(event)" 
+                     ondragover="handleDragOver(event)" 
+                     ondragenter="handleDragEnter(event)" 
+                     ondragleave="handleDragLeave(event)">
+                    <div id="uploadAreaContent">
+                        <i class="fas fa-cloud-upload-alt fa-3x text-primary mb-3"></i>
+                        <h5>파일을 여기에 드래그하거나 클릭하여 선택</h5>
+                        <p class="text-muted">Excel 파일 (.xlsx, .xls)</p>
+                        <input type="file" id="fileInput" accept=".xlsx,.xls" style="display: none;">
+                        <button type="button" class="btn btn-outline-primary" onclick="$('#fileInput').click()">
+                            <i class="fas fa-folder-open"></i> 파일 선택
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 업로드된 파일 정보 -->
+                <div id="fileInfo" style="display: none;">
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1"><i class="fas fa-file-excel text-success"></i> <span id="fileName"></span></h6>
+                                    <small class="text-muted">파일 크기: <span id="fileSize"></span></small>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearFile()">
+                                    <i class="fas fa-times"></i> 제거
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 업로드 진행 상황 -->
+                <div id="uploadProgress" style="display: none;">
+                    <div class="progress mb-3">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                             id="progressBar" 
+                             role="progressbar" 
+                             style="width: 0%">
+                            <span id="progressText">0%</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 업로드 결과 -->
+                <div id="uploadResult" style="display: none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-success me-2" onclick="downloadTemplate()">
+                    <i class="fas fa-download"></i> 템플릿 다운로드
+                </button>
+                <button type="button" class="btn btn-primary" id="btnUpload" onclick="uploadFile()" disabled>
+                    <i class="fas fa-upload"></i> 업로드 시작
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- 로딩 오버레이 -->
 <div id="loadingOverlay" class="loading-overlay" style="display: none;">
     <div class="loading-spinner">
@@ -325,6 +441,26 @@
 .table tbody tr:hover {
     background-color: #f8f9fa;
 }
+
+/* UI/UX 요구사항: 테이블 헤더 정렬 스타일 */
+th {
+    cursor: pointer;
+    user-select: none;
+}
+
+th:hover {
+    background-color: #e9ecef;
+}
+
+.sort-asc::after {
+    content: " ↑";
+    color: #007bff;
+}
+
+.sort-desc::after {
+    content: " ↓";
+    color: #007bff;
+}
 </style>
 
 <script>
@@ -335,6 +471,9 @@
         let currentPage = 1;
         let currentShopType = '{{ shop_type }}';
         let currentSearch = '';
+        let selectedFile = null; // 엑셀 업로드용 파일
+        let originalShopsData = []; // 정렬용 원본 데이터
+        let currentSort = { column: -1, direction: 'asc' }; // 정렬 상태
         
         // 페이지 로드시 초기화
         $(document).ready(function() {
@@ -347,6 +486,11 @@
                 if (e.which === 13) {
                     searchShops();
                 }
+            });
+            
+            // 실시간 검색 기능 (UI/UX 요구사항)
+            $('#searchInput').on('keyup', function() {
+                searchShops();
             });
             
             // 테이블 행 클릭 이벤트
@@ -510,6 +654,7 @@
                             전체: ${stats.total} | 
                             매장: ${stats.shops} | 
                             매장아님: ${stats.no_shops} | 
+                            매장사용안함: ${stats.not_used} |
                             미분류: ${stats.nothing}
                         `);
                     }
@@ -533,6 +678,7 @@
             $.get('/shop/api/shops', params)
                 .done(function(response) {
                     if (response.success) {
+                        originalShopsData = response.data; // 정렬용 원본 데이터 저장
                         renderShopsTable(response.data);
                         renderPagination(response.pagination);
                     } else {
@@ -580,6 +726,8 @@
                     '<span class="badge bg-success">매장</span>' : 
                     shop.shop_yn === 'N' ? 
                     '<span class="badge bg-secondary">매장아님</span>' : 
+                    shop.shop_yn === 'NU' ? 
+                    '<span class="badge bg-danger">매장사용안함</span>' :
                     '<span class="badge bg-warning">미분류</span>';
             
                 // 주소에서 시/도, 구 추출
@@ -592,22 +740,27 @@
                     }
                 }
                 
+                // 분류 정보 표시 (채널구분 우선)
+                let classification = shop.channel_type || shop.distribution_type || shop.sales_type || '-';
+                
                 const row = `
                     <tr data-seq="${shop.seq}">
                         <td>${(currentPage - 1) * 20 + index + 1}</td>
                         <td>${shop.customer_code || ''}</td>
-                        <td>${shop.channel_type || ''}</td>
                         <td><strong>${shop.customer_name || ''}</strong></td>
-                        <td>${shop.phone || ''}</td>
+                        <td>${shop.customer_manager_tel || ''}</td>
                         <td>${sido}</td>
                         <td>${gungu}</td>
                         <td>${shop.our_manager || ''}</td>
-                        <td></td>
+                        <td>${classification}</td>
                         <td>${shopYnBadge}</td>
                     </tr>
                 `;
                 tbody.append(row);
             });
+            
+            // 건수 업데이트
+            $('#shopCount').text(shops.length);
         }
 
         // 페이징 렌더링
@@ -682,6 +835,7 @@
             $('#our_manager').val(shop.our_manager || '');
             $('#customer_manager').val(shop.customer_manager || '');
             $('#customer_manager_tel').val(shop.customer_manager_tel || '');
+            $('#customer_manager_tel2').val(shop.customer_manager_tel2 || ''); // 새로 추가된 필드
             
             // 주소 정보
             $('#location').val(shop.location || '');
@@ -736,6 +890,7 @@
                 our_manager: $('#our_manager').val(),
                 customer_manager: $('#customer_manager').val(),
                 customer_manager_tel: $('#customer_manager_tel').val(),
+                customer_manager_tel2: $('#customer_manager_tel2').val(), // 새로 추가된 필드
                 location: $('#location').val(),
                 zip_code1: $('#zip_code1').val(),
                 address1: $('#address1').val(),
@@ -843,7 +998,7 @@
             });
         }
         
-        // 엑셀 다운로드
+        // 엑셀 다운로드 (개선된 버전)
         function exportToExcel() {
             // 현재 필터 조건 수집
             const params = {
@@ -871,8 +1026,319 @@
             setTimeout(() => {
                 $('#btnExportExcel').prop('disabled', false).html('<i class="fas fa-file-excel"></i> 엑셀 다운로드');
                 document.body.removeChild(iframe);
-                showAlert('success', '📊 엑셀 파일 다운로드가 시작되었습니다.');
+                
+                // 성공 메시지
+                showAlert('엑셀 파일이 다운로드되었습니다. "분류코드정보" 시트를 참조하여 업로드 파일을 작성하세요.', 'success');
             }, 3000);
+        }
+
+// 업로드 모달 표시
+function showUploadModal() {
+    clearFile();
+    $('#uploadModal').modal('show');
+}
+
+// 파일 입력 이벤트
+$('#fileInput').on('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        handleFile(file);
+    }
+});
+
+// 드래그 앤 드롭 이벤트 핸들러
+function handleDragOver(e) {
+    e.preventDefault();
+    e.stopPropagation();
+}
+
+function handleDragEnter(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    $('#uploadArea').addClass('bg-light border-primary');
+}
+
+function handleDragLeave(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    $('#uploadArea').removeClass('bg-light border-primary');
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    $('#uploadArea').removeClass('bg-light border-primary');
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        handleFile(files[0]);
+    }
+}
+
+// 파일 처리
+function handleFile(file) {
+    // 파일 확장자 체크
+    const allowedExtensions = ['.xlsx', '.xls'];
+    const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+    
+    if (!allowedExtensions.includes(fileExtension)) {
+        showAlert('엑셀 파일(.xlsx, .xls)만 업로드 가능합니다.', 'danger');
+        return;
+    }
+    
+    // 파일 크기 체크 (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+        showAlert('파일 크기는 10MB 이하여야 합니다.', 'danger');
+        return;
+    }
+    
+    selectedFile = file;
+    
+    // 파일 정보 표시
+    $('#fileName').text(file.name);
+    $('#fileSize').text(formatFileSize(file.size));
+    $('#fileInfo').show();
+    $('#uploadAreaContent').hide();
+    $('#btnUpload').prop('disabled', false);
+}
+
+// 파일 정보 제거
+function clearFile() {
+    selectedFile = null;
+    $('#fileInput').val('');
+    $('#fileInfo').hide();
+    $('#uploadAreaContent').show();
+    $('#uploadProgress').hide();
+    $('#uploadResult').hide();
+    $('#btnUpload').prop('disabled', true);
+}
+
+// 파일 크기 포맷
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// 템플릿 다운로드
+function downloadTemplate() {
+    showAlert('현재 데이터와 동일한 형식의 템플릿을 다운로드합니다.', 'info');
+    exportToExcel(); // 기존 엑셀 다운로드 함수 활용
+}
+
+// 파일 업로드 실행
+function uploadFile() {
+    if (!selectedFile) {
+        showAlert('업로드할 파일을 선택해주세요.', 'warning');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+    
+    // UI 상태 변경
+    $('#btnUpload').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> 업로드 중...');
+    $('#uploadProgress').show();
+    
+    // 가짜 진행률 애니메이션
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+        progress += Math.random() * 15;
+        if (progress > 90) progress = 90;
+        
+        $('#progressBar').css('width', progress + '%');
+        $('#progressText').text(Math.round(progress) + '%');
+    }, 200);
+    
+    // AJAX 업로드
+    $.ajax({
+        url: '/shop/api/upload-excel',
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        timeout: 300000, // 5분 타임아웃
+        success: function(response) {
+            clearInterval(progressInterval);
+            $('#progressBar').css('width', '100%');
+            $('#progressText').text('100%');
+            
+            if (response.success) {
+                const data = response.data;
+                let resultHtml = `
+                    <div class="alert alert-success">
+                        <h6><i class="fas fa-check-circle"></i> 업로드 완료!</h6>
+                        <p class="mb-2">${response.message}</p>
+                        <div class="row text-center">
+                            <div class="col-3">
+                                <div class="card bg-light">
+                                    <div class="card-body p-2">
+                                        <h5 class="mb-1 text-primary">${data.total_processed}</h5>
+                                        <small>총 처리</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="card bg-light">
+                                    <div class="card-body p-2">
+                                        <h5 class="mb-1 text-success">${data.success_count}</h5>
+                                        <small>성공</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="card bg-light">
+                                    <div class="card-body p-2">
+                                        <h5 class="mb-1 text-info">${data.update_count}</h5>
+                                        <small>업데이트</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="card bg-light">
+                                    <div class="card-body p-2">
+                                        <h5 class="mb-1 text-warning">${data.insert_count}</h5>
+                                        <small>신규</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                `;
+                
+                if (data.error_count > 0) {
+                    resultHtml += `
+                        <div class="mt-3">
+                            <h6 class="text-danger"><i class="fas fa-exclamation-triangle"></i> 오류 ${data.error_count}개</h6>
+                            <div class="bg-light p-2 rounded" style="max-height: 150px; overflow-y: auto;">
+                    `;
+                    
+                    data.error_details.forEach(error => {
+                        resultHtml += `<small class="d-block text-danger">• ${error}</small>`;
+                    });
+                    
+                    resultHtml += `
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                resultHtml += `</div>`;
+                
+                $('#uploadResult').html(resultHtml).show();
+                
+                // 목록 새로고침
+                setTimeout(() => {
+                    loadShops();
+                    loadShopStats();
+                }, 1000);
+                
+            } else {
+                $('#uploadResult').html(`
+                    <div class="alert alert-danger">
+                        <h6><i class="fas fa-times-circle"></i> 업로드 실패</h6>
+                        <p class="mb-0">${response.message}</p>
+                    </div>
+                `).show();
+            }
+        },
+        error: function(xhr, status, error) {
+            clearInterval(progressInterval);
+            
+            let errorMessage = '업로드 중 오류가 발생했습니다.';
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMessage = xhr.responseJSON.message;
+            } else if (status === 'timeout') {
+                errorMessage = '업로드 시간이 초과되었습니다. 파일 크기를 확인해주세요.';
+            }
+            
+            $('#uploadResult').html(`
+                <div class="alert alert-danger">
+                    <h6><i class="fas fa-times-circle"></i> 업로드 오류</h6>
+                    <p class="mb-0">${errorMessage}</p>
+                </div>
+            `).show();
+        },
+        complete: function() {
+            $('#btnUpload').prop('disabled', false).html('<i class="fas fa-upload"></i> 업로드 시작');
+        }
+    });
+}
+
+        // UI/UX 요구사항: 테이블 정렬 기능
+        function sortTable(columnIndex) {
+            // 정렬 방향 결정
+            if (currentSort.column === columnIndex) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.column = columnIndex;
+                currentSort.direction = 'asc';
+            }
+            
+            // 헤더 스타일 업데이트
+            $('th').removeClass('sort-asc sort-desc');
+            $(`th:eq(${columnIndex})`).addClass(`sort-${currentSort.direction}`);
+            
+            // 데이터 정렬
+            const sortedData = [...originalShopsData].sort((a, b) => {
+                let valueA, valueB;
+                
+                switch(columnIndex) {
+                    case 0: // 번호
+                        valueA = a.seq || 0;
+                        valueB = b.seq || 0;
+                        break;
+                    case 1: // 거래처 코드
+                        valueA = (a.customer_code || '').toLowerCase();
+                        valueB = (b.customer_code || '').toLowerCase();
+                        break;
+                    case 2: // 거래처명
+                        valueA = (a.customer_name || '').toLowerCase();
+                        valueB = (b.customer_name || '').toLowerCase();
+                        break;
+                    case 3: // 상대방담당자전화
+                        valueA = a.customer_manager_tel || '';
+                        valueB = b.customer_manager_tel || '';
+                        break;
+                    case 4: // 시/도
+                        valueA = a.address1 ? a.address1.split(' ')[0] || '' : '';
+                        valueB = b.address1 ? b.address1.split(' ')[0] || '' : '';
+                        break;
+                    case 5: // 구
+                        valueA = a.address1 ? a.address1.split(' ')[1] || '' : '';
+                        valueB = b.address1 ? b.address1.split(' ')[1] || '' : '';
+                        break;
+                    case 6: // 담당자
+                        valueA = (a.our_manager || '').toLowerCase();
+                        valueB = (b.our_manager || '').toLowerCase();
+                        break;
+                    case 7: // 분류
+                        valueA = a.channel_type || a.distribution_type || a.sales_type || '';
+                        valueB = b.channel_type || b.distribution_type || b.sales_type || '';
+                        break;
+                    case 8: // 매장사용
+                        valueA = a.shop_yn || '';
+                        valueB = b.shop_yn || '';
+                        break;
+                    default:
+                        return 0;
+                }
+                
+                // 정렬 처리
+                if (typeof valueA === 'number') {
+                    return currentSort.direction === 'asc' ? valueA - valueB : valueB - valueA;
+                } else {
+                    if (currentSort.direction === 'asc') {
+                        return valueA < valueB ? -1 : valueA > valueB ? 1 : 0;
+                    } else {
+                        return valueA > valueB ? -1 : valueA < valueB ? 1 : 0;
+                    }
+                }
+            });
+            
+            // 정렬된 데이터로 테이블 재렌더링
+            renderShopsTable(sortedData);
         }
 </script>
 {% endblock %} 
