@@ -152,6 +152,60 @@ th:hover {
                     </button>
                 </div>
             </div>
+            
+            <!-- 확장 필터 (두 번째 줄) -->
+            <div class="row g-3 mt-2">
+                <div class="col-md-2">
+                    <label for="typeFilter" class="form-label">타입</label>
+                    <select class="form-select" id="typeFilter" onchange="filterProducts()">
+                        <option value="">전체</option>
+                        {% for type in type_codes %}
+                        <option value="{{ type.seq }}">{{ type.code_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="yearFilter" class="form-label">년도</label>
+                    <select class="form-select" id="yearFilter" onchange="filterProducts()">
+                        <option value="">전체</option>
+                        {% for year in year_codes %}
+                        <option value="{{ year.seq }}">{{ year.code_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="colorFilter" class="form-label">색상</label>
+                    <select class="form-select" id="colorFilter" onchange="filterProducts()">
+                        <option value="">전체</option>
+                        {% for color in color_codes %}
+                        <option value="{{ color.seq }}">{{ color.code_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="divTypeFilter" class="form-label">구분타입</label>
+                    <select class="form-select" id="divTypeFilter" onchange="filterProducts()">
+                        <option value="">전체</option>
+                        {% for div_type in div_type_codes %}
+                        <option value="{{ div_type.seq }}">{{ div_type.code_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="productCodeFilter" class="form-label">제품코드</label>
+                    <select class="form-select" id="productCodeFilter" onchange="filterProducts()">
+                        <option value="">전체</option>
+                        {% for prod_code in product_codes %}
+                        <option value="{{ prod_code.seq }}">{{ prod_code.code_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="stdCodeFilter" class="form-label">자가코드</label>
+                    <input type="text" class="form-control" id="stdCodeFilter" 
+                           placeholder="자가코드 검색..." onkeyup="filterProducts()">
+                </div>
+            </div>
         </div>
     </div>
 
@@ -210,7 +264,7 @@ th:hover {
                     <thead class="table-light">
                         <tr>
                             <th onclick="sortTable(0)" style="width: 80px;">
-                                No. <i class="bi bi-arrow-down-up"></i>
+                                번호 <i class="bi bi-arrow-down-up"></i>
                             </th>
                             <th onclick="sortTable(1)" style="width: 120px;">
                                 회사 <i class="bi bi-arrow-down-up"></i>
@@ -221,17 +275,17 @@ th:hover {
                             <th onclick="sortTable(3)">
                                 상품명 <i class="bi bi-arrow-down-up"></i>
                             </th>
-                            <th onclick="sortTable(4)" style="width: 120px;">
-                                상품코드 <i class="bi bi-arrow-down-up"></i>
-                            </th>
-                            <th onclick="sortTable(5)" style="width: 100px;">
+                            <th onclick="sortTable(4)" style="width: 100px;">
                                 품목 <i class="bi bi-arrow-down-up"></i>
                             </th>
-                            <th onclick="sortTable(6)" style="width: 100px;">
+                            <th onclick="sortTable(5)" style="width: 100px;">
                                 타입 <i class="bi bi-arrow-down-up"></i>
                             </th>
+                            <th onclick="sortTable(6)" style="width: 100px;">
+                                년도 <i class="bi bi-arrow-down-up"></i>
+                            </th>
                             <th onclick="sortTable(7)" style="width: 120px;">
-                                가격 <i class="bi bi-arrow-down-up"></i>
+                                상품가격(Tag) <i class="bi bi-arrow-down-up"></i>
                             </th>
                             <th onclick="sortTable(8)" style="width: 80px;">
                                 상태 <i class="bi bi-arrow-down-up"></i>
@@ -257,6 +311,32 @@ th:hover {
         </div>
     </div>
 
+    <!-- 페이징 컨트롤 (새로 추가) -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <nav aria-label="상품 페이지네이션">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <small class="text-muted" id="pageInfo">
+                            총 <span id="totalProducts">0</span>개 상품 (페이지 <span id="currentPageNum">1</span> / <span id="totalPages">1</span>)
+                        </small>
+                    </div>
+                    <ul class="pagination pagination-sm mb-0" id="pagination">
+                        <!-- 동적으로 생성됨 -->
+                    </ul>
+                    <div>
+                        <select class="form-select form-select-sm" id="perPageSelect" style="width: auto;">
+                            <option value="10">10개씩</option>
+                            <option value="25">25개씩</option>
+                            <option value="50" selected>50개씩</option>
+                            <option value="100">100개씩</option>
+                        </select>
+                    </div>
+                </div>
+            </nav>
+        </div>
+    </div>
+
     <!-- 로딩 인디케이터 -->
     <div class="text-center my-5" id="loadingIndicator" style="display: none;">
         <div class="spinner-border text-primary" role="status">
@@ -267,148 +347,205 @@ th:hover {
 </div>
 
 <!-- 상품 등록/수정 모달 -->
-<div class="modal fade" id="productModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+<div class="modal fade" id="productModal" tabindex="-1" role="dialog" aria-labelledby="productModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
-            <div class="modal-header" id="modalHeader">
-                <h5 class="modal-title" id="modalTitle">
-                    <i class="fas fa-plus me-2"></i>상품 등록
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            <div class="modal-header">
+                <h5 class="modal-title" id="productModalLabel">상품 등록</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
-                <form id="productForm">
-                    <input type="hidden" id="productId" name="id">
-                    
-                    <!-- 기본 정보 -->
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="modal_company_id" class="form-label">
-                                    회사 <span class="required">*</span>
-                                </label>
-                                <select class="form-select" id="modal_company_id" name="company_id" required>
-                                    <option value="">선택하세요</option>
-                                    <option value="1">에이원</option>
-                                    <option value="2">에이원월드</option>
-                                </select>
+            <form id="productForm" enctype="multipart/form-data">
+                <input type="hidden" id="productId" name="productId">
+                <input type="hidden" id="isEditMode" value="false">
+                
+                <div class="modal-body">
+                    <div class="container-fluid">
+                        
+                        <!-- 1단계: 기본 상품 정보 (레거시 호환) -->
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="company_id" class="form-label">회사</label>
+                                    <select class="form-control" id="company_id" name="company_id" required>
+                                        <option value="">선택</option>
+                                        <option value="1" selected>에이원</option>
+                                        <option value="2">에이원 월드</option>
+                                    </select>
+                                </div>
                             </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="modal_brand_seq" class="form-label">브랜드</label>
-                                <select class="form-select" id="modal_brand_seq" name="brand_seq">
-                                    <option value="">선택하세요</option>
-                                    {% for brand in brand_codes %}
-                                    <option value="{{ brand.seq }}">{{ brand.code_name }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-12">
-                            <div class="mb-3">
-                                <label for="modal_product_name" class="form-label">
-                                    상품명 <span class="required">*</span>
-                                </label>
-                                <input type="text" class="form-control" id="modal_product_name" 
-                                       name="product_name" required placeholder="상품명을 입력하세요">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label for="modal_product_code" class="form-label">상품코드</label>
-                                <input type="text" class="form-control" id="modal_product_code" 
-                                       name="product_code" placeholder="상품코드 (선택)">
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label for="modal_product_year" class="form-label">년도</label>
-                                <input type="text" class="form-control" id="modal_product_year" 
-                                       name="product_year" placeholder="예: 2024" maxlength="4">
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label for="modal_price" class="form-label">가격</label>
-                                <div class="input-group">
-                                    <input type="number" class="form-control" id="modal_price" 
-                                           name="price" placeholder="0" min="0">
-                                    <span class="input-group-text">원</span>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="brand_code_seq" class="form-label">브랜드</label>
+                                    <select class="form-control" id="brand_code_seq" name="brand_code_seq" required>
+                                        <option value="">선택</option>
+                                        {% for brand in brand_codes %}
+                                        <option value="{{ brand.seq }}" data-code="{{ brand.code }}">{{ brand.code_name }} ({{ brand.code }})</option>
+                                        {% endfor %}
+                                    </select>
                                 </div>
                             </div>
                         </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="modal_category_code_seq" class="form-label">품목</label>
-                                <select class="form-select" id="modal_category_code_seq" name="category_code_seq">
-                                    <option value="">선택하세요</option>
-                                    {% for category in category_codes %}
-                                    <option value="{{ category.seq }}">{{ category.code_name }}</option>
-                                    {% endfor %}
-                                </select>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="prod_group_code_seq" class="form-label">품목</label>
+                                    <select class="form-control" id="prod_group_code_seq" name="prod_group_code_seq" required>
+                                        <option value="">선택</option>
+                                        {% for prod_group in prod_group_codes %}
+                                        <option value="{{ prod_group.seq }}" data-code="{{ prod_group.code }}">{{ prod_group.code_name }} ({{ prod_group.code }})</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="prod_type_code_seq" class="form-label">타입</label>
+                                    <select class="form-control" id="prod_type_code_seq" name="prod_type_code_seq" required>
+                                        <option value="">선택</option>
+                                        {% for prod_type in prod_type_codes %}
+                                        <option value="{{ prod_type.seq }}" data-code="{{ prod_type.code }}">{{ prod_type.code_name }} ({{ prod_type.code }})</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="modal_type_code_seq" class="form-label">타입</label>
-                                <select class="form-select" id="modal_type_code_seq" name="type_code_seq">
-                                    <option value="">선택하세요</option>
-                                    {% for type in type_codes %}
-                                    <option value="{{ type.seq }}">{{ type.code_name }}</option>
-                                    {% endfor %}
-                                </select>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="product_name" class="form-label">상품명</label>
+                                    <input type="text" class="form-control" id="product_name" name="product_name" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="year_code_seq" class="form-label">년식</label>
+                                    <select class="form-control" id="year_code_seq" name="year_code_seq" required>
+                                        <option value="">선택</option>
+                                        {% for year in year_codes %}
+                                        <option value="{{ year.seq }}" data-code="{{ year.code }}">{{ year.code_name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
                             </div>
                         </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="modal_description" class="form-label">상품 설명</label>
-                        <textarea class="form-control" id="modal_description" name="description" 
-                                  rows="3" placeholder="상품에 대한 상세한 설명을 입력하세요"></textarea>
-                    </div>
-
-                    <!-- 파일 업로드 -->
-                    <div class="mb-3">
-                        <label for="modal_manual_file" class="form-label">사용설명서 (PDF)</label>
-                        <div class="file-upload-area" onclick="document.getElementById('modal_manual_file').click()">
-                            <i class="fas fa-file-pdf fa-2x text-muted mb-2"></i>
-                            <p class="mb-0">클릭하여 PDF 파일을 선택하거나 드래그하여 업로드</p>
-                            <small class="text-muted">최대 10MB, PDF 파일만 지원</small>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="price" class="form-label">상품가격(Tag)</label>
+                                    <input type="number" class="form-control" id="price" name="price" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="use_yn" class="form-label">사용여부</label>
+                                    <select class="form-control" id="use_yn" name="use_yn" required>
+                                        <option value="Y" selected>사용</option>
+                                        <option value="N">미사용</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
-                        <input type="file" class="form-control d-none" id="modal_manual_file" 
-                               name="manual_file" accept=".pdf">
-                        <div id="fileInfo" class="mt-2" style="display: none;"></div>
-                    </div>
-
-                    <div class="mb-3">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="modal_is_active" 
-                                   name="is_active" checked>
-                            <label class="form-check-label" for="modal_is_active">
-                                활성 상태
-                            </label>
+                        
+                        <!-- 히든 필드: 구분타입 "일반"으로 고정 -->
+                        <input type="hidden" id="div_type_code_seq" name="div_type_code_seq" value="">
+                        
+                        <!-- 구분선 -->
+                        <hr class="my-4">
+                        
+                        <!-- 2단계: 제품 모델 등록 -->
+                        <div class="bg-primary text-white p-2 mb-3">
+                            <h6 class="mb-0">제품 모델 등록</h6>
                         </div>
+                        
+                        <div id="productModelsContainer">
+                            <div class="product-model-item border p-3 mb-3" data-index="0">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label class="form-label">제품명</label>
+                                            <input type="text" class="form-control product-model-name" name="model_name[]" placeholder="제품명">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="mb-3">
+                                            <label class="form-label">제품코드</label>
+                                            <select class="form-control product-code" name="product_code[]">
+                                                <option value="">제품 코드</option>
+                                                {% for product_code in product_codes %}
+                                                <option value="{{ product_code.code }}" data-code="{{ product_code.code }}">{{ product_code.code_name }} ({{ product_code.code }})</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="mb-3">
+                                            <label class="form-label">타입</label>
+                                            <select class="form-control prod-type2" name="prod_type2[]">
+                                                <option value="">타입</option>
+                                                {% for type2 in type2_codes %}
+                                                <option value="{{ type2.code }}" data-code="{{ type2.code }}">{{ type2.code_name }} ({{ type2.code }})</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="mb-3">
+                                            <label class="form-label">색상</label>
+                                            <select class="form-control product-color" name="product_color[]">
+                                                <option value="">색상</option>
+                                                {% for color in color_codes %}
+                                                <option value="{{ color.code }}" data-code="{{ color.code }}">{{ color.code_name }} ({{ color.code }})</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="mb-3">
+                                            <label class="form-label">자사코드</label>
+                                            <div class="input-group">
+                                                <input type="text" class="form-control std-product-code" name="std_product_code[]" placeholder="분류화 표준코드" readonly>
+                                                <button type="button" class="btn btn-primary btn-generate-code">자동생성</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-10"></div>
+                                    <div class="col-md-2">
+                                        <button type="button" class="btn btn-sm btn-success btn-add-model me-2">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-danger btn-remove-model">
+                                            <i class="fas fa-minus"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 추가 정보 (선택사항) -->
+                        <hr class="my-4">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <label for="description" class="form-label">설명</label>
+                                    <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        
                     </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times me-1"></i>취소
-                </button>
-                <button type="button" class="btn btn-primary" id="saveProductBtn">
-                    <i class="fas fa-save me-1"></i>저장
-                </button>
-            </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+                    <button type="submit" class="btn btn-primary" id="saveProductBtn">저장</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -489,31 +626,405 @@ th:hover {
 <script src="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta3/dist/js/i18n/defaults-ko_KR.min.js"></script>
 
 <script>
+// 전역 변수
 let products = [];
 let filteredProducts = [];
-let currentSort = { column: null, direction: 'asc' };
 let currentProductId = null;
 
+// 페이징 변수 (새로 추가)
+let currentPage = 1;
+let perPage = 50;
+let totalProducts = 0;
+let totalPages = 1;
+let isLoading = false;
+
+// 정렬 변수 (새로 추가)
+let currentSort = {
+    column: 'created_at',
+    direction: 'desc'
+};
+
 $(document).ready(function() {
+    console.log('상품 관리 시스템 초기화');
     loadProducts();
-    initializeEventHandlers();
-    setupFileUpload();
-    setupViewModeToggle();
+    setupEventHandlers();
+    initializeDivType();
 });
 
-// 상품 목록 로드
-function loadProducts() {
+// 구분타입을 "일반"으로 기본 설정
+function initializeDivType() {
+    // 구분타입 코드 중에서 "일반"에 해당하는 값을 찾아서 설정
+    const divTypeSelect = document.getElementById('div_type_code_seq');
+    // 구분타입은 일반적으로 첫 번째 값 또는 "1"로 설정
+    const divTypeOptions = $('#div_type_code_seq option');
+    if (divTypeOptions.length > 1) {
+        divTypeSelect.value = divTypeOptions.eq(1).val(); // 첫 번째 옵션은 공백이므로 두 번째 선택
+    }
+}
+
+// 이벤트 핸들러 설정
+function setupEventHandlers() {
+    // 자가코드 자동생성 버튼
+    $(document).on('click', '.btn-generate-code', function() {
+        generateProductCode(this);
+    });
+
+    // 제품모델 추가 버튼
+    $(document).on('click', '.btn-add-model', function() {
+        addProductModelRow();
+    });
+
+    // 제품모델 삭제 버튼
+    $(document).on('click', '.btn-remove-model', function() {
+        removeProductModelRow(this);
+    });
+
+    // 폼 제출
+    $('#productForm').on('submit', function(e) {
+        e.preventDefault();
+        saveProduct();
+    });
+    
+    // 품목 변경 시 타입 필터링
+    $('#prod_group_code_seq').on('change', function() {
+        updateTypesForCategory(this.value);
+    });
+}
+
+// 품목에 따른 타입 업데이트
+function updateTypesForCategory(categorySeq) {
+    const typeSelect = $('#prod_type_code_seq');
+    
+    // 타입 선택창 초기화
+    typeSelect.empty().append('<option value="">선택</option>');
+    
+    if (!categorySeq) {
+        return;
+    }
+    
+    // API로 해당 품목의 타입들 가져오기
+    fetch(`/product/api/get-types-by-category/${categorySeq}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.types) {
+                data.types.forEach(type => {
+                    typeSelect.append(`
+                        <option value="${type.seq}" data-code="${type.code}">
+                            ${type.code_name} (${type.code})
+                        </option>
+                    `);
+                });
+            }
+        })
+        .catch(error => {
+            console.error('타입 로드 실패:', error);
+        });
+}
+
+// 레거시 방식 자가코드 생성 (16자리)
+function generateProductCode(button) {
+    const modelItem = $(button).closest('.product-model-item');
+    
+    // 기본 코드들 (1단계에서 정의)
+    const brandCode = $('#brand_code_seq option:selected').data('code') || '';
+    const divTypeCode = '1'; // 일반으로 고정
+    const prodGroupCode = $('#prod_group_code_seq option:selected').data('code') || '';
+    const prodTypeCode = $('#prod_type_code_seq option:selected').data('code') || '';
+    const yearCode = $('#year_code_seq option:selected').data('code') || '';
+    
+    // 제품모델별 코드들 (2단계에서 선택)
+    const productCode = modelItem.find('.product-code option:selected').data('code') || '';
+    const prodType2Code = modelItem.find('.prod-type2 option:selected').data('code') || '';
+    const colorCode = modelItem.find('.product-color option:selected').data('code') || '';
+
+    // 유효성 검사
+    if (!brandCode) {
+        alert('브랜드를 선택하세요.');
+        $('#brand_code_seq').focus();
+        return false;
+    }
+    if (!prodGroupCode) {
+        alert('품목을 선택하세요.');
+        $('#prod_group_code_seq').focus();
+        return false;
+    }
+    if (!prodTypeCode) {
+        alert('타입을 선택하세요.');
+        $('#prod_type_code_seq').focus();
+        return false;
+    }
+    if (!yearCode) {
+        alert('년식을 선택하세요.');
+        $('#year_code_seq').focus();
+        return false;
+    }
+    if (!productCode) {
+        alert('제품코드를 선택하세요.');
+        modelItem.find('.product-code').focus();
+        return false;
+    }
+    if (!prodType2Code) {
+        alert('타입을 선택하세요.');
+        modelItem.find('.prod-type2').focus();
+        return false;
+    }
+    if (!colorCode) {
+        alert('색상을 선택하세요.');
+        modelItem.find('.product-color').focus();
+        return false;
+    }
+
+    // 16자리 자가코드 조합 (레거시 방식)
+    const stdCode = brandCode.padEnd(2, '0').substring(0, 2) +
+                   divTypeCode.substring(0, 1) +
+                   prodGroupCode.padEnd(2, '0').substring(0, 2) +
+                   prodTypeCode.padEnd(2, '0').substring(0, 2) +
+                   productCode.padEnd(2, '0').substring(0, 2) +
+                   prodType2Code.padEnd(2, '0').substring(0, 2) +
+                   yearCode.substring(0, 2) +
+                   colorCode.padEnd(3, '0').substring(0, 3);
+
+    // 생성된 코드를 입력 필드에 설정
+    modelItem.find('.std-product-code').val(stdCode);
+    
+    console.log('자가코드 생성:', stdCode);
+    console.log('구성:', {
+        brand: brandCode,
+        divType: divTypeCode,
+        prodGroup: prodGroupCode,
+        prodType: prodTypeCode,
+        productCode: productCode,
+        prodType2: prodType2Code,
+        year: yearCode,
+        color: colorCode
+    });
+}
+
+// 제품모델 행 추가
+function addProductModelRow() {
+    const container = $('#productModelsContainer');
+    const currentCount = container.find('.product-model-item').length;
+    const newIndex = currentCount;
+    
+    const newRow = `
+        <div class="product-model-item border p-3 mb-3" data-index="${newIndex}">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label">제품명</label>
+                        <input type="text" class="form-control product-model-name" name="model_name[]" placeholder="제품명">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="mb-3">
+                        <label class="form-label">제품코드</label>
+                        <select class="form-control product-code" name="product_code[]">
+                            <option value="">제품 코드</option>
+                            {% for product_code in product_codes %}
+                            <option value="{{ product_code.code }}" data-code="{{ product_code.code }}">{{ product_code.code_name }} ({{ product_code.code }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="mb-3">
+                        <label class="form-label">타입</label>
+                        <select class="form-control prod-type2" name="prod_type2[]">
+                            <option value="">타입</option>
+                            {% for type2 in type2_codes %}
+                            <option value="{{ type2.code }}" data-code="{{ type2.code }}">{{ type2.code_name }} ({{ type2.code }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="mb-3">
+                        <label class="form-label">색상</label>
+                        <select class="form-control product-color" name="product_color[]">
+                            <option value="">색상</option>
+                            {% for color in color_codes %}
+                            <option value="{{ color.code }}" data-code="{{ color.code }}">{{ color.code_name }} ({{ color.code }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="mb-3">
+                        <label class="form-label">자사코드</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control std-product-code" name="std_product_code[]" placeholder="분류화 표준코드" readonly>
+                            <button type="button" class="btn btn-primary btn-generate-code">자동생성</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-10"></div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-sm btn-success btn-add-model me-2">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-danger btn-remove-model">
+                        <i class="fas fa-minus"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    container.append(newRow);
+}
+
+// 제품모델 행 삭제
+function removeProductModelRow(button) {
+    const modelItem = $(button).closest('.product-model-item');
+    const container = $('#productModelsContainer');
+    
+    if (container.find('.product-model-item').length <= 1) {
+        alert('첫 행은 지울 수 없습니다.');
+        return false;
+    }
+    
+    if (confirm('해당 행을 삭제하시겠습니까?')) {
+        modelItem.remove();
+    }
+}
+
+// 상품 저장
+function saveProduct() {
+    const formData = new FormData();
+    const isEdit = document.getElementById('isEditMode').value === 'true';
+    
+    // 기본 상품 정보
+    formData.append('company_id', document.getElementById('company_id').value);
+    formData.append('brand_code_seq', document.getElementById('brand_code_seq').value);
+    formData.append('prod_group_code_seq', document.getElementById('prod_group_code_seq').value);
+    formData.append('prod_type_code_seq', document.getElementById('prod_type_code_seq').value);
+    formData.append('product_name', document.getElementById('product_name').value);
+    formData.append('year_code_seq', document.getElementById('year_code_seq').value);
+    formData.append('price', document.getElementById('price').value);
+    formData.append('use_yn', document.getElementById('use_yn').value);
+    formData.append('div_type_code_seq', document.getElementById('div_type_code_seq').value);
+    formData.append('description', document.getElementById('description').value);
+
+    // 제품모델 정보 수집
+    const productModels = [];
+    $('.product-model-item').each(function(index) {
+        const modelName = $(this).find('.product-model-name').val();
+        const productCode = $(this).find('.product-code').val();
+        const prodType2 = $(this).find('.prod-type2').val();
+        const productColor = $(this).find('.product-color').val();
+        const stdProductCode = $(this).find('.std-product-code').val();
+        
+        if (modelName && productCode && prodType2 && productColor && stdProductCode) {
+            productModels.push({
+                name: modelName,
+                product_code: productCode,
+                prod_type2: prodType2,
+                color: productColor,
+                std_code: stdProductCode
+            });
+        }
+    });
+
+    if (productModels.length === 0) {
+        alert('최소 하나의 제품모델을 등록해야 합니다.');
+        return;
+    }
+
+    formData.append('product_models', JSON.stringify(productModels));
+
+    const url = isEdit ? `/product/api/update/${document.getElementById('productId').value}` : '/product/api/create';
+    const method = isEdit ? 'PUT' : 'POST';
+
+    fetch(url, {
+        method: method,
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showMessage(data.message, 'success');
+            $('#productModal').modal('hide');
+            loadProducts();
+        } else {
+            showMessage(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showMessage('저장 중 오류가 발생했습니다.', 'error');
+    });
+}
+
+// 정렬 기능
+function sortProducts(column) {
+    if (currentSort.column === column) {
+        currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+    } else {
+        currentSort.column = column;
+        currentSort.direction = 'asc';
+    }
+    
+    updateSortIcons();
+    loadProducts();
+}
+
+// 정렬 아이콘 업데이트
+function updateSortIcons() {
+    $('.sort-header').removeClass('asc desc');
+    $(`.sort-header[data-column="${currentSort.column}"]`).addClass(currentSort.direction);
+}
+
+// 상품 목록 로드 (페이징 지원 + 중복 호출 방지)
+function loadProducts(page = 1) {
+    if (isLoading) return;
+    
+    isLoading = true;
     showLoading(true);
     
-    fetch('/product/api/list')
+    // 검색 파라미터 수집
+    const searchTerm = document.getElementById('searchInput').value || '';
+    const brandCodeSeq = document.getElementById('brandFilter').value || '';
+    const categoryCodeSeq = document.getElementById('categoryFilter').value || '';
+    const typeCodeSeq = document.getElementById('typeFilter').value || '';
+    
+    // API 요청 URL 구성
+    const params = new URLSearchParams({
+        page: page,
+        per_page: perPage,
+        sort_by: currentSort.column,        // 정렬 컬럼 추가
+        sort_direction: currentSort.direction  // 정렬 방향 추가
+    });
+    
+    if (searchTerm) params.append('search', searchTerm);
+    if (brandCodeSeq) params.append('brand_code_seq', brandCodeSeq);
+    if (categoryCodeSeq) params.append('category_code_seq', categoryCodeSeq);
+    if (typeCodeSeq) params.append('type_code_seq', typeCodeSeq);
+    
+    fetch(`/product/api/list?${params.toString()}`)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                products = data.products;
-                filteredProducts = [...products];
+                products = data.products || [];
+                filteredProducts = [...products]; // filteredProducts를 products와 동일하게 설정
+                
+                // 페이징 정보 업데이트
+                if (data.pagination) {
+                    currentPage = data.pagination.page;
+                    perPage = data.pagination.per_page;
+                    totalProducts = data.pagination.total;
+                    totalPages = data.pagination.pages;
+                }
+                
                 renderProducts();
-                updateCounters();
+                renderPagination();
+                updatePageInfo();
+                updateCounters(); // 카운터 업데이트 추가
+                updateSortIcons();  // 정렬 아이콘 업데이트 추가
             } else {
+                console.error('API 오류:', data.message);
                 showAlert('상품 목록을 불러오는데 실패했습니다: ' + data.message, 'error');
             }
         })
@@ -522,6 +1033,7 @@ function loadProducts() {
             showAlert('서버 오류가 발생했습니다', 'error');
         })
         .finally(() => {
+            isLoading = false;
             showLoading(false);
         });
 }
@@ -542,7 +1054,9 @@ function renderTableView() {
     const tbody = document.getElementById('productTableBody');
     tbody.innerHTML = '';
     
-    if (filteredProducts.length === 0) {
+    console.log('렌더링할 상품 수:', filteredProducts.length); // 디버그 로그 추가
+    
+    if (!filteredProducts || filteredProducts.length === 0) {
         tbody.innerHTML = `
             <tr>
                 <td colspan="11" class="text-center py-4">
@@ -556,8 +1070,8 @@ function renderTableView() {
     
     filteredProducts.forEach((product, index) => {
         const row = `
-            <tr onclick="showProductDetail(${product.id})" style="cursor: pointer;">
-                <td>${index + 1}</td>
+            <tr onclick="editProduct(${product.id})" style="cursor: pointer;">
+                <td>${(currentPage - 1) * perPage + index + 1}</td>
                 <td>
                     <span class="badge company-badge-${product.company_id}">
                         ${product.company_id === 1 ? '에이원' : '에이원월드'}
@@ -568,9 +1082,9 @@ function renderTableView() {
                     <strong>${product.product_name}</strong>
                     ${product.product_code ? `<br><small class="text-muted">${product.product_code}</small>` : ''}
                 </td>
-                <td>${product.product_code || '-'}</td>
                 <td>${product.category_name || '-'}</td>
                 <td>${product.type_name || '-'}</td>
+                <td>${product.year_code_name || '-'}</td>
                 <td class="price-display">
                     ${product.price ? formatPrice(product.price) + '원' : '-'}
                 </td>
@@ -580,12 +1094,12 @@ function renderTableView() {
                     </span>
                 </td>
                 <td>${formatDate(product.created_at)}</td>
-                <td>
+                <td onclick="event.stopPropagation();">
                     <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-primary btn-sm" onclick="event.stopPropagation(); editProduct(${product.id})" title="수정">
-                            <i class="fas fa-edit"></i>
+                        <button class="btn btn-outline-info btn-sm" onclick="showProductDetail(${product.id})" title="상세보기">
+                            <i class="fas fa-eye"></i>
                         </button>
-                        <button class="btn btn-outline-danger btn-sm" onclick="event.stopPropagation(); deleteProduct(${product.id})" title="삭제">
+                        <button class="btn btn-outline-danger btn-sm" onclick="deleteProduct(${product.id})" title="삭제">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
@@ -627,7 +1141,9 @@ function renderCardView() {
                         <h6 class="card-title">${product.product_name}</h6>
                         <p class="card-text">
                             <small class="text-muted">브랜드: ${product.brand_name || '미지정'}</small><br>
-                            <small class="text-muted">코드: ${product.product_code || '-'}</small><br>
+                            <small class="text-muted">품목: ${product.category_name || '-'}</small><br>
+                            <small class="text-muted">타입: ${product.type_name || '-'}</small><br>
+                            <small class="text-muted">년도: ${product.year_code_name || '-'}</small><br>
                             <span class="price-display">
                                 ${product.price ? formatPrice(product.price) + '원' : '가격 미정'}
                             </span>
@@ -671,11 +1187,27 @@ function filterProducts() {
     const categoryFilter = document.getElementById('categoryFilter').value;
     const statusFilter = document.getElementById('statusFilter').value;
     
+    // 확장 필터 (새로 추가)
+    const typeFilter = document.getElementById('typeFilter').value;
+    const yearFilter = document.getElementById('yearFilter').value;
+    const colorFilter = document.getElementById('colorFilter').value;
+    const divTypeFilter = document.getElementById('divTypeFilter').value;
+    const productCodeFilter = document.getElementById('productCodeFilter').value;
+    const stdCodeFilter = document.getElementById('stdCodeFilter').value.toLowerCase();
+    
     filteredProducts = products.filter(product => {
         if (companyFilter && product.company_id.toString() !== companyFilter) return false;
-        if (brandFilter && product.brand_seq && product.brand_seq.toString() !== brandFilter) return false;
+        if (brandFilter && product.brand_code_seq && product.brand_code_seq.toString() !== brandFilter) return false;
         if (categoryFilter && product.category_code_seq && product.category_code_seq.toString() !== categoryFilter) return false;
         if (statusFilter && product.is_active.toString() !== statusFilter) return false;
+        
+        // 확장 필터 검사 (새로 추가)
+        if (typeFilter && product.type_code_seq && product.type_code_seq.toString() !== typeFilter) return false;
+        if (yearFilter && product.year_code_seq && product.year_code_seq.toString() !== yearFilter) return false;
+        if (colorFilter && product.color_code_seq && product.color_code_seq.toString() !== colorFilter) return false;
+        if (divTypeFilter && product.div_type_code_seq && product.div_type_code_seq.toString() !== divTypeFilter) return false;
+        if (productCodeFilter && product.product_code_seq && product.product_code_seq.toString() !== productCodeFilter) return false;
+        if (stdCodeFilter && product.std_product_code && !product.std_product_code.toLowerCase().includes(stdCodeFilter)) return false;
         
         // 검색어도 함께 적용
         const search = document.getElementById('searchInput').value.toLowerCase();
@@ -700,6 +1232,14 @@ function resetFilters() {
     document.getElementById('brandFilter').value = '';
     document.getElementById('categoryFilter').value = '';
     document.getElementById('statusFilter').value = '';
+    
+    // 확장 필터 초기화 (새로 추가)
+    document.getElementById('typeFilter').value = '';
+    document.getElementById('yearFilter').value = '';
+    document.getElementById('colorFilter').value = '';
+    document.getElementById('divTypeFilter').value = '';
+    document.getElementById('productCodeFilter').value = '';
+    document.getElementById('stdCodeFilter').value = '';
     
     filteredProducts = [...products];
     renderProducts();
@@ -746,29 +1286,49 @@ function sortTable(columnIndex) {
     renderProducts();
 }
 
-// 빠른 정렬
-function sortProducts(type) {
-    switch(type) {
-        case 'name':
-            sortTable(3); // product_name
-            break;
-        case 'created':
-            sortTable(9); // created_at
-            break;
-        case 'price':
-            sortTable(7); // price
-            break;
+// 정렬 (새로 추가)
+function sortProducts(column) {
+    // 현재 정렬 컬럼과 같으면 방향을 바꾸고, 다르면 오름차순으로 시작
+    if (currentSort.column === column) {
+        currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+    } else {
+        currentSort.column = column;
+        currentSort.direction = 'asc';
+    }
+    
+    // 정렬 아이콘 업데이트
+    updateSortIcons();
+    
+    // 현재 페이지를 1로 리셋하고 새로 로드
+    currentPage = 1;
+    loadProducts(1);
+}
+
+// 정렬 아이콘 업데이트 (새로 추가)
+function updateSortIcons() {
+    // 모든 정렬 아이콘 초기화
+    document.querySelectorAll('.sort-icon').forEach(icon => {
+        icon.className = 'sort-icon fas fa-sort';
+    });
+    
+    // 현재 정렬 컬럼의 아이콘 업데이트
+    const currentIcon = document.querySelector(`[onclick="sortProducts('${currentSort.column}')"] .sort-icon`);
+    if (currentIcon) {
+        if (currentSort.direction === 'asc') {
+            currentIcon.className = 'sort-icon fas fa-sort-up';
+        } else {
+            currentIcon.className = 'sort-icon fas fa-sort-down';
+        }
     }
 }
 
 // 상품 등록 모달 열기
 function openAddModal() {
     currentProductId = null;
-    document.getElementById('modalTitle').innerHTML = '<i class="fas fa-plus me-2"></i>상품 등록';
-    document.getElementById('modalHeader').className = 'modal-header modal-header-add';
+    document.getElementById('productModalLabel').innerHTML = '상품 등록';
     document.getElementById('productForm').reset();
     document.getElementById('productId').value = '';
-    document.getElementById('modal_is_active').checked = true;
+    document.getElementById('isEditMode').value = 'false';
     
     const modal = new bootstrap.Modal(document.getElementById('productModal'));
     modal.show();
@@ -784,21 +1344,23 @@ function editProduct(id) {
             if (data.success) {
                 const product = data.product;
                 
-                document.getElementById('modalTitle').innerHTML = '<i class="fas fa-edit me-2"></i>상품 수정';
-                document.getElementById('modalHeader').className = 'modal-header modal-header-edit';
+                document.getElementById('productModalLabel').innerHTML = '상품 수정';
                 
                 // 폼 데이터 설정
                 document.getElementById('productId').value = product.id;
-                document.getElementById('modal_company_id').value = product.company_id;
-                document.getElementById('modal_brand_seq').value = product.brand_seq || '';
-                document.getElementById('modal_product_name').value = product.product_name;
-                document.getElementById('modal_product_code').value = product.product_code || '';
-                document.getElementById('modal_product_year').value = product.product_year || '';
-                document.getElementById('modal_price').value = product.price || '';
-                document.getElementById('modal_category_code_seq').value = product.category_code_seq || '';
-                document.getElementById('modal_type_code_seq').value = product.type_code_seq || '';
-                document.getElementById('modal_description').value = product.description || '';
-                document.getElementById('modal_is_active').checked = product.is_active;
+                document.getElementById('isEditMode').value = 'true';
+                document.getElementById('company_id').value = product.company_id;
+                document.getElementById('brand_code_seq').value = product.brand_code_seq || '';
+                document.getElementById('prod_group_code_seq').value = product.prod_group_code_seq || '';
+                document.getElementById('prod_type_code_seq').value = product.prod_type_code_seq || '';
+                document.getElementById('product_name').value = product.product_name;
+                document.getElementById('year_code_seq').value = product.year_code_seq || '';
+                document.getElementById('price').value = product.price || '';
+                document.getElementById('use_yn').value = product.is_active ? 'Y' : 'N';
+                document.getElementById('div_type_code_seq').value = product.div_type_code_seq || '';
+                
+                // 제품모델 목록 로드 (새로 추가)
+                loadProductModelsForProduct(product.id);
                 
                 const modal = new bootstrap.Modal(document.getElementById('productModal'));
                 modal.show();
@@ -895,7 +1457,7 @@ function showProductDetail(id) {
                             <table class="table table-borderless table-sm">
                                 <tr><td class="fw-bold">품목:</td><td>${product.category_name || '미지정'}</td></tr>
                                 <tr><td class="fw-bold">타입:</td><td>${product.type_name || '미지정'}</td></tr>
-                                <tr><td class="fw-bold">년도:</td><td>${product.product_year || '-'}</td></tr>
+                                <tr><td class="fw-bold">년도:</td><td>${product.year_code_name || '-'}</td></tr>
                                 <tr><td class="fw-bold">상태:</td><td><span class="product-status-${product.is_active ? 'active' : 'inactive'}">${product.is_active ? '활성' : '비활성'}</span></td></tr>
                                 <tr><td class="fw-bold">등록일:</td><td>${formatDate(product.created_at)}</td></tr>
                             </table>
@@ -1104,8 +1666,12 @@ function updateCounters() {
     document.getElementById('tableCount').textContent = filteredProducts.length;
 }
 
-function showLoading(show) {
-    document.getElementById('loadingIndicator').style.display = show ? 'block' : 'none';
+// 로딩 인디케이터 표시/숨김
+function showLoading(show = true) {
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    if (loadingIndicator) {
+        loadingIndicator.style.display = show ? 'block' : 'none';
+    }
 }
 
 function formatPrice(price) {
@@ -1135,8 +1701,545 @@ function showAlert(message, type = 'info') {
     } else if (type === 'warning') {
         alert('경고: ' + message);
     } else {
-        alert('정보: ' + message);
+        alert(message);
     }
+}
+
+// 자가코드 자동생성 함수 (새로 추가)
+function generateStdCode() {
+    // 현재 활성화된 폼이 메인 상품 폼인지 제품모델 폼인지 확인
+    const isProductModelForm = event.target.id === 'generateModelStdCodeBtn';
+    
+    let brandSeq, divTypeSeq, categorySeq, typeSeq, productCodeSeq, yearSeq, colorSeq;
+    let stdCodeInputId;
+    
+    if (isProductModelForm) {
+        // 제품모델 폼에서 호출된 경우
+        brandSeq = document.getElementById('modal_brand_code_seq').value;
+        divTypeSeq = document.getElementById('new_model_div_type').value;
+        categorySeq = document.getElementById('modal_category_code_seq').value;
+        typeSeq = document.getElementById('new_model_product_code').value;
+        productCodeSeq = document.getElementById('modal_product_code_seq').value;
+        yearSeq = document.getElementById('modal_year_code_seq').value;
+        colorSeq = document.getElementById('new_model_color').value;
+        stdCodeInputId = 'new_model_std_code';
+    } else {
+        // 메인 상품 폼에서 호출된 경우
+        brandSeq = document.getElementById('modal_brand_code_seq').value;
+        divTypeSeq = document.getElementById('modal_div_type_code_seq').value;
+        categorySeq = document.getElementById('modal_category_code_seq').value;
+        typeSeq = document.getElementById('modal_type_code_seq').value;
+        productCodeSeq = document.getElementById('modal_product_code_seq').value;
+        yearSeq = document.getElementById('modal_year_code_seq').value;
+        colorSeq = document.getElementById('modal_color_code_seq').value;
+        stdCodeInputId = 'modal_std_product_code';
+    }
+    
+    // 필수 필드 검증
+    const requiredFields = [
+        { value: brandSeq, name: '브랜드' },
+        { value: divTypeSeq, name: '구분타입' },
+        { value: categorySeq, name: '품목' },
+        { value: typeSeq, name: '타입' },
+        { value: productCodeSeq, name: '제품코드' },
+        { value: yearSeq, name: '년도' },
+        { value: colorSeq, name: '색상' }
+    ];
+    
+    for (let field of requiredFields) {
+        if (!field.value) {
+            showAlert(`${field.name}을(를) 먼저 선택해주세요.`, 'warning');
+            return;
+        }
+    }
+    
+    // 자가코드 생성 API 호출
+    const requestData = {
+        brand_code_seq: parseInt(brandSeq),
+        div_type_code_seq: parseInt(divTypeSeq),
+        category_code_seq: parseInt(categorySeq),
+        type_code_seq: parseInt(typeSeq),
+        product_code_seq: parseInt(productCodeSeq),
+        year_code_seq: parseInt(yearSeq),
+        color_code_seq: parseInt(colorSeq)
+    };
+    
+    fetch('/product/api/generate-std-code', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // 자가코드 입력 필드에 설정
+            document.getElementById(stdCodeInputId).value = data.std_code;
+            
+            // 구성 정보 표시 (메인 폼에서만)
+            if (!isProductModelForm) {
+                const breakdown = data.breakdown;
+                const breakdownText = `
+                    ${breakdown.brand.code}(${breakdown.brand.name}) + 
+                    ${breakdown.div_type.code}(${breakdown.div_type.name}) + 
+                    ${breakdown.prod_group.code}(${breakdown.prod_group.name}) + 
+                    ${breakdown.prod_type.code}(${breakdown.prod_type.name}) + 
+                    ${breakdown.prod_code.code}(${breakdown.prod_code.name}) + 
+                    ${breakdown.prod_type2.code}(${breakdown.prod_type2.name}) + 
+                    ${breakdown.year.code}(${breakdown.year.name}) + 
+                    ${breakdown.color.code}(${breakdown.color.name})
+                `;
+                
+                document.getElementById('codeBreakdownText').textContent = breakdownText;
+                document.getElementById('stdCodeBreakdown').style.display = 'block';
+            }
+            
+            showAlert(data.message, 'success');
+        } else {
+            showAlert(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('자가코드 생성 중 오류가 발생했습니다.', 'error');
+    });
+}
+
+// 제품모델 추가 함수 (새로 추가)
+function addProductModel() {
+    const modelName = document.getElementById('new_model_name').value.trim();
+    const colorSelect = document.getElementById('new_model_color');
+    const additionalPrice = document.getElementById('new_model_additional_price').value || 0;
+    const stock = document.getElementById('new_model_stock').value || 0;
+    
+    if (!modelName) {
+        showAlert('제품모델명을 입력하세요.', 'warning');
+        return;
+    }
+    
+    if (!colorSelect.value) {
+        showAlert('색상을 선택하세요.', 'warning');
+        return;
+    }
+    
+    // 자가코드 생성
+    const brandCode = getSelectedCode('modal_brand_code_seq');
+    const divTypeCode = getSelectedCode('modal_div_type_code_seq');
+    const prodGroupCode = getSelectedCode('modal_prod_group_code_seq');
+    const prodTypeCode = getSelectedCode('modal_prod_type_code_seq');
+    const productCode = getSelectedCode('modal_product_code_seq');
+    const type2Code = getSelectedCode('modal_prod_type2_code_seq');
+    const yearCode = getSelectedCode('modal_year_code_seq');
+    const colorCode = getSelectedCode('new_model_color');
+    
+    if (!brandCode || !divTypeCode || !prodGroupCode || !prodTypeCode || 
+        !productCode || !type2Code || !yearCode || !colorCode) {
+        showAlert('모든 코드를 선택해주세요.', 'warning');
+        return;
+    }
+    
+    const stdCode = `${brandCode}${divTypeCode}${prodGroupCode}${prodTypeCode}${productCode}${type2Code}${yearCode}${colorCode}`;
+    
+    // 제품모델 객체 생성
+    const productModel = {
+        id: Date.now(), // 임시 ID
+        product_name: modelName,
+        color_seq: colorSelect.value,
+        color_name: colorSelect.options[colorSelect.selectedIndex].text,
+        color_code: colorCode,
+        additional_price: parseInt(additionalPrice),
+        stock_quantity: parseInt(stock),
+        std_div_prod_code: stdCode
+    };
+    
+    // 글로벌 배열에 추가 (나중에 서버로 전송)
+    if (!window.productModels) {
+        window.productModels = [];
+    }
+    window.productModels.push(productModel);
+    
+    // UI 업데이트
+    renderProductModels();
+    
+    // 폼 초기화
+    document.getElementById('new_model_name').value = '';
+    document.getElementById('new_model_color').value = '';
+    document.getElementById('new_model_additional_price').value = '0';
+    document.getElementById('new_model_stock').value = '0';
+    
+    // 완성된 코드 미리보기 숨김
+    document.getElementById('completeCodePreview').style.display = 'none';
+    
+    showAlert('제품모델이 추가되었습니다.', 'success');
+}
+
+// 제품모델 목록 렌더링 (새로 추가)
+function renderProductModels() {
+    const container = document.getElementById('productModelsList');
+    
+    if (!window.productModels || window.productModels.length === 0) {
+        container.innerHTML = '<p class="text-muted text-center m-0">등록된 제품모델이 없습니다.</p>';
+        return;
+    }
+    
+    let html = '';
+    window.productModels.forEach((model, index) => {
+        html += `
+            <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                <div class="flex-grow-1">
+                    <strong>${model.product_name}</strong>
+                    <small class="text-muted d-block">
+                        색상: ${model.color_name} | 자가코드: <code>${model.std_div_prod_code}</code>
+                    </small>
+                    <small class="text-muted">
+                        추가가격: ${model.additional_price.toLocaleString()}원 | 재고: ${model.stock_quantity}개
+                    </small>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeProductModel(${index})">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+// 제품모델 제거 (새로 추가)
+function removeProductModel(index) {
+    if (window.productModels && window.productModels.length > index) {
+        window.productModels.splice(index, 1);
+        renderProductModels();
+        showAlert('제품모델이 제거되었습니다.', 'info');
+    }
+}
+
+// 페이지 로드 완료 시 이벤트 리스너 등록
+document.addEventListener('DOMContentLoaded', function() {
+    // 기존 초기화 함수들
+    setupViewModeToggle();
+    loadProducts(); // 상품 목록만 로드 (제품모델은 별도 탭에서 로드)
+    
+    // 페이징 이벤트 리스너 추가 (새로 추가)
+    const perPageSelect = document.getElementById('perPageSelect');
+    if (perPageSelect) {
+        perPageSelect.addEventListener('change', changePerPage);
+    }
+    
+    // 자가코드 생성 버튼 이벤트 리스너 (새로 추가)
+    const generateBtn = document.getElementById('generateStdCodeBtn');
+    if (generateBtn) {
+        generateBtn.addEventListener('click', generateStdCode);
+    }
+
+    // 제품모델 자가코드 생성 버튼 이벤트 리스너 (새로 추가)
+    const generateModelStdCodeBtn = document.getElementById('generateModelStdCodeBtn');
+    if (generateModelStdCodeBtn) {
+        generateModelStdCodeBtn.addEventListener('click', generateStdCode);
+    }
+    
+    // 연관 셀렉트박스 이벤트 리스너 등록 (새로 추가)
+    setupDependentSelects();
+});
+
+// 연관 셀렉트박스 설정 (새로 추가)
+function setupDependentSelects() {
+    // 품목그룹 변경 시 제품타입 필터링
+    const prodGroupSelect = document.getElementById('modal_prod_group_code_seq');
+    const prodTypeSelect = document.getElementById('modal_prod_type_code_seq');
+    
+    if (prodGroupSelect && prodTypeSelect) {
+        // 제품타입의 전체 옵션을 저장 (초기화용)
+        const allProdTypeOptions = Array.from(prodTypeSelect.options).slice(1); // 첫번째 "선택하세요" 제외
+        
+        prodGroupSelect.addEventListener('change', function() {
+            const selectedGroup = this.value;
+            
+            // 제품타입 초기화
+            prodTypeSelect.innerHTML = '<option value="">선택하세요</option>';
+            
+            if (selectedGroup) {
+                // 선택된 품목그룹에 따라 관련 제품타입만 표시
+                // 여기서는 단순히 모든 타입을 표시하지만, 실제로는 API에서 필터링된 데이터를 가져와야 함
+                allProdTypeOptions.forEach(option => {
+                    const newOption = option.cloneNode(true);
+                    prodTypeSelect.appendChild(newOption);
+                });
+            }
+        });
+    }
+    
+    // 브랜드 변경 시 구분타입 필터링 (필요시 구현)
+    const brandSelect = document.getElementById('modal_brand_code_seq');
+    const divTypeSelect = document.getElementById('modal_div_type_code_seq');
+    
+    if (brandSelect && divTypeSelect) {
+        const allDivTypeOptions = Array.from(divTypeSelect.options).slice(1);
+        
+        brandSelect.addEventListener('change', function() {
+            // 필요시 브랜드별 구분타입 필터링 로직 구현
+        });
+    }
+    
+    // 코드 변경 시 미리보기 업데이트
+    const codeSelects = [
+        'modal_brand_code_seq',
+        'modal_div_type_code_seq', 
+        'modal_prod_group_code_seq',
+        'modal_prod_type_code_seq',
+        'modal_product_code_seq',
+        'modal_prod_type2_code_seq',
+        'modal_year_code_seq'
+    ];
+    
+    codeSelects.forEach(selectId => {
+        const select = document.getElementById(selectId);
+        if (select) {
+            select.addEventListener('change', updateCodePreview);
+        }
+    });
+    
+    // 색상 변경 시 완성된 코드 미리보기 업데이트
+    const colorSelect = document.getElementById('new_model_color');
+    if (colorSelect) {
+        colorSelect.addEventListener('change', updateCompleteCodePreview);
+    }
+}
+
+// 코드 미리보기 업데이트 (새로 추가)
+function updateCodePreview() {
+    const brandCode = getSelectedCode('modal_brand_code_seq') || 'XX';
+    const divTypeCode = getSelectedCode('modal_div_type_code_seq') || 'X';
+    const prodGroupCode = getSelectedCode('modal_prod_group_code_seq') || 'XX';
+    const prodTypeCode = getSelectedCode('modal_prod_type_code_seq') || 'XX';
+    const productCode = getSelectedCode('modal_product_code_seq') || 'XX';
+    const type2Code = getSelectedCode('modal_prod_type2_code_seq') || 'XX';
+    const yearCode = getSelectedCode('modal_year_code_seq') || 'XX';
+    
+    const preview = `${brandCode}-${divTypeCode}-${prodGroupCode}-${prodTypeCode}-${productCode}-${type2Code}-${yearCode}-???`;
+    document.getElementById('codePreview').textContent = preview;
+    
+    // 완성된 코드 미리보기도 업데이트
+    updateCompleteCodePreview();
+}
+
+// 완성된 코드 미리보기 업데이트 (새로 추가)
+function updateCompleteCodePreview() {
+    const brandCode = getSelectedCode('modal_brand_code_seq') || 'XX';
+    const divTypeCode = getSelectedCode('modal_div_type_code_seq') || 'X';
+    const prodGroupCode = getSelectedCode('modal_prod_group_code_seq') || 'XX';
+    const prodTypeCode = getSelectedCode('modal_prod_type_code_seq') || 'XX';
+    const productCode = getSelectedCode('modal_product_code_seq') || 'XX';
+    const type2Code = getSelectedCode('modal_prod_type2_code_seq') || 'XX';
+    const yearCode = getSelectedCode('modal_year_code_seq') || 'XX';
+    const colorCode = getSelectedCode('new_model_color') || 'XXX';
+    
+    if (colorCode !== 'XXX') {
+        const completeCode = `${brandCode}${divTypeCode}${prodGroupCode}${prodTypeCode}${productCode}${type2Code}${yearCode}${colorCode}`;
+        document.getElementById('completeCode').textContent = completeCode;
+        document.getElementById('completeCodePreview').style.display = 'block';
+    } else {
+        document.getElementById('completeCodePreview').style.display = 'none';
+    }
+}
+
+// 선택된 옵션의 코드 값 가져오기 (새로 추가)
+function getSelectedCode(selectId) {
+    const select = document.getElementById(selectId);
+    if (!select || !select.value) return null;
+    
+    const selectedOption = select.options[select.selectedIndex];
+    return selectedOption.getAttribute('data-code');
+}
+
+// 제품모델 추가 (새로 수정)
+function addProductModel() {
+    const modelName = document.getElementById('new_model_name').value.trim();
+    const colorSelect = document.getElementById('new_model_color');
+    const additionalPrice = document.getElementById('new_model_additional_price').value || 0;
+    const stock = document.getElementById('new_model_stock').value || 0;
+    
+    if (!modelName) {
+        showAlert('제품모델명을 입력하세요.', 'warning');
+        return;
+    }
+    
+    if (!colorSelect.value) {
+        showAlert('색상을 선택하세요.', 'warning');
+        return;
+    }
+    
+    // 자가코드 생성
+    const brandCode = getSelectedCode('modal_brand_code_seq');
+    const divTypeCode = getSelectedCode('modal_div_type_code_seq');
+    const prodGroupCode = getSelectedCode('modal_prod_group_code_seq');
+    const prodTypeCode = getSelectedCode('modal_prod_type_code_seq');
+    const productCode = getSelectedCode('modal_product_code_seq');
+    const type2Code = getSelectedCode('modal_prod_type2_code_seq');
+    const yearCode = getSelectedCode('modal_year_code_seq');
+    const colorCode = getSelectedCode('new_model_color');
+    
+    if (!brandCode || !divTypeCode || !prodGroupCode || !prodTypeCode || 
+        !productCode || !type2Code || !yearCode || !colorCode) {
+        showAlert('모든 코드를 선택해주세요.', 'warning');
+        return;
+    }
+    
+    const stdCode = `${brandCode}${divTypeCode}${prodGroupCode}${prodTypeCode}${productCode}${type2Code}${yearCode}${colorCode}`;
+    
+    // 제품모델 객체 생성
+    const productModel = {
+        id: Date.now(), // 임시 ID
+        product_name: modelName,
+        color_seq: colorSelect.value,
+        color_name: colorSelect.options[colorSelect.selectedIndex].text,
+        color_code: colorCode,
+        additional_price: parseInt(additionalPrice),
+        stock_quantity: parseInt(stock),
+        std_div_prod_code: stdCode
+    };
+    
+    // 글로벌 배열에 추가 (나중에 서버로 전송)
+    if (!window.productModels) {
+        window.productModels = [];
+    }
+    window.productModels.push(productModel);
+    
+    // UI 업데이트
+    renderProductModels();
+    
+    // 폼 초기화
+    document.getElementById('new_model_name').value = '';
+    document.getElementById('new_model_color').value = '';
+    document.getElementById('new_model_additional_price').value = '0';
+    document.getElementById('new_model_stock').value = '0';
+    
+    // 완성된 코드 미리보기 숨김
+    document.getElementById('completeCodePreview').style.display = 'none';
+    
+    showAlert('제품모델이 추가되었습니다.', 'success');
+}
+
+// 제품모델 목록 렌더링 (새로 추가)
+function renderProductModels() {
+    const container = document.getElementById('productModelsList');
+    
+    if (!window.productModels || window.productModels.length === 0) {
+        container.innerHTML = '<p class="text-muted text-center m-0">등록된 제품모델이 없습니다.</p>';
+        return;
+    }
+    
+    let html = '';
+    window.productModels.forEach((model, index) => {
+        html += `
+            <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                <div class="flex-grow-1">
+                    <strong>${model.product_name}</strong>
+                    <small class="text-muted d-block">
+                        색상: ${model.color_name} | 자가코드: <code>${model.std_div_prod_code}</code>
+                    </small>
+                    <small class="text-muted">
+                        추가가격: ${model.additional_price.toLocaleString()}원 | 재고: ${model.stock_quantity}개
+                    </small>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeProductModel(${index})">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+// 제품모델 제거 (새로 추가)
+function removeProductModel(index) {
+    if (window.productModels && window.productModels.length > index) {
+        window.productModels.splice(index, 1);
+        renderProductModels();
+        showAlert('제품모델이 제거되었습니다.', 'info');
+    }
+}
+
+// 페이징 UI 렌더링 (새로 추가)
+function renderPagination() {
+    const pagination = document.getElementById('pagination');
+    pagination.innerHTML = '';
+    
+    if (totalPages <= 1) return;
+    
+    // 이전 버튼
+    pagination.innerHTML += `
+        <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="changePage(${currentPage - 1}); return false;">
+                <i class="fas fa-chevron-left"></i>
+            </a>
+        </li>
+    `;
+    
+    // 페이지 번호들
+    const startPage = Math.max(1, currentPage - 2);
+    const endPage = Math.min(totalPages, currentPage + 2);
+    
+    if (startPage > 1) {
+        pagination.innerHTML += `
+            <li class="page-item">
+                <a class="page-link" href="#" onclick="changePage(1); return false;">1</a>
+            </li>
+        `;
+        if (startPage > 2) {
+            pagination.innerHTML += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        }
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+        pagination.innerHTML += `
+            <li class="page-item ${i === currentPage ? 'active' : ''}">
+                <a class="page-link" href="#" onclick="changePage(${i}); return false;">${i}</a>
+            </li>
+        `;
+    }
+    
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            pagination.innerHTML += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        }
+        pagination.innerHTML += `
+            <li class="page-item">
+                <a class="page-link" href="#" onclick="changePage(${totalPages}); return false;">${totalPages}</a>
+            </li>
+        `;
+    }
+    
+    // 다음 버튼
+    pagination.innerHTML += `
+        <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="changePage(${currentPage + 1}); return false;">
+                <i class="fas fa-chevron-right"></i>
+            </a>
+        </li>
+    `;
+}
+
+// 페이지 정보 업데이트 (새로 추가)
+function updatePageInfo() {
+    document.getElementById('totalProducts').textContent = totalProducts;
+    document.getElementById('currentPageNum').textContent = currentPage;
+    document.getElementById('totalPages').textContent = totalPages;
+}
+
+// 페이지 변경 (새로 추가)
+function changePage(page) {
+    if (page < 1 || page > totalPages || page === currentPage) return;
+    loadProducts(page);
+}
+
+// 페이지당 항목 수 변경 (새로 추가)
+function changePerPage() {
+    perPage = parseInt(document.getElementById('perPageSelect').value);
+    currentPage = 1; // 첫 페이지로 리셋
+    loadProducts(1);
 }
 </script>
 {% endblock %} 
