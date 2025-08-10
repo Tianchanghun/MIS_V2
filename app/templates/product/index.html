@@ -636,6 +636,43 @@ let currentProductId = null;
 
 $(document).ready(function() {
     console.log('상품 관리 시스템 초기화');
+    
+    // 전역 에러 핸들러 추가
+    window.addEventListener('error', function(e) {
+        console.error('전역 에러:', e.error);
+        $('#simple-loading').remove(); // 에러 시 로딩 제거
+    });
+    
+    // jQuery AJAX 전역 에러 핸들러
+    $(document).ajaxError(function(event, xhr, settings, error) {
+        console.error('AJAX 에러:', error);
+        $('#simple-loading').remove(); // AJAX 에러 시 로딩 제거
+    });
+    
+    // DOM에 false 값이 삽입되는 것을 방지하는 전역 감시
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            mutation.addedNodes.forEach(function(node) {
+                if (node.nodeType === Node.TEXT_NODE && node.textContent === 'false') {
+                    console.warn('⚠️ false 텍스트 노드 감지 및 제거:', node);
+                    node.remove();
+                } else if (node.nodeType === Node.ELEMENT_NODE) {
+                    // 요소 노드의 텍스트가 'false'인 경우도 확인
+                    if (node.textContent === 'false' && node.children.length === 0) {
+                        console.warn('⚠️ false 요소 노드 감지 및 제거:', node);
+                        node.remove();
+                    }
+                }
+            });
+        });
+    });
+    
+    // body에 대한 변화 감시 시작
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+    
     loadProducts();
     setupEventHandlers();
     initializeDivType();
@@ -1934,12 +1971,26 @@ function updateCounters() {
 
 // 로딩 인디케이터 표시/숨김
 function showLoading(show = true) {
-    if (show) {
+    console.log('🔧 showLoading 호출됨:', show, typeof show);
+    
+    // false 값이 문자열로 변환되어 표시되는 것을 방지
+    if (show === false || show === 'false') {
+        console.log('⚠️ showLoading: 로딩 숨김');
+        $('#simple-loading').remove();
+        return;
+    }
+    
+    if (show === true || show === 'true' || show) {
+        console.log('⚠️ showLoading: 로딩 표시');
+        // 기존 로딩 제거
+        $('#simple-loading').remove();
+        
         // 간단한 로딩 표시
         if (!$('#simple-loading').length) {
             $('body').append('<div id="simple-loading" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:white;padding:20px;border-radius:5px;box-shadow:0 2px 10px rgba(0,0,0,0.3)"><div class="spinner-border text-primary"></div><div class="mt-2">로딩 중...</div></div>');
         }
     } else {
+        console.log('⚠️ showLoading: 예상치 못한 값:', show);
         $('#simple-loading').remove();
     }
 }
