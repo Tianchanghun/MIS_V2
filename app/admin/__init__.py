@@ -69,39 +69,41 @@ def code_management():
     """코드 관리"""
     if 'member_seq' not in session:
         return redirect('/auth/login')
-    """코드 관리"""
+    
     try:
-        # 계층 구조로 코드 정렬하는 함수 (올바른 계층 구조)
-        def build_hierarchical_codes():
-            # 모든 코드를 가져와서 parent_seq별로 그룹화
-            all_codes = Code.query.order_by(Code.sort.asc(), Code.seq.asc()).all()
-            codes_by_parent = {}
-            
-            for code in all_codes:
-                parent_key = code.parent_seq or 0
-                if parent_key not in codes_by_parent:
-                    codes_by_parent[parent_key] = []
-                codes_by_parent[parent_key].append(code)
-            
-            # 각 그룹을 sort로 정렬
-            for parent_key in codes_by_parent:
-                codes_by_parent[parent_key].sort(key=lambda x: (x.sort or 999, x.seq))
-            
-            # 계층 구조로 재구성
-            def add_children(parent_seq, result):
-                if parent_seq in codes_by_parent:
-                    for code in codes_by_parent[parent_seq]:
-                        result.append(code)
-                        add_children(code.seq, result)  # 재귀적으로 하위 코드 추가
-            
-            hierarchical_codes = []
-            add_children(0, hierarchical_codes)  # 최상위부터 시작
-            
-            return hierarchical_codes
+        # 분석 결과를 바탕으로 개선된 정렬: CodeSeq → parent_seq → Sort → Seq
+        # 이렇게 하면 같은 CodeSeq 그룹 내에서 부모-자식 관계가 더 명확하게 표현됩니다
+        codes_query = Code.query.order_by(
+            Code.code_seq.asc().nulls_last(),    # CodeSeq 먼저 (그룹별)
+            Code.parent_seq.asc().nulls_first(), # 부모 관계 (NULL이 Root)
+            Code.sort.asc(),                     # 정렬 순서
+            Code.seq.asc()                       # 시퀀스 순서 (최종)
+        ).all()
         
-        codes = build_hierarchical_codes()
+        # Code 객체를 딕셔너리로 변환
+        codes = [code.to_dict() for code in codes_query]
+        
+        current_app.logger.info(f"코드 관리 페이지: {len(codes)}개 코드 조회 완료")
+        
+        # 디버깅: 개선된 계층 구조 확인
+        if codes:
+            depth_counts = {}
+            codeseq_counts = {}
+            for code in codes[:15]:  # 첫 15개만 로깅
+                depth = code['depth']
+                code_seq = code['code_seq']
+                depth_counts[depth] = depth_counts.get(depth, 0) + 1
+                codeseq_counts[code_seq] = codeseq_counts.get(code_seq, 0) + 1
+                current_app.logger.info(f"📋 코드: {code['seq']} | {code['code']} | {code['code_name']} | CodeSeq: {code_seq} | Parent: {code['parent_seq']} | Sort: {code['sort']}")
+            
+            current_app.logger.info(f"📊 깊이별 코드 수: {depth_counts}")
+            current_app.logger.info(f"📁 CodeSeq별 코드 수: {list(codeseq_counts.items())[:10]}")
+            current_app.logger.info(f"🌳 정렬 방식: CodeSeq → parent_seq → Sort → Seq (트리 구조 최적화)")
+        else:
+            current_app.logger.warning("⚠️ 조회된 코드가 없습니다!")
         
         return render_template('admin/code_management.html', codes=codes)
+        
     except Exception as e:
         current_app.logger.error(f"코드 관리 페이지 오류: {e}")
         flash(f'코드 목록 조회 중 오류가 발생했습니다: {str(e)}', 'error')
@@ -298,63 +300,65 @@ def get_code():
 
 @admin_bp.route('/api/codes/create', methods=['POST'])
 def create_code():
-    """코드 생성"""
+    """코드 추가"""
     if 'member_seq' not in session:
         return redirect('/auth/login')
+    
     try:
-        data = request.form
+        parent_seq = request.form.get('parent_seq', 0)
+        depth = request.form.get('depth', 0)
+        code = request.form.get('code', '').strip()
+        code_name = request.form.get('code_name', '').strip()
+        code_info = request.form.get('code_info', '').strip()
+        sort = request.form.get('sort', 1)
         
-        if not data.get('code') or not data.get('code_name'):
+        # 유효성 검사
+        if not code or not code_name:
             return jsonify({'success': False, 'message': '코드와 코드명은 필수입니다.'})
         
-        parent_seq = int(data.get('parent_seq', 0))
-        depth = 0
-        code_seq = None
+        if int(depth) > 4:
+            return jsonify({'success': False, 'message': '최대 깊이는 4까지입니다.'})
         
-        # 부모 코드가 있는 경우 depth 계산
-        if parent_seq > 0:
-            parent_code = Code.query.filter_by(seq=parent_seq).first()
-            if not parent_code:
-                return jsonify({'success': False, 'message': '상위 코드를 찾을 수 없습니다.'})
-            depth = parent_code.depth + 1
-            code_seq = parent_code.code_seq or parent_code.seq
-        
-        # 중복 체크
-        existing = Code.query.filter(
-            Code.code == data.get('code'),
-            Code.parent_seq == parent_seq
+        # 중복 코드 체크 (같은 부모 하위에서)
+        existing_code = Code.query.filter_by(
+            parent_seq=int(parent_seq) if parent_seq != '0' else None,
+            code=code
         ).first()
         
-        if existing:
-            return jsonify({'success': False, 'message': '이미 존재하는 코드입니다.'})
+        if existing_code:
+            return jsonify({'success': False, 'message': '같은 레벨에서 중복된 코드입니다.'})
         
         # 새 코드 생성
         new_code = Code(
-            code_seq=code_seq,
-            parent_seq=parent_seq if parent_seq > 0 else None,
-            depth=depth,
-            sort=int(data.get('sort', 1)),
-            code=data.get('code'),
-            code_name=data.get('code_name'),
-            code_info=data.get('code_info', ''),
-            ins_user=session.get('member_id', 'admin'),
-            ins_date=db.func.now()
+            parent_seq=int(parent_seq) if parent_seq != '0' else None,
+            depth=int(depth),
+            code=code,
+            code_name=code_name,
+            code_info=code_info if code_info else None,
+            sort=int(sort),
+            ins_user=session.get('member_seq'),
+            ins_date=datetime.now()
         )
-        
-        # 최상위 코드인 경우 code_seq를 자신의 seq로 설정
-        if parent_seq == 0:
-            db.session.add(new_code)
-            db.session.flush()  # seq 생성
-            new_code.code_seq = new_code.seq
         
         db.session.add(new_code)
         db.session.commit()
         
-        return jsonify({'success': True, 'message': '코드가 생성되었습니다.', 'data': new_code.to_dict()})
+        current_app.logger.info(f"코드 추가 성공: {code} - {code_name} (사용자: {session.get('member_seq')})")
+        
+        return jsonify({
+            'success': True,
+            'message': '코드가 성공적으로 추가되었습니다.',
+            'data': {
+                'seq': new_code.seq,
+                'code': new_code.code,
+                'code_name': new_code.code_name
+            }
+        })
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'message': str(e)})
+        current_app.logger.error(f"코드 추가 실패: {e}")
+        return jsonify({'success': False, 'message': f'코드 추가 중 오류가 발생했습니다: {str(e)}'}), 500
 
 @admin_bp.route('/api/codes/children', methods=['POST'])
   
@@ -380,71 +384,173 @@ def update_code():
     """코드 수정"""
     if 'member_seq' not in session:
         return redirect('/auth/login')
-    """코드 수정"""
+    
     try:
-        data = request.form
-        seq = data.get('seq')
+        seq = request.form.get('edit_seq')
+        code = request.form.get('code', '').strip()
+        code_name = request.form.get('code_name', '').strip()
+        code_info = request.form.get('code_info', '').strip()
+        sort = request.form.get('sort', 1)
         
-        if not seq:
-            return jsonify({'success': False, 'message': 'seq가 필요합니다.'})
+        # 유효성 검사
+        if not seq or not code or not code_name:
+            return jsonify({'success': False, 'message': 'seq, 코드, 코드명은 필수입니다.'})
         
-        code = Code.query.filter_by(seq=seq).first()
-        if not code:
-            return jsonify({'success': False, 'message': '코드를 찾을 수 없습니다.'})
+        # 기존 코드 조회
+        existing_code = Code.query.filter_by(seq=int(seq)).first()
+        if not existing_code:
+            return jsonify({'success': False, 'message': '해당 코드를 찾을 수 없습니다.'})
         
-        # 중복 체크 (본인 제외)
-        existing = Code.query.filter(
-            Code.code == data.get('code'),
-            Code.parent_seq == data.get('parent_seq', 0),
-            Code.seq != seq
+        # 중복 코드 체크 (자신 제외, 같은 부모 하위에서)
+        duplicate_code = Code.query.filter(
+            Code.seq != int(seq),
+            Code.parent_seq == existing_code.parent_seq,
+            Code.code == code
         ).first()
         
-        if existing:
-            return jsonify({'success': False, 'message': '이미 존재하는 코드입니다.'})
+        if duplicate_code:
+            return jsonify({'success': False, 'message': '같은 레벨에서 중복된 코드입니다.'})
         
-        # 수정
-        code.code = data.get('code')
-        code.code_name = data.get('code_name')
-        code.code_info = data.get('code_info', '')
-        code.sort = int(data.get('sort', 1))
-        code.upt_user = 'admin'
-        code.upt_date = db.func.now()
+        # 코드 수정
+        existing_code.code = code
+        existing_code.code_name = code_name
+        existing_code.code_info = code_info if code_info else None
+        existing_code.sort = int(sort)
+        existing_code.upt_user = session.get('member_seq')
+        existing_code.upt_date = datetime.now()
         
         db.session.commit()
-        return jsonify({'success': True, 'message': '코드가 수정되었습니다.'})
+        
+        current_app.logger.info(f"코드 수정 성공: {code} - {code_name} (사용자: {session.get('member_seq')})")
+        
+        return jsonify({
+            'success': True,
+            'message': '코드가 성공적으로 수정되었습니다.',
+            'data': {
+                'seq': existing_code.seq,
+                'code': existing_code.code,
+                'code_name': existing_code.code_name
+            }
+        })
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'message': str(e)})
+        current_app.logger.error(f"코드 수정 실패: {e}")
+        return jsonify({'success': False, 'message': f'코드 수정 중 오류가 발생했습니다: {str(e)}'}), 500
 
 @admin_bp.route('/api/codes/delete', methods=['POST'])
 def delete_code():
-    """코드 삭제"""
+    """코드 삭제 (하위 코드도 함께 삭제)"""
     if 'member_seq' not in session:
         return redirect('/auth/login')
-    """코드 삭제"""
+    
     try:
         seq = request.form.get('seq')
+        
         if not seq:
             return jsonify({'success': False, 'message': 'seq가 필요합니다.'})
         
-        code = Code.query.filter_by(seq=seq).first()
-        if not code:
-            return jsonify({'success': False, 'message': '코드를 찾을 수 없습니다.'})
+        # 기존 코드 조회
+        target_code = Code.query.filter_by(seq=int(seq)).first()
+        if not target_code:
+            return jsonify({'success': False, 'message': '해당 코드를 찾을 수 없습니다.'})
         
-        # 하위 코드도 함께 삭제
-        child_codes = Code.query.filter_by(parent_seq=seq).all()
-        for child in child_codes:
-            db.session.delete(child)
+        # 하위 코드들을 재귀적으로 찾기
+        def find_all_children(parent_seq):
+            children = Code.query.filter_by(parent_seq=parent_seq).all()
+            all_children = children.copy()
+            for child in children:
+                all_children.extend(find_all_children(child.seq))
+            return all_children
         
-        db.session.delete(code)
+        # 삭제할 모든 코드 (자신 + 하위 코드들)
+        all_codes_to_delete = [target_code] + find_all_children(target_code.seq)
+        
+        # 삭제 확인 로그
+        deleted_codes = []
+        for code in all_codes_to_delete:
+            deleted_codes.append(f"{code.code} - {code.code_name}")
+            db.session.delete(code)
+        
         db.session.commit()
         
-        return jsonify({'success': True, 'message': '코드가 삭제되었습니다.'})
+        current_app.logger.info(f"코드 삭제 성공: {len(deleted_codes)}개 코드 삭제 - {', '.join(deleted_codes)} (사용자: {session.get('member_seq')})")
+        
+        return jsonify({
+            'success': True,
+            'message': f'코드가 성공적으로 삭제되었습니다. (총 {len(deleted_codes)}개)',
+            'data': {
+                'deleted_count': len(deleted_codes),
+                'deleted_codes': deleted_codes
+            }
+        })
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'message': str(e)})
+        current_app.logger.error(f"코드 삭제 실패: {e}")
+        return jsonify({'success': False, 'message': f'코드 삭제 중 오류가 발생했습니다: {str(e)}'}), 500
+
+@admin_bp.route('/api/codes/paginated', methods=['GET'])
+def get_codes_paginated():
+    """페이징된 코드 목록 조회"""
+    if 'member_seq' not in session:
+        return redirect('/auth/login')
+    
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 50, type=int)
+        depth = request.args.get('depth', type=int)
+        parent_seq = request.args.get('parent_seq', type=int)
+        
+        # 기본 쿼리
+        query = Code.query
+        
+        # 필터링
+        if depth is not None:
+            query = query.filter(Code.depth == depth)
+        if parent_seq is not None:
+            query = query.filter(Code.parent_seq == parent_seq)
+        
+        # 정렬 및 페이징
+        codes = query.order_by(
+            Code.depth.asc(),
+            Code.parent_seq.asc().nullsfirst(),
+            Code.sort.asc(),
+            Code.seq.asc()
+        ).paginate(
+            page=page,
+            per_page=per_page,
+            error_out=False
+        )
+        
+        result = []
+        for code in codes.items:
+            result.append({
+                'seq': code.seq,
+                'parent_seq': code.parent_seq,
+                'depth': code.depth,
+                'sort': code.sort,
+                'code': code.code,
+                'code_name': code.code_name,
+                'code_info': code.code_info
+            })
+        
+        return jsonify({
+            'success': True,
+            'data': result,
+            'pagination': {
+                'page': codes.page,
+                'pages': codes.pages,
+                'per_page': codes.per_page,
+                'total': codes.total,
+                'has_next': codes.has_next,
+                'has_prev': codes.has_prev
+            }
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"페이징된 코드 조회 실패: {e}")
+        return jsonify({'success': False, 'message': f'코드 조회 중 오류가 발생했습니다: {str(e)}'}), 500
 
 @admin_bp.route('/api/codes/update-sort-order', methods=['POST'])
 def update_codes_sort_order():

@@ -16,6 +16,7 @@ from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 import pytz
 import json
+from flask import current_app
 
 from .erpia_client import ErpiaApiClient
 from .gift_classifier import GiftClassifier
@@ -84,6 +85,36 @@ class BatchScheduler:
         try:
             self.app = app
             self.app.scheduler = self
+            
+            # APScheduler BackgroundScheduler 인스턴스 생성
+            # 개발 환경에서는 메모리 기반 jobstore 사용 (안정성)
+            if app.config.get('ENV') == 'development':
+                jobstores = {
+                    'default': 'memory'
+                }
+            else:
+                jobstores = {
+                    'default': SQLAlchemyJobStore(url=app.config.get('SQLALCHEMY_DATABASE_URI'))
+                }
+                
+            executors = {
+                'default': ThreadPoolExecutor(20),
+            }
+            job_defaults = {
+                'coalesce': False,
+                'max_instances': 3
+            }
+            
+            self.scheduler = BackgroundScheduler(
+                jobstores=jobstores,
+                executors=executors,
+                job_defaults=job_defaults,
+                timezone=pytz.timezone('Asia/Seoul')
+            )
+            
+            # 이벤트 리스너 등록
+            self.scheduler.add_listener(self._job_executed_listener, EVENT_JOB_EXECUTED)
+            self.scheduler.add_listener(self._job_error_listener, EVENT_JOB_ERROR)
             
             # 배치 작업용 서비스 초기화 (회사별 동적 생성으로 변경)
             # self.gift_classifier = GiftClassifier()  # 회사별로 동적 생성
@@ -615,77 +646,115 @@ class BatchScheduler:
             logger.error(f"❌ 실행 결과 저장 실패: {e}")
     
     def _register_default_jobs(self):
-        """기본 배치 작업들 등록"""
+        """기본 배치 작업 등록"""
         try:
-            # 에이원 일일 데이터 수집 (매일 오전 2시)
-            aone_daily = BatchJobConfig(
-                job_id="aone_daily_collection",
-                name="에이원 일일 ERPia 데이터 수집",
-                job_type="DAILY_COLLECTION",
-                company_id=1,
-                cron_expression="0 2 * * *",
-                parameters={
-                    'auto_gift_classify': True
-                }
-            )
-            self.add_job(aone_daily)
+            current_app.logger.info("🔧 기본 배치 작업 등록 시작")
             
-            # 에이원월드 일일 데이터 수집 (매일 오전 2시 30분)
-            aoneworld_daily = BatchJobConfig(
-                job_id="aoneworld_daily_collection",
-                name="에이원월드 일일 ERPia 데이터 수집",
-                job_type="DAILY_COLLECTION",
-                company_id=2,
-                cron_expression="30 2 * * *",
-                parameters={
-                    'auto_gift_classify': True
+            # 기본 작업 설정들
+            default_jobs = [
+                {
+                    'job_id': 'daily_erpia_sync_aone',
+                    'name': '에이원 ERPia 일일 동기화',
+                    'job_type': 'DAILY_COLLECTION',
+                    'company_id': 1,
+                    'enabled': True,
+                    'cron_expression': '0 2 * * *',  # 매일 오전 2시
+                    'parameters': {
+                        'api_interval': 3,
+                        'page_size': 30,
+                        'data_types': ['orders', 'customers', 'products']
+                    }
+                },
+                {
+                    'job_id': 'daily_erpia_sync_aone_world',
+                    'name': '에이원월드 ERPia 일일 동기화',
+                    'job_type': 'DAILY_COLLECTION',
+                    'company_id': 2,
+                    'enabled': True,
+                    'cron_expression': '0 3 * * *',  # 매일 오전 3시
+                    'parameters': {
+                        'api_interval': 3,
+                        'page_size': 30,
+                        'data_types': ['orders', 'customers', 'products']
+                    }
+                },
+                {
+                    'job_id': 'daily_customer_sync',
+                    'name': '고객 정보 동기화',
+                    'job_type': 'CUSTOMER_SYNC',
+                    'company_id': 1,
+                    'enabled': True,
+                    'cron_expression': '0 4 * * *',  # 매일 오전 4시
+                    'parameters': {
+                        'update_existing': True,
+                        'sync_all': False
+                    }
+                },
+                {
+                    'job_id': 'daily_gift_classify',
+                    'name': '사은품 자동 분류',
+                    'job_type': 'GIFT_CLASSIFY',
+                    'company_id': 1,
+                    'enabled': True,
+                    'cron_expression': '0 5 * * *',  # 매일 오전 5시
+                    'parameters': {
+                        'classify_zero_price': True,
+                        'keyword_matching': True,
+                        'update_statistics': True
+                    }
                 }
-            )
-            self.add_job(aoneworld_daily)
+            ]
             
-            # 고객 정보 동기화 (주간, 일요일 오전 3시)
-            customer_sync = BatchJobConfig(
-                job_id="weekly_customer_sync",
-                name="고객 정보 주간 동기화",
-                job_type="CUSTOMER_SYNC",
-                company_id=1,
-                cron_expression="0 3 * * 0",
-                parameters={
-                    'days_back': 30
-                }
-            )
-            self.add_job(customer_sync)
+            # 개발 환경에서는 스케줄러가 없을 수 있음
+            if not self.scheduler:
+                current_app.logger.warning("⚠️ 스케줄러가 초기화되지 않았습니다. 기본 작업 등록을 건너뜁니다.")
+                return
             
-            # 사은품 자동 분류 (매일 오전 4시)
-            gift_classify = BatchJobConfig(
-                job_id="daily_gift_classify",
-                name="사은품 자동 분류",
-                job_type="GIFT_CLASSIFY",
-                company_id=1,
-                cron_expression="0 4 * * *",
-                parameters={
-                    'days_back': 7
-                }
-            )
-            self.add_job(gift_classify)
+            # 기본 작업 등록
+            for job_data in default_jobs:
+                try:
+                    job_config = BatchJobConfig(**job_data)
+                    
+                    # 이미 등록된 작업인지 확인
+                    existing_job = self.scheduler.get_job(job_config.job_id)
+                    if existing_job:
+                        current_app.logger.info(f"📋 기본 작업 이미 존재: {job_config.name}")
+                        continue
+                    
+                    # 개발 환경에서는 실제 스케줄링 하지 않고 설정만 저장
+                    if current_app.config.get('ENV') == 'development':
+                        self._save_job_config(job_config)
+                        current_app.logger.info(f"💾 개발 환경: 작업 설정 저장됨 - {job_config.name}")
+                    else:
+                        # 프로덕션 환경에서는 실제 스케줄링
+                        success = self.add_job(job_config)
+                        if success:
+                            current_app.logger.info(f"✅ 기본 작업 등록 성공: {job_config.name}")
+                        else:
+                            current_app.logger.error(f"❌ 기본 작업 등록 실패: {job_config.name}")
+                            
+                except Exception as e:
+                    current_app.logger.error(f"❌ 기본 작업 등록 실패: {job_data.get('name', 'Unknown')} - {str(e)}")
+                    continue
             
-            logger.info("✅ 기본 배치 작업들 등록 완료")
+            current_app.logger.info("🔧 기본 배치 작업 등록 완료")
             
         except Exception as e:
-            logger.error(f"❌ 기본 배치 작업 등록 실패: {e}")
-    
+            current_app.logger.error(f"❌ 기본 배치 작업 등록 중 오류: {str(e)}")
+            import traceback
+            current_app.logger.error(f"상세 오류: {traceback.format_exc()}")
+
     def _job_executed_listener(self, event):
-        """작업 실행 완료 이벤트 리스너"""
-        logger.info(f"📋 작업 실행 완료: {event.job_id}")
-    
+        """작업 실행 완료 리스너"""
+        pass
+
     def _job_error_listener(self, event):
-        """작업 실행 오류 이벤트 리스너"""
-        logger.error(f"❌ 작업 실행 오류: {event.job_id} - {event.exception}")
-    
+        """작업 실행 오류 리스너"""
+        pass
+
     def _shutdown_scheduler(self, exception):
-        """앱 종료 시 스케줄러 정리"""
-        if self.is_running:
-            self.stop()
+        """스케줄러 종료 핸들러"""
+        pass
 
 # 전역 스케줄러 인스턴스
 batch_scheduler = BatchScheduler()

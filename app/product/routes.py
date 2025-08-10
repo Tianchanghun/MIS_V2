@@ -60,14 +60,14 @@ def index():
             active_only=not show_inactive
         )
         
-        # 코드 정보 조회 (드롭다운용)
-        brand_codes = Code.get_codes_by_group_name('브랜드', company_id=current_company_id)
+        # 코드 정보 조회 (드롭다운용) - 회사별 필터링 적용
+        brand_codes = Code.get_codes_by_group_name_with_company('브랜드', company_id=current_company_id)
         
-        # 새로운 코드 체계 적용
-        product_category_codes = Code.get_codes_by_group_name('제품구분', company_id=current_company_id)  # PRT 그룹
-        product_codes = Code.get_codes_by_group_name('품목', company_id=current_company_id)  # PRD 그룹
-        type_codes = Code.get_codes_by_group_name('타입', company_id=current_company_id)
-        year_codes = Code.get_codes_by_group_name('년도', company_id=current_company_id)
+        # 새로운 코드 체계 적용 - 요구사항에 맞게 수정
+        product_category_codes = Code.get_codes_by_group_name_with_company('제품구분', company_id=current_company_id)  # PRT 그룹
+        product_codes = Code.get_codes_by_group_name_with_company('PRD', company_id=current_company_id)  # PRD 그룹에서 품목 가져오기
+        type_codes = []  # 초기에는 빈 리스트, 품목 선택 시 동적 로드
+        year_codes = Code.get_codes_by_group_name_with_company('년도', company_id=current_company_id)
         
         # 년도 코드가 없으면 기본 년도 생성
         if not year_codes:
@@ -78,9 +78,9 @@ def index():
                 {'seq': None, 'code': str(current_year+1), 'code_name': f'{current_year+1}년'}
             ]
         
-        # 확장 코드 그룹 조회 (제품모델용)
-        color_codes = Code.get_codes_by_group_name('색상', company_id=current_company_id)
-        div_type_codes = Code.get_codes_by_group_name('구분타입', company_id=current_company_id)
+        # 확장 코드 그룹 조회 (제품모델용) - 회사별 필터링 적용
+        color_codes = Code.get_codes_by_group_name_with_company('CRD', company_id=current_company_id)  # CRD 그룹에서 색상 가져오기
+        div_type_codes = Code.get_codes_by_group_name_with_company('구분타입', company_id=current_company_id)
         
         # 레거시 호환 (기존 변수명 유지)
         category_codes = product_category_codes  # 제품구분 (PRT)
@@ -202,7 +202,7 @@ def api_list():
         
         return jsonify({
             'success': True,
-            'products': products,
+            'data': products,  # products -> data로 변경
             'pagination': {
                 'page': pagination.page,
                 'per_page': pagination.per_page,
@@ -1371,63 +1371,84 @@ def api_get_types_by_category(category_seq):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @bp.route('/api/get-types-by-product-code/<product_code>')
+# @login_required  # 개발 환경에서 임시 제거
 def api_get_types_by_product_code(product_code):
-    """제품코드에 따른 타입 목록 조회 API"""
+    """품목 코드별 타입 목록 조회 API"""
+    # 개발 환경에서 임시 세션 설정
+    if not session.get('member_seq'):
+        session['member_seq'] = 1
+        session['member_id'] = 'admin'
+        session['current_company_id'] = 1
+        
     try:
-        # 개발 환경에서 임시 세션 설정
-        if not session.get('member_seq'):
-            session['member_seq'] = 1
-            session['member_id'] = 'admin'
-            session['current_company_id'] = 1
-            
-        # 해당 제품코드에 연결된 타입들 조회 (실제로는 type2 그룹 반환)
-        types = Code.get_codes_by_group_name('타입2')
+        current_company_id = session.get('current_company_id', 1)
         
-        types_data = []
+        # 품목 코드로 해당 품목의 seq 찾기
+        product_code_obj = Code.query.filter_by(
+            code=product_code,
+            company_id=current_company_id
+        ).join(
+            CodeGroup, Code.group_seq == CodeGroup.seq
+        ).filter(
+            CodeGroup.group_name == '품목'
+        ).first()
+        
+        if not product_code_obj:
+            return jsonify({'success': False, 'message': '품목을 찾을 수 없습니다'}), 404
+        
+        # 해당 품목의 하위 타입들을 정렬 순서대로 조회
+        types = Code.query.filter_by(
+            parent_seq=product_code_obj.seq,
+            company_id=current_company_id,
+            use_yn='Y'
+        ).order_by(Code.sort_order, Code.code).all()
+        
+        types_list = []
         for type_code in types:
-            if hasattr(type_code, 'seq'):
-                types_data.append({
-                    'seq': type_code.seq,
-                    'code': type_code.code,
-                    'code_name': type_code.code_name
-                })
-            else:
-                types_data.append(type_code)
-        
-        return jsonify({
-            'success': True,
-            'types': types_data
-        })
-        
-    except Exception as e:
-        current_app.logger.error(f"❌ 제품코드별 타입 목록 조회 실패: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@bp.route('/api/get-types-by-product-category/<int:product_category_seq>')
-def api_get_types_by_product_category(product_category_seq):
-    """품목(PRD) 선택 시 해당 품목의 하위 타입들 조회"""
-    try:
-        # 개발 환경에서 임시 세션 설정
-        if not session.get('member_seq'):
-            session['member_seq'] = 1
-            session['member_id'] = 'admin'
-            session['current_company_id'] = 1
-            
-        # 선택된 품목의 하위 타입들 조회
-        types = Code.get_types_by_product_category(product_category_seq)
-        
-        types_data = []
-        for type_code in types:
-            types_data.append({
+            types_list.append({
                 'seq': type_code.seq,
                 'code': type_code.code,
                 'code_name': type_code.code_name,
-                'sort': type_code.sort
+                'sort_order': type_code.sort_order
             })
         
         return jsonify({
             'success': True,
-            'types': types_data
+            'types': types_list
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"❌ 품목별 타입 조회 실패: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@bp.route('/api/get-types-by-product-seq/<int:product_seq>')
+# @login_required  # 개발 환경에서 임시 제거
+def api_get_types_by_product_seq(product_seq):
+    """품목 SEQ별 타입 목록 조회 API"""
+    # 개발 환경에서 임시 세션 설정
+    if not session.get('member_seq'):
+        session['member_seq'] = 1
+        session['member_id'] = 'admin'
+        session['current_company_id'] = 1
+        
+    try:
+        # 해당 품목의 하위 타입들을 정렬 순서대로 조회 (use_yn 필터 제거)
+        types = Code.query.filter_by(
+            parent_seq=product_seq
+        ).order_by(Code.sort, Code.code).all()
+        
+        types_list = []
+        for type_code in types:
+            types_list.append({
+                'seq': type_code.seq,
+                'code': type_code.code,
+                'code_name': type_code.code_name,
+                'sort_order': type_code.sort
+            })
+        
+        return jsonify({
+            'success': True,
+            'types': types_list
         })
         
     except Exception as e:
@@ -1436,33 +1457,56 @@ def api_get_types_by_product_category(product_category_seq):
 
 @bp.route('/api/get-product-models/<int:product_id>')
 def api_get_product_models(product_id):
-    """제품의 제품모델 목록 조회 API"""
+    """상품의 제품 모델 목록 조회 API"""
+    # 개발 환경에서 임시 세션 설정
+    if not session.get('member_seq'):
+        session['member_seq'] = 1
+        session['member_id'] = 'admin'
+        session['current_company_id'] = 1
+        
     try:
-        # 개발 환경에서 임시 세션 설정
-        if not session.get('member_seq'):
-            session['member_seq'] = 1
-            session['member_id'] = 'admin'
-            session['current_company_id'] = 1
-            
         current_company_id = session.get('current_company_id', 1)
         
-        # 제품 존재 확인
-        product = Product.query.filter_by(id=product_id, company_id=current_company_id).first()
+        # 상품 존재 확인
+        product = Product.query.filter_by(
+            id=product_id,
+            company_id=current_company_id
+        ).first()
+        
         if not product:
-            return jsonify({'success': False, 'message': '제품을 찾을 수 없습니다.'}), 404
+            return jsonify({'success': False, 'message': '상품을 찾을 수 없습니다'}), 404
         
-        # 제품모델 목록 조회
-        product_models = ProductDetail.query.filter_by(product_id=product_id).all()
+        # 제품 모델 목록 조회
+        product_details = ProductDetail.query.filter_by(
+            product_id=product_id
+        ).all()
         
-        models_data = []
-        for model in product_models:
-            models_data.append(model.to_dict())
+        models_list = []
+        for detail in product_details:
+            # 색상 코드 정보 조회
+            color_info = None
+            if detail.color_code:
+                color_info = Code.query.filter_by(
+                    code=detail.color_code,
+                    company_id=current_company_id
+                ).first()
+            
+            models_list.append({
+                'id': detail.id,
+                'product_id': detail.product_id,
+                'color_code': detail.color_code,
+                'color_name': color_info.code_name if color_info else detail.color_code,
+                'product_model_name': detail.product_model_name,
+                'std_product_code': detail.std_div_prod_code,
+                'created_at': detail.created_at.isoformat() if detail.created_at else None
+            })
         
         return jsonify({
             'success': True,
-            'product_models': models_data
+            'models': models_list,
+            'count': len(models_list)
         })
         
     except Exception as e:
-        current_app.logger.error(f"❌ 제품모델 목록 조회 실패: {e}")
+        current_app.logger.error(f"❌ 제품 모델 목록 조회 실패: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500 

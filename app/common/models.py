@@ -319,7 +319,7 @@ class Code(db.Model):
     def get_codes_by_group_name(cls, group_name, company_id=None):
         """그룹명으로 코드 목록 조회 (개선된 정렬)"""
         try:
-            # 년도는 최신순, 나머지는 sort 기준 정렬
+            # 년도는 최신순, 브랜드는 정렬순서대로, 나머지는 sort 기준 정렬
             if group_name == '년도':
                 # 부모 그룹 찾기
                 parent_group = cls.query.filter(
@@ -333,8 +333,21 @@ class Code(db.Model):
                     ).order_by(cls.code.desc()).all()  # 년도는 내림차순 (최신순)
                 else:
                     codes = []
+            elif group_name in ['브랜드', 'PRD', 'CRD']:
+                # 브랜드, PRD, CRD는 정렬 순서(sort) 기준 오름차순
+                parent_group = cls.query.filter(
+                    cls.code_name == group_name,
+                    cls.depth == 0
+                ).first()
+                
+                if parent_group:
+                    codes = cls.query.filter(
+                        cls.parent_seq == parent_group.seq
+                    ).order_by(cls.sort.asc(), cls.code.asc()).all()  # sort 우선, 그 다음 code 순
+                else:
+                    codes = []
             else:
-                # 다른 코드들은 sort 기준 오름차순
+                # 다른 코드들은 기존 방식
                 parent_group = cls.query.filter(
                     cls.code_name == group_name,
                     cls.depth == 0
@@ -390,6 +403,75 @@ class Code(db.Model):
     
     def __repr__(self):
         return f'<Code {self.code}:{self.code_name}>'
+
+    @classmethod
+    def get_codes_by_group_name_with_company(cls, group_name, company_id=None):
+        """회사별 코드 목록 조회 (멀티테넌트 지원)"""
+        try:
+            # 기본 코드 조회
+            codes = cls.get_codes_by_group_name(group_name)
+            
+            # company_id가 지정되지 않으면 모든 코드 반환
+            if not company_id:
+                return codes
+            
+            # 회사별 필터링이 필요한 그룹들 정의
+            company_filtered_groups = ['브랜드', '품목', '타입', '년도', 'CR', '색상']
+            
+            if group_name not in company_filtered_groups:
+                return codes
+            
+            # CB 그룹에서 회사 코드 찾기
+            cb_group = cls.query.filter_by(code='CB', depth=0).first()
+            if not cb_group:
+                return codes
+            
+            # 회사 ID에 따른 회사 코드 매핑
+            company_code_mapping = {
+                1: 'AONE',  # 에이원 (기존 AONE 코드 사용)
+                2: 'AW2'    # 에이원 월드
+            }
+            
+            company_code = company_code_mapping.get(company_id)
+            if not company_code:
+                return codes  # 매핑되지 않은 회사는 모든 코드 반환
+            
+            # 해당 회사 코드 찾기
+            company_code_obj = cls.query.filter_by(
+                parent_seq=cb_group.seq,
+                code=company_code
+            ).first()
+            
+            if not company_code_obj:
+                return codes  # 회사 코드가 없으면 모든 코드 반환
+            
+            # 향후 확장: 회사별로 다른 코드를 사용할 때를 위한 준비
+            # 현재는 모든 회사가 동일한 코드를 사용하므로 기본 코드 반환
+            return codes
+            
+        except Exception as e:
+            print(f"회사별 코드 조회 오류: {e}")
+            return cls.get_codes_by_group_name(group_name)
+    
+    def to_dict(self):
+        """Code 객체를 딕셔너리로 변환"""
+        return {
+            'seq': self.seq,
+            'code_seq': self.code_seq,
+            'parent_seq': self.parent_seq,
+            'depth': self.depth,
+            'sort': self.sort,
+            'code': self.code,
+            'code_name': self.code_name,
+            'code_info': self.code_info,
+            'ins_user': self.ins_user,
+            'ins_date': self.ins_date.isoformat() if self.ins_date else None,
+            'upt_user': self.upt_user,
+            'upt_date': self.upt_date.isoformat() if self.upt_date else None
+        }
+    
+    def __repr__(self):
+        return f'<Code {self.code}({self.code_name})>'
 
 class Brand(db.Model):
     """브랜드 정보 (tbl_brand 레거시 테이블)"""

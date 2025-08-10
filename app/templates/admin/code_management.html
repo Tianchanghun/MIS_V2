@@ -4,14 +4,15 @@
 
 {% block extra_css %}
 <style>
+    /* 모든 코드 표시 - child-code 숨김 제거 */
     .child-code {
-        display: none;
         background-color: #f8f9fa;
+        /* display: none 제거 - 모든 하위 코드 표시 */
     }
     .parent-code {
         background-color: #fff;
         cursor: pointer;
-        transition: background-color 0.15s ease; /* 부드러운 전환 효과 */
+        transition: background-color 0.15s ease;
     }
     .parent-code:hover {
         background-color: #e3f2fd;
@@ -20,60 +21,297 @@
         background-color: #fff3cd;
         cursor: pointer;
         font-weight: bold;
-        transition: background-color 0.15s ease; /* 부드러운 전환 효과 */
+        transition: background-color 0.15s ease;
     }
     .group-code:hover {
         background-color: #ffeaa7;
     }
+    
+    /* 깊이별 배경색 추가 (Depth 0-4까지) */
+    .depth-0 { 
+        padding-left: 8px; 
+        background-color: #fff3cd; /* 최상위 - 노란색 */
+        font-weight: bold;
+    }
+    .depth-1 { 
+        padding-left: 24px; 
+        background-color: #d1ecf1; /* 1단계 - 하늘색 */
+        font-weight: 600;
+    }
+    .depth-2 { 
+        padding-left: 40px; 
+        background-color: #d4edda; /* 2단계 - 연두색 */
+    }
+    .depth-3 { 
+        padding-left: 56px; 
+        background-color: #f8d7da; /* 3단계 - 분홍색 */
+    }
+    .depth-4 { 
+        padding-left: 72px; 
+        background-color: #e2e3e5; /* 4단계 - 회색 (최대 깊이) */
+    }
+    
+    /* 깊이별 배경색과 들여쓰기 - 더 명확한 시각화 */
+    .depth-0 { 
+        background-color: #fff9e6 !important; 
+        font-weight: bold; 
+    }
+    .depth-1 { 
+        background-color: #e8f4fd !important; 
+    }
+    .depth-2 { 
+        background-color: #e8f5e8 !important; 
+    }
+    .depth-3 { 
+        background-color: #f0f0f0 !important; 
+    }
+    .depth-4 { 
+        background-color: #f8f8f8 !important; 
+    }
+    
+    /* 코드 셀에만 들여쓰기 적용 */
+    .depth-0 .code-cell { padding-left: 8px !important; }
+    .depth-1 .code-cell { padding-left: 32px !important; }
+    .depth-2 .code-cell { padding-left: 56px !important; }
+    .depth-3 .code-cell { padding-left: 80px !important; }
+    .depth-4 .code-cell { padding-left: 104px !important; }
+    
+    /* 트리 라인 표시 */
+    .code-cell {
+        position: relative;
+    }
+    
+    .depth-1 .code-cell::before {
+        content: '├─';
+        position: absolute;
+        left: 8px;
+        color: #dee2e6;
+        font-weight: normal;
+    }
+    
+    .depth-2 .code-cell::before {
+        content: '│ ├─';
+        position: absolute;
+        left: 8px;
+        color: #dee2e6;
+        font-weight: normal;
+    }
+    
+    .depth-3 .code-cell::before {
+        content: '│ │ ├─';
+        position: absolute;
+        left: 8px;
+        color: #dee2e6;
+        font-weight: normal;
+    }
+    
+    .depth-4 .code-cell::before {
+        content: '│ │ │ ├─';
+        position: absolute;
+        left: 8px;
+        color: #dee2e6;
+        font-weight: normal;
+    }
+    
+    /* 마지막 자식 요소는 └─ 로 표시 */
+    .depth-1.last-child .code-cell::before {
+        content: '└─';
+    }
+    
+    .depth-2.last-child .code-cell::before {
+        content: '│ └─';
+    }
+    
+    .depth-3.last-child .code-cell::before {
+        content: '│ │ └─';
+    }
+    
+    .depth-4.last-child .code-cell::before {
+        content: '│ │ │ └─';
+    }
+    
+    /* 트리 구조 시각화 */
+    .tree-line {
+        position: relative;
+    }
+    
+    .tree-line::before {
+        content: '';
+        position: absolute;
+        left: -16px;
+        top: 0;
+        bottom: 50%;
+        width: 1px;
+        background-color: #dee2e6;
+    }
+    
+    .tree-line::after {
+        content: '';
+        position: absolute;
+        left: -16px;
+        top: 50%;
+        width: 12px;
+        height: 1px;
+        background-color: #dee2e6;
+    }
+    
+    /* 마지막 자식 요소 */
+    .tree-line.last-child::before {
+        bottom: 50%;
+    }
+    
+    /* 토글 가능한 코드 행 스타일 */
+    .toggleable-code {
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border-left: 3px solid transparent;
+    }
+    
+    .toggleable-code:hover {
+        background-color: #f8f9fa !important;
+        border-left-color: #007bff;
+    }
+    
+    .toggleable-code.expanded {
+        background-color: #e3f2fd !important;
+        border-left-color: #2196f3;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .toggleable-code.has-children {
+        font-weight: 500;
+    }
+    
+    /* 토글 아이콘 스타일 강화 */
+    .toggle-icon {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        margin-right: 8px;
+        text-align: center;
+        line-height: 20px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        color: #6c757d;
+        border-radius: 3px;
+        font-size: 12px;
+    }
+    
+    .toggle-icon:hover {
+        color: #495057;
+        background-color: #e9ecef;
+    }
+    
+    .toggle-icon.expanded {
+        transform: rotate(90deg);
+        color: #007bff;
+        background-color: #e3f2fd;
+    }
+    
+    .toggle-icon.empty {
+        visibility: hidden;
+    }
+    
+    /* 계층별 아이콘 크기 조정 */
+    .hierarchy-icon {
+        margin-right: 8px;
+        width: 16px;
+        text-align: center;
+    }
+    
+    /* 선택된 행 스타일 */
+    .toggleable-code.selected {
+        background-color: #fff3cd !important;
+        border-left-color: #ffc107 !important;
+        box-shadow: 0 2px 4px rgba(255, 193, 7, 0.3) !important;
+    }
+    
+    /* 코드 텍스트 스타일 */
+    .code-text {
+        font-family: 'Courier New', monospace;
+        font-weight: bold;
+        color: #495057;
+    }
+    
+    /* 애니메이션 효과 */
+    .code-item {
+        transition: all 0.3s ease;
+    }
+    
+    .code-item.slide-down {
+        animation: slideDown 0.3s ease-out;
+    }
+    
+    .code-item.slide-up {
+        animation: slideUp 0.3s ease-out;
+    }
+    
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            max-height: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            max-height: 100px;
+            transform: translateY(0);
+        }
+    }
+    
+    @keyframes slideUp {
+        from {
+            opacity: 1;
+            max-height: 100px;
+            transform: translateY(0);
+        }
+        to {
+            opacity: 0;
+            max-height: 0;
+            transform: translateY(-10px);
+        }
+    }
+    
     .code-actions {
         white-space: nowrap;
     }
-    #code-insert-panel {
-        display: none;
-    }
     .table-responsive {
-        max-height: 600px;
+        max-height: 700px; /* 높이 확장 */
         overflow-y: auto;
-        /* 스크롤 성능 향상 */
         -webkit-overflow-scrolling: touch;
         will-change: scroll-position;
     }
-    /* 컬럼 폭 고정 (레이아웃 안정성 향상) */
+    
+    /* 컬럼 폭 고정 */
     #codeTable {
         table-layout: fixed;
         width: 100%;
-        /* GPU 가속 활성화 */
         transform: translateZ(0);
         backface-visibility: hidden;
     }
-    #codeTable th:nth-child(1) { width: 15%; }  /* 드래그 핸들 */
-    #codeTable th:nth-child(2) { width: 20%; }  /* 코드 */
+    #codeTable th:nth-child(1) { width: 12%; }  /* 드래그 핸들 */
+    #codeTable th:nth-child(2) { width: 25%; }  /* 코드 */
     #codeTable th:nth-child(3) { width: 25%; }  /* 코드명 */
-    #codeTable th:nth-child(4) { width: 25%; }  /* 설명 */
+    #codeTable th:nth-child(4) { width: 20%; }  /* 설명 */
     #codeTable th:nth-child(5) { width: 8%; }   /* 깊이 */
-    #codeTable th:nth-child(6) { width: 7%; }   /* 정렬 */
+    #codeTable th:nth-child(6) { width: 6%; }   /* 정렬 */
+    #codeTable th:nth-child(7) { width: 14%; }  /* 작업 */
     
     .table tr.selected {
         background-color: #d1ecf1 !important;
         transition: background-color 0.2s ease;
     }
     
-    /* 계층별 들여쓰기 (성능 최적화) */
-    .depth-0 { padding-left: 8px; }
-    .depth-1 { padding-left: 24px; }
-    .depth-2 { padding-left: 40px; }
-    .depth-3 { padding-left: 56px; }
-    
-    /* 드래그 앤 드롭 스타일 (GPU 가속) */
+    /* 드래그 앤 드롭 스타일 */
     .sortable-row {
         cursor: move;
-        will-change: transform; /* 변형 성능 향상 */
+        will-change: transform;
     }
     .ui-sortable-helper {
         background-color: #fff3cd !important;
         box-shadow: 0 2px 10px rgba(0,0,0,0.3);
         border: 2px solid #ffc107;
-        transform: translateZ(0); /* GPU 가속 */
+        transform: translateZ(0);
     }
     .ui-sortable-placeholder {
         background-color: #e3f2fd !important;
@@ -97,110 +335,208 @@
         text-align: center;
     }
     
-    /* 성능 향상을 위한 추가 스타일 */
-    .d-none-optimized {
+    /* 토글 버튼 스타일 */
+    .toggle-btn {
+        border: none;
+        background: none;
+        color: #6c757d;
+        padding: 2px 6px;
+        margin-right: 5px;
+        cursor: pointer;
+        transition: color 0.15s ease;
+        font-size: 12px;
+    }
+    .toggle-btn:hover {
+        color: #495057;
+    }
+    .toggle-btn.collapsed .fa-minus {
+        display: none;
+    }
+    .toggle-btn:not(.collapsed) .fa-plus {
+        display: none;
+    }
+    
+    /* 계층 아이콘 */
+    .hierarchy-icon {
+        margin-right: 5px;
+        font-size: 14px;
+    }
+    
+    /* 하위 코드 숨김/표시를 위한 클래스 */
+    .hidden-child {
         display: none !important;
-        visibility: hidden; /* 추가 최적화 */
     }
     
-    /* 로딩 애니메이션 최적화 */
-    .spinner-optimized {
-        animation: spin 1s linear infinite;
-        will-change: transform;
-    }
-    
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+    /* 하위 코드 들여쓰기 강조 */
+    .child-indicator {
+        border-left: 2px solid #dee2e6;
+        margin-left: 10px;
+        padding-left: 8px;
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="fas fa-code"></i> 코드 관리</h2>
-        <button class="btn btn-primary add-child-btn" data-parent-seq="0" data-depth="0">
-            <i class="fas fa-plus"></i> 코드 그룹 추가
-        </button>
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">
+                            <i class="fas fa-code"></i> 코드 관리
+                            <small class="text-muted">(계층형 구조 - 최대 Depth 4)</small>
+                        </h4>
+                        <div>
+                            <button type="button" class="btn btn-outline-success btn-sm" id="expandAllBtn">
+                                <i class="fas fa-expand-arrows-alt"></i> 모두 펼치기
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="collapseAllBtn">
+                                <i class="fas fa-compress-arrows-alt"></i> 모두 접기
+                            </button>
+                            <button type="button" class="btn btn-primary btn-sm" id="addRootCodeBtn">
+                                <i class="fas fa-plus"></i> 최상위 코드 추가
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
     
     <div class="row">
         <!-- 좌측: 코드 목록 (7컬럼) -->
-        <div class="col-md-7">
+        <div class="col-md-7" id="leftPanel">
             <div class="card">
                 <div class="card-header">
                     <h5 class="mb-0">
-                        <i class="fas fa-list"></i> 코드 그룹 목록
+                        <i class="fas fa-list"></i> 코드 목록
+                        <span class="badge bg-info ms-2">{{ codes|length }}개</span>
                     </h5>
-                    <small class="text-muted">상위 코드를 클릭하면 하위 코드가 표시됩니다.</small>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover table-sm" id="codeTable">
-                            <thead class="table-light">
+                        <table class="table table-hover table-sm mb-0" id="codeTable">
+                            <thead class="table-dark sticky-top">
                                 <tr>
                                     <th><i class="fas fa-arrows-alt"></i></th>
                                     <th>코드</th>
                                     <th>코드명</th>
                                     <th>설명</th>
                                     <th>깊이</th>
-                                    <th>순서</th>
-                                    <th>관리</th>
+                                    <th>정렬</th>
+                                    <th>작업</th>
                                 </tr>
                             </thead>
                             <tbody id="sortableCodeList">
                                 <!-- Root 행 -->
-                                <tr class="parent-code" id="Root" data-seq="0" data-depth="0" data-parent-seq="0">
+                                <tr class="parent-code toggleable-code" id="Root" data-seq="0" data-depth="0" data-parent-seq="0" data-has-children="true">
                                     <td><i class="fas fa-lock text-muted" title="이동 불가"></i></td>
-                                    <td><i class="fas fa-home text-primary"></i></td>
-                                    <td><strong>Root</strong></td>
-                                    <td>최상위 코드</td>
-                                    <td>0</td>
-                                    <td>-</td>
-                                    <td>-</td>
+                                    <td class="code-cell">
+                                        <!-- Root용 토글 아이콘 -->
+                                        <i class="toggle-icon fas fa-chevron-right" 
+                                           data-seq="0" 
+                                           data-depth="0"
+                                           title="하위 코드 토글"></i>
+                                        <i class="fas fa-home text-primary hierarchy-icon"></i>
+                                        <span class="code-text">Root</span>
+                                    </td>
+                                    <td class="code-cell"><strong>최상위 코드</strong></td>
+                                    <td class="code-cell">시스템 루트</td>
+                                    <td class="text-center">0</td>
+                                    <td class="text-center">-</td>
+                                    <td>
+                                        <button class="btn btn-outline-success btn-sm add-child-btn" data-parent-seq="0" data-depth="1" title="하위 코드 추가">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                    </td>
                                 </tr>
+                                <!-- 코드 목록 - 성능 최적화 버전 -->
                                 {% for code in codes %}
-                                <tr class="sortable-row {{ 'parent-code' if code.depth == 0 else ('group-code' if code.depth == 1 else 'child-code') }}" 
+                                <tr class="sortable-row depth-row-{{ code.depth }} code-item toggleable-code" 
                                     id="row-{{ code.seq }}" 
                                     data-seq="{{ code.seq }}" 
                                     data-depth="{{ code.depth }}" 
                                     data-parent-seq="{{ code.parent_seq or 0 }}"
-                                    data-sort="{{ code.sort or 1 }}">
+                                    data-sort="{{ code.sort or 1 }}"
+                                    data-has-children="false"
+                                    style="display: none;">
                                     <td class="drag-handle">
                                         <i class="fas fa-grip-vertical" title="드래그하여 순서 변경"></i>
                                     </td>
-                                    <td class="depth-{{ code.depth }}">
+                                    <td class="depth-{{ code.depth }} code-cell">
+                                        <!-- 토글 아이콘 (하위 코드가 있는 경우만 표시) -->
+                                        <i class="toggle-icon fas fa-chevron-right empty" 
+                                           data-seq="{{ code.seq }}" 
+                                           data-depth="{{ code.depth }}"
+                                           title="하위 코드 토글" style="display: none;"></i>
+                                        
+                                        <!-- 계층 아이콘 -->
                                         {% if code.depth == 0 %}
-                                            <i class="fas fa-folder text-warning"></i>
+                                            <i class="fas fa-folder text-warning hierarchy-icon"></i>
                                         {% elif code.depth == 1 %}
-                                            <i class="fas fa-folder-open text-info"></i>
-                                        {% else %}
-                                            <i class="fas fa-file text-secondary"></i>
+                                            <i class="fas fa-folder-open text-info hierarchy-icon"></i>
+                                        {% elif code.depth == 2 %}
+                                            <i class="fas fa-file-alt text-success hierarchy-icon"></i>
+                                        {% elif code.depth == 3 %}
+                                            <i class="fas fa-file text-secondary hierarchy-icon"></i>
+                                        {% elif code.depth == 4 %}
+                                            <i class="fas fa-dot-circle text-muted hierarchy-icon"></i>
                                         {% endif %}
-                                        <strong>{{ code.code }}</strong>
+                                        
+                                        <span class="code-text">{{ code.code }}</span>
                                     </td>
-                                    <td class="depth-{{ code.depth }}">{{ code.code_name }}</td>
-                                    <td class="depth-{{ code.depth }}">{{ code.code_info or '-' }}</td>
-                                    <td class="text-center">{{ code.depth }}</td>
+                                    <td class="depth-{{ code.depth }} code-cell">{{ code.code_name }}</td>
+                                    <td class="depth-{{ code.depth }} code-cell">{{ code.code_info or '-' }}</td>
+                                    <td class="text-center">
+                                        <span class="badge bg-{{ 'warning' if code.depth == 0 else ('info' if code.depth == 1 else ('success' if code.depth == 2 else ('secondary' if code.depth == 3 else 'dark'))) }}">
+                                            {{ code.depth }}
+                                        </span>
+                                    </td>
                                     <td class="text-center sort-number">{{ code.sort or 1 }}</td>
                                     <td class="code-actions">
                                         <div class="btn-group btn-group-sm">
-                                            {% if code.depth < 2 %}
-                                            <button class="btn btn-outline-success btn-sm add-child-btn" data-parent-seq="{{ code.seq }}" data-depth="{{ code.depth + 1 }}" title="하위 코드 추가">
+                                            <!-- Depth 4 미만에서만 하위 코드 추가 가능 -->
+                                            {% if code.depth < 4 %}
+                                            <button class="btn btn-outline-success btn-sm add-child-btn" 
+                                                    data-parent-seq="{{ code.seq }}" 
+                                                    data-depth="{{ code.depth + 1 }}" 
+                                                    title="하위 코드 추가">
                                                 <i class="fas fa-plus"></i>
                                             </button>
                                             {% endif %}
-                                            <button class="btn btn-outline-primary btn-sm edit-code-btn" data-seq="{{ code.seq }}" title="수정">
+                                            <button class="btn btn-outline-primary btn-sm edit-code-btn" 
+                                                    data-seq="{{ code.seq }}" 
+                                                    title="수정">
                                                 <i class="fas fa-edit"></i>
                                             </button>
-                                            <button class="btn btn-outline-danger btn-sm delete-code-btn" data-seq="{{ code.seq }}" title="삭제">
+                                            <button class="btn btn-outline-danger btn-sm delete-code-btn" 
+                                                    data-seq="{{ code.seq }}" 
+                                                    title="삭제">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </div>
                                     </td>
                                 </tr>
                                 {% endfor %}
+                                
+                                <!-- 로딩 인디케이터 -->
+                                <tr id="loadingRow" style="display: none;">
+                                    <td colspan="7" class="text-center p-3">
+                                        <i class="fas fa-spinner fa-spin"></i> 더 많은 코드를 불러오는 중...
+                                    </td>
+                                </tr>
+                                
+                                <!-- 더보기 버튼 -->
+                                {% if codes|length > 100 %}
+                                <tr id="loadMoreRow">
+                                    <td colspan="7" class="text-center p-3">
+                                        <button class="btn btn-outline-primary" id="loadMoreBtn">
+                                            <i class="fas fa-plus"></i> 더 보기 ({{ codes|length - 100 }}개 남음)
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endif %}
                             </tbody>
                         </table>
                     </div>
@@ -221,6 +557,12 @@
                         <input type="hidden" id="parent_seq" name="parent_seq" value="0">
                         <input type="hidden" id="depth" name="depth" value="0">
                         <input type="hidden" id="edit_seq" name="edit_seq" value="">
+                        
+                        <div class="mb-3">
+                            <label for="parent_info" class="form-label">상위 코드</label>
+                            <input type="text" class="form-control" id="parent_info" readonly
+                                   placeholder="상위 코드가 선택되면 표시됩니다">
+                        </div>
                         
                         <div class="mb-3">
                             <label for="code" class="form-label">코드 *</label>
@@ -245,36 +587,55 @@
                             <input type="number" class="form-control" id="sort" name="sort" value="1" min="1">
                         </div>
                         
-                        <div class="d-grid">
+                        <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save"></i> 저장
+                                <i class="fas fa-save"></i> <span id="submit-text">저장</span>
+                            </button>
+                            <button type="button" class="btn btn-secondary" id="resetFormBtn">
+                                <i class="fas fa-refresh"></i> 초기화
                             </button>
                         </div>
                     </form>
                 </div>
             </div>
-        </div>
-    </div>
-</div>
-
-<!-- 하위 코드 조회 모달 -->
-<div class="modal fade" id="childCodesModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">하위 코드 목록</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div id="childCodesContent">
-                    <div class="text-center">
-                        <i class="fas fa-spinner fa-spin"></i> 로딩 중...
+            
+            <!-- 코드 통계 정보 -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-chart-bar"></i> 코드 통계</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <h5 class="text-warning">{{ codes|selectattr("depth", "equalto", 0)|list|length }}</h5>
+                            <small>Depth 0</small>
+                        </div>
+                        <div class="col-6">
+                            <h5 class="text-info">{{ codes|selectattr("depth", "equalto", 1)|list|length }}</h5>
+                            <small>Depth 1</small>
+                        </div>
+                        <div class="col-6">
+                            <h5 class="text-success">{{ codes|selectattr("depth", "equalto", 2)|list|length }}</h5>
+                            <small>Depth 2</small>
+                        </div>
+                        <div class="col-6">
+                            <h5 class="text-secondary">{{ codes|selectattr("depth", "equalto", 3)|list|length }}</h5>
+                            <small>Depth 3</small>
+                        </div>
+                        <div class="col-12 mt-2">
+                            <h5 class="text-dark">{{ codes|selectattr("depth", "equalto", 4)|list|length }}</h5>
+                            <small>Depth 4 (최대)</small>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- 서버 데이터를 JavaScript로 전달 -->
+<script type="application/json" id="codesData">{{ codes|tojson|safe }}</script>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -283,177 +644,991 @@ $(document).ready(function() {
     console.log('✅ 코드 관리 페이지 시작');
     
     // 초기 설정
-    setupInitialView();
+    initializeData();
     setupEventHandlers();
+    setupInfiniteScroll();
+    
+    // 토글 아이콘 초기화
+    initializeToggleIcons();
+    
+    // 통계 업데이트
+    updateStatistics();
     
     console.log('✅ 코드 관리 페이지 초기화 완료');
 });
 
-// 초기 화면 설정 (성능 최적화)
-function setupInitialView() {
-    // 한 번에 모든 DOM 요소를 가져와서 배치 처리
-    const $allRows = $('tr[data-depth]');
-    const $depthZeroRows = $('tr[data-depth="0"]');
-    const $otherRows = $allRows.not($depthZeroRows);
+// 전역 변수
+var allCodes = [];
+var displayedCodes = 100;
+var isLoading = false;
+
+// 서버 데이터 초기화
+function initializeData() {
+    try {
+        var codesDataElement = document.getElementById('codesData');
+        if (codesDataElement) {
+            allCodes = JSON.parse(codesDataElement.textContent);
+            console.log('✅ 코드 데이터 로드 완료:', allCodes.length + '개');
+            console.log('📋 첫 5개 코드:', allCodes.slice(0, 5));
+        } else {
+            console.error('❌ codesData 엘리먼트를 찾을 수 없습니다');
+        }
+    } catch (e) {
+        console.error('❌ 코드 데이터 파싱 오류:', e);
+        allCodes = [];
+    }
     
-    // CSS 클래스를 사용하여 배치로 숨기기/보이기
-    $otherRows.addClass('d-none-optimized'); // Bootstrap의 display: none 클래스 사용
-    $depthZeroRows.removeClass('d-none-optimized');
+    // 현재 표시된 코드 개수 확인
+    var visibleCodes = $('.code-item').length;
+    console.log('👁️ 현재 표시된 코드:', visibleCodes + '개');
     
-    console.log('✅ 초기 화면 설정 완료 (최적화됨)');
+    // 더보기 버튼 상태 확인
+    var loadMoreBtn = $('#loadMoreBtn');
+    if (loadMoreBtn.length > 0) {
+        console.log('🔘 더보기 버튼 존재함');
+    } else {
+        console.log('❌ 더보기 버튼 없음');
+    }
 }
 
-// 이벤트 핸들러 설정 (디바운싱 적용)
+// 이벤트 핸들러 설정
 function setupEventHandlers() {
-    let clickTimeout;
-    
-    // 코드 행 클릭 (디바운싱으로 중복 클릭 방지)
-    $(document).on('click', '.parent-code, .group-code', function(e) {
+    // 토글 아이콘 클릭 이벤트 (트리 구조)
+    $(document).on('click', '.toggle-icon:not(.empty)', function(e) {
         e.preventDefault();
+        e.stopPropagation();
         
-        // 이전 타이머 클리어
-        if (clickTimeout) {
-            clearTimeout(clickTimeout);
-        }
+        const seq = $(this).data('seq');
+        const depth = parseInt($(this).data('depth'));
         
-        const $this = $(this);
-        const seq = $this.data('seq');
-        const depth = $this.data('depth');
-        
-        // 즉시 실행되는 작업
-        if (seq && seq > 0) {
-            showCodeInfo(seq);
-        }
-        
-        // 디바운싱된 작업 (토글)
-        if (depth === 0) {
-            clickTimeout = setTimeout(() => {
-                toggleChildren(seq);
-            }, 50); // 50ms 디바운싱
-        }
-        
-        console.log('코드 클릭:', seq, 'depth:', depth);
+        console.log(`🌳 토글 아이콘 클릭: 코드 ${seq}, 깊이 ${depth}`);
+        toggleChildren(seq, depth);
     });
     
-    // 버튼 클릭 (개선된 이벤트 처리)
+    // 코드 행 더블클릭 이벤트 (토글)
+    $(document).on('dblclick', '.toggleable-code', function(e) {
+        // 버튼이나 토글 아이콘 클릭은 제외
+        if ($(e.target).closest('.btn, .toggle-icon').length > 0) {
+            return;
+        }
+        
+        const seq = $(this).data('seq');
+        const depth = parseInt($(this).data('depth'));
+        const hasChildren = $(this).data('has-children') === 'true' || $(this).data('has-children') === true;
+        
+        if (hasChildren) {
+            console.log(`🌳 행 더블클릭: 코드 ${seq}, 깊이 ${depth}`);
+            toggleChildren(seq, depth);
+        }
+    });
+    
+    // 코드 행 단일클릭 이벤트 (선택 표시)
+    $(document).on('click', '.toggleable-code', function(e) {
+        // 버튼이나 토글 아이콘 클릭은 제외
+        if ($(e.target).closest('.btn, .toggle-icon').length > 0) {
+            return;
+        }
+        
+        // 기존 선택 해제
+        $('.toggleable-code').removeClass('selected');
+        
+        // 현재 행 선택
+        $(this).addClass('selected');
+        
+        const seq = $(this).data('seq');
+        const code = allCodes.find(c => c.seq == seq);
+        if (code) {
+            console.log(`👆 코드 선택: ${code.code} - ${code.code_name}`);
+        }
+    });
+    
+    // 더보기 버튼 클릭
+    $('#loadMoreBtn').on('click', function() {
+        loadMoreCodes();
+    });
+    
+    // 모두 펼치기
+    $('#expandAllBtn').on('click', function() {
+        expandAll();
+    });
+    
+    // 모두 접기 
+    $('#collapseAllBtn').on('click', function() {
+        collapseAll();
+    });
+    
+    // 하위 코드 추가 버튼
     $(document).on('click', '.add-child-btn', function(e) {
-        e.stopPropagation(); // 이벤트 버블링 방지
+        e.stopPropagation();
         const parentSeq = $(this).data('parent-seq');
         const depth = $(this).data('depth');
-        console.log('하위 코드 추가:', parentSeq, depth);
-        alert('하위 코드 추가 기능은 개발 예정입니다.');
+        
+        if (depth > 4) {
+            alert('최대 깊이는 4까지입니다.');
+            return;
+        }
+        
+        showAddForm(parentSeq, depth);
+        console.log('하위 코드 추가:', parentSeq, 'depth:', depth);
     });
     
+    // 코드 수정 버튼
     $(document).on('click', '.edit-code-btn', function(e) {
         e.stopPropagation();
         const seq = $(this).data('seq');
+        showEditForm(seq);
         console.log('코드 수정:', seq);
-        alert('코드 수정 기능은 개발 예정입니다.');
     });
     
+    // 코드 삭제 버튼
     $(document).on('click', '.delete-code-btn', function(e) {
         e.stopPropagation();
         const seq = $(this).data('seq');
-        console.log('코드 삭제:', seq);
-        if (confirm('정말 삭제하시겠습니까?')) {
-            alert('코드 삭제 기능은 개발 예정입니다.');
+        
+        if (confirm('정말 삭제하시겠습니까?\n하위 코드가 있는 경우 함께 삭제됩니다.')) {
+            deleteCode(seq);
+        }
+    });
+    
+    // 최상위 코드 추가
+    $('#addRootCodeBtn').on('click', function() {
+        showAddForm(0, 1);
+    });
+    
+    // 폼 리셋
+    $('#resetFormBtn').on('click', function() {
+        resetForm();
+    });
+    
+    // 폼 제출
+    $('#codeForm').on('submit', function(e) {
+        e.preventDefault();
+        submitForm();
+    });
+
+    // Root 토글 클릭 이벤트 (특별 처리) - 수정된 버전
+    $(document).on('click', '#Root .toggle-icon, #Root', function(e) {
+        // 버튼 클릭은 제외
+        if ($(e.target).closest('.btn').length > 0) {
+            return;
+        }
+        
+        e.preventDefault();
+        e.stopPropagation();
+        
+        console.log('🏠 Root 토글 클릭');
+        
+        const $rootToggle = $('#Root .toggle-icon');
+        const isExpanded = $rootToggle.hasClass('expanded');
+        
+        if (isExpanded) {
+            // Root 접기: 모든 코드 숨기기
+            console.log('📁 Root 접기 - 모든 코드 숨김');
+            $('.code-item').hide();
+            $rootToggle.removeClass('expanded fa-chevron-down').addClass('fa-chevron-right');
+            $('#Root').removeClass('expanded');
+            
+            // 모든 토글 상태 초기화
+            $('.toggle-icon').removeClass('expanded fa-chevron-down').addClass('fa-chevron-right');
+            $('.toggleable-code').removeClass('expanded');
+            
+        } else {
+            // Root 펼치기: Depth 0 코드들만 표시 (parent_seq=0인 코드들)
+            console.log('📂 Root 펼치기 - Depth 0 코드들 표시');
+            
+            // Depth 0 코드들 찾기 및 정렬
+            const depth0Codes = allCodes.filter(code => code.depth === 0);
+            depth0Codes.sort((a, b) => (parseInt(a.sort) || 999) - (parseInt(b.sort) || 999));
+            
+            console.log(`🌳 표시할 Depth 0 코드들: ${depth0Codes.length}개`);
+            depth0Codes.forEach(code => {
+                console.log(`  ├─ ${code.code} (${code.code_name}) - parent_seq: ${code.parent_seq}`);
+            });
+            
+            // Depth 0 코드들을 순서대로 표시
+            let $insertAfter = $('#Root');
+            depth0Codes.forEach(code => {
+                const $row = $(`#row-${code.seq}`);
+                if ($row.length > 0) {
+                    // DOM 위치가 올바른지 확인하고 필요시 이동
+                    const currentIndex = $row.index();
+                    const targetIndex = $insertAfter.index() + 1;
+                    
+                    if (currentIndex !== targetIndex) {
+                        $row.detach();
+                        $insertAfter.after($row);
+                        console.log(`  📍 ${code.code} 위치 이동: ${currentIndex} → ${targetIndex}`);
+                    }
+                    
+                    // 행 표시
+                    $row.show();
+                    
+                    // 하위 코드 존재 여부 확인하여 토글 아이콘 설정
+                    updateToggleIcon(code.seq, code.depth);
+                    
+                    $insertAfter = $row;
+                    console.log(`  ✅ ${code.code} 표시됨`);
+                }
+            });
+            
+            $rootToggle.removeClass('fa-chevron-right').addClass('expanded fa-chevron-down');
+            $('#Root').addClass('expanded');
+        }
+        
+        updateStatistics();
+    });
+}
+
+// 무한 스크롤 설정
+function setupInfiniteScroll() {
+    const tableContainer = $('.table-responsive');
+    
+    tableContainer.on('scroll', function() {
+        if (isLoading || displayedCodes >= allCodes.length) return;
+        
+        const scrollTop = $(this).scrollTop();
+        const scrollHeight = $(this)[0].scrollHeight;
+        const clientHeight = $(this).height();
+        
+        // 스크롤이 하단 근처에 도달했을 때
+        if (scrollTop + clientHeight >= scrollHeight - 50) {
+            loadMoreCodes();
         }
     });
 }
 
-// 하위 항목 토글 (성능 최적화)
-function toggleChildren(parentSeq) {
-    const $parentRow = $(`.sortable-row[data-seq="${parentSeq}"]`);
-    const $childRows = $(`tr[data-parent-seq="${parentSeq}"]`);
-    const isExpanded = $parentRow.hasClass('expanded');
+// 더 많은 코드 로드
+function loadMoreCodes() {
+    if (isLoading) return;
     
-    // 배치 DOM 조작으로 리플로우 최소화
-    if (isExpanded) {
-        // 축소
-        $childRows.addClass('d-none-optimized');
-        $parentRow.removeClass('expanded');
-        console.log('축소:', parentSeq);
-    } else {
-        // 확장
-        $childRows.removeClass('d-none-optimized');
-        $parentRow.addClass('expanded');
-        console.log('확장:', parentSeq);
-    }
+    isLoading = true;
+    $('#loadingRow').show();
+    $('#loadMoreRow').hide();
+    
+    setTimeout(() => {
+        // 숨겨진 코드들을 50개씩 표시
+        var hiddenCodes = $('.code-item:hidden').slice(0, 50);
+        hiddenCodes.show();
+        
+        var totalVisible = $('.code-item:visible').length;
+        var totalHidden = $('.code-item:hidden').length;
+        
+        // 더보기 버튼 업데이트
+        if (totalHidden === 0) {
+            $('#loadMoreRow').remove();
+        } else {
+            $('#loadMoreBtn').html(`<i class="fas fa-plus"></i> 더 보기 (${totalHidden}개 남음)`);
+            $('#loadMoreRow').show();
+        }
+        
+        $('#loadingRow').hide();
+        isLoading = false;
+        
+        console.log(`✅ ${hiddenCodes.length}개 코드 표시 (총 ${totalVisible}개 표시 중, ${totalHidden}개 남음)`);
+    }, 100);
 }
 
-// 코드 정보 표시 (캐싱 추가)
-let codeInfoCache = {};
-
-function showCodeInfo(seq) {
-    console.log('코드 정보 조회:', seq);
+// 하위 코드 토글 함수 (수정된 버전)
+function toggleChildren(parentSeq, depth) {
+    console.log(`🌳 트리 토글: 부모 ${parentSeq}, 깊이 ${depth}`);
     
-    // 캐시 확인
-    if (codeInfoCache[seq]) {
-        displayCodeInfo(codeInfoCache[seq]);
+    const $toggleIcon = $(`.toggle-icon[data-seq="${parentSeq}"]`);
+    const $parentRow = parentSeq === 0 ? $('#Root') : $(`.toggleable-code[data-seq="${parentSeq}"]`);
+    const isExpanded = $toggleIcon.hasClass('expanded');
+    
+    if (isExpanded) {
+        // 접기: 해당 부모의 모든 하위 코드들 숨기기 (재귀적으로)
+        console.log(`📁 코드 ${parentSeq} 접기`);
+        hideChildrenRecursive(parentSeq, true);
+        $toggleIcon.removeClass('expanded fa-chevron-down').addClass('fa-chevron-right');
+        $parentRow.removeClass('expanded');
+    } else {
+        // 펼치기: 직계 하위 코드들만 표시
+        console.log(`📂 코드 ${parentSeq} 펼치기`);
+        showDirectChildren(parentSeq, depth, true);
+        $toggleIcon.removeClass('fa-chevron-right').addClass('expanded fa-chevron-down');
+        $parentRow.addClass('expanded');
+    }
+    
+    updateStatistics();
+}
+
+// 하위 코드 존재 여부 확인 (parent_seq=0도 Root로 인식)
+function hasChildren(parentSeq) {
+    // parentSeq가 0이면 Depth 0 코드들을 찾기
+    if (parentSeq === 0 || parentSeq === '0') {
+        return allCodes.some(code => code.depth === 0);
+    }
+    
+    // 일반적인 경우: 해당 seq를 parent_seq로 가진 코드들 찾기
+    return allCodes.some(code => code.parent_seq == parentSeq);
+}
+
+// 직계 하위 코드들만 표시 (parent_seq=0 처리 포함)
+function showDirectChildren(parentSeq, parentDepth, withAnimation = false) {
+    console.log(`📂 부모 코드 ${parentSeq} (깊이 ${parentDepth})의 직계 하위 코드만 표시`);
+    
+    let directChildren;
+    
+    // Root (parentSeq=0)인 경우 Depth 0 코드들을 가져오기
+    if (parentSeq === 0 || parentSeq === '0') {
+        directChildren = allCodes.filter(code => code.depth === 0);
+        console.log(`🏠 Root 하위: Depth 0 코드들 ${directChildren.length}개`);
+    } else {
+        // 일반적인 경우: parent_seq가 일치하는 직계 하위 코드만
+        directChildren = allCodes.filter(code => 
+            code.parent_seq == parentSeq && code.depth === (parentDepth + 1)
+        );
+        console.log(`📂 직계 하위 코드 ${directChildren.length}개`);
+    }
+    
+    if (directChildren.length === 0) {
+        console.log(`📭 하위 코드가 없습니다`);
         return;
     }
     
-    const $rightPanel = $('#rightPanel');
-    $rightPanel.html('<div class="text-center p-4"><i class="fas fa-spinner fa-spin"></i> 로딩 중...</div>');
+    // 정렬 기준: Sort 값에 따라 정렬
+    directChildren.sort((a, b) => {
+        const sortA = parseInt(a.sort) || 999;
+        const sortB = parseInt(b.sort) || 999;
+        return sortA - sortB;
+    });
+    
+    console.log(`📂 표시할 하위 코드들:`);
+    directChildren.forEach(code => {
+        console.log(`  ├─ ${code.code} (${code.code_name}) - Depth: ${code.depth}, Sort: ${code.sort}`);
+    });
+    
+    // 부모 행 찾기
+    const $parentRow = parentSeq === 0 ? $('#Root') : $(`#row-${parentSeq}`);
+    
+    if ($parentRow.length === 0) {
+        console.error(`❌ 부모 행을 찾을 수 없습니다: ${parentSeq}`);
+        return;
+    }
+    
+    // 직계 하위 코드들을 부모 바로 다음에 순서대로 배치
+    let $insertAfter = $parentRow;
+    
+    directChildren.forEach((code, index) => {
+        const $row = $(`#row-${code.seq}`);
+        if ($row.length > 0) {
+            // 이미 표시된 경우 건너뛰기
+            if ($row.is(':visible')) {
+                console.log(`  ⏭️ ${code.code} 이미 표시됨`);
+                $insertAfter = $row; // 다음 삽입 위치 업데이트
+                return;
+            }
+            
+            // DOM에서 현재 위치 확인하고 올바른 위치로 이동
+            $row.detach(); // DOM에서 제거
+            $insertAfter.after($row); // 정확한 위치에 삽입
+            
+            // 애니메이션 효과
+            if (withAnimation) {
+                $row.addClass('slide-down');
+                setTimeout(() => $row.removeClass('slide-down'), 300);
+            }
+            
+            // 행 표시
+            $row.show();
+            console.log(`  ✅ ${code.code} 표시됨 (Depth: ${code.depth})`);
+            
+            // 하위 코드 존재 여부 확인하여 토글 아이콘 설정
+            updateToggleIcon(code.seq, code.depth);
+            
+            // 다음 삽입 위치 업데이트
+            $insertAfter = $row;
+            
+        } else {
+            console.warn(`  ❌ 코드 ${code.seq}의 행을 찾을 수 없습니다`);
+        }
+    });
+    
+    // 마지막 자식 표시 업데이트
+    updateTreeLastChild(parentSeq, parentDepth);
+    
+    updateLoadMoreButton();
+}
+
+// 하위 코드들을 재귀적으로 숨기기 (parent_seq=0 처리 포함)
+function hideChildrenRecursive(parentSeq, withAnimation = false) {
+    console.log(`📁 부모 코드 ${parentSeq}의 모든 하위 코드 숨기기`);
+    
+    let directChildren;
+    
+    // Root (parentSeq=0)인 경우 Depth 0 코드들
+    if (parentSeq === 0 || parentSeq === '0') {
+        directChildren = allCodes.filter(code => code.depth === 0);
+    } else {
+        // 일반적인 경우
+        directChildren = allCodes.filter(code => code.parent_seq == parentSeq);
+    }
+    
+    if (directChildren.length === 0) {
+        console.log(`  📭 숨길 하위 코드가 없습니다`);
+        return;
+    }
+    
+    console.log(`  └─ 숨길 하위 코드들: ${directChildren.map(c => c.code).join(', ')}`);
+    
+    directChildren.forEach(child => {
+        const $childRow = $(`#row-${child.seq}`);
+        const $childToggleIcon = $(`.toggle-icon[data-seq="${child.seq}"]`);
+        
+        if ($childRow.is(':visible')) {
+            // 먼저 이 자식의 하위 코드들도 재귀적으로 숨기기
+            hideChildrenRecursive(child.seq, withAnimation);
+            
+            // 애니메이션 효과
+            if (withAnimation) {
+                $childRow.addClass('slide-up');
+                setTimeout(() => {
+                    $childRow.hide().removeClass('slide-up');
+                }, 300);
+            } else {
+                $childRow.hide();
+            }
+            
+            console.log(`  🫥 ${child.code} 숨김 (Depth: ${child.depth})`);
+        }
+        
+        // 토글 상태 초기화
+        $childToggleIcon.removeClass('expanded fa-chevron-down').addClass('fa-chevron-right');
+        $childRow.removeClass('expanded');
+    });
+    
+    updateLoadMoreButton();
+}
+
+// 트리 구조에서 마지막 자식 표시
+function updateTreeLastChild(parentSeq, depth) {
+    // 같은 부모의 모든 자식 코드 찾기
+    const siblings = allCodes.filter(code => 
+        code.parent_seq == parentSeq && code.depth === (depth + 1)
+    );
+    
+    if (siblings.length === 0) return;
+    
+    // 정렬하여 마지막 자식 찾기
+    siblings.sort((a, b) => (parseInt(a.sort) || 999) - (parseInt(b.sort) || 999));
+    
+    // 모든 형제에서 last-child 클래스 제거
+    siblings.forEach(sibling => {
+        $(`#row-${sibling.seq}`).removeClass('last-child');
+    });
+    
+    // 마지막 자식에 last-child 클래스 추가
+    if (siblings.length > 0) {
+        const lastChild = siblings[siblings.length - 1];
+        $(`#row-${lastChild.seq}`).addClass('last-child');
+        console.log(`🌲 마지막 자식 표시: ${lastChild.code}`);
+    }
+}
+
+// 트리 구조 스타일 업데이트 (마지막 자식 처리 포함)
+function updateTreeStructure(codeSeq, depth, parentSeq) {
+    // 트리 구조는 CSS의 depth 클래스로 충분히 표현되므로 
+    // 복잡한 트리 라인 처리는 제거하고 깊이별 들여쓰기만 유지
+    console.log(`🎨 코드 ${codeSeq} 스타일 업데이트 (Depth: ${depth})`);
+}
+
+// 토글 아이콘 상태 업데이트 (parent_seq=0 처리 포함)
+function updateToggleIcon(codeSeq, depth) {
+    // 하위 코드 존재 여부 확인
+    const hasDirectChildren = hasChildren(codeSeq);
+    
+    const $toggleIcon = $(`.toggle-icon[data-seq="${codeSeq}"]`);
+    const $row = $(`#row-${codeSeq}`);
+    
+    if (hasDirectChildren) {
+        $toggleIcon.removeClass('empty').show();
+        $row.attr('data-has-children', 'true').addClass('has-children');
+        console.log(`🔧 코드 ${codeSeq}: 하위 코드 있음`);
+    } else {
+        $toggleIcon.addClass('empty').hide();
+        $row.attr('data-has-children', 'false').removeClass('has-children');
+        console.log(`🔧 코드 ${codeSeq}: 하위 코드 없음`);
+    }
+}
+
+// 모든 코드 토글 아이콘 초기화 (수정된 버전)
+function initializeToggleIcons() {
+    console.log('🌳 토글 아이콘 초기화 (parent_seq=0 처리)...');
+    console.log('📊 전체 코드 수:', allCodes.length);
+    
+    if (allCodes.length === 0) {
+        console.warn('❌ allCodes 배열이 비어있습니다');
+        return;
+    }
+    
+    // 1. 모든 코드 행 숨기기
+    $('.code-item').hide();
+    $('.toggleable-code').removeClass('expanded has-children selected');
+    $('.toggle-icon').removeClass('expanded fa-chevron-down').addClass('fa-chevron-right');
+    
+    // 2. DOM에서 코드들을 올바른 계층 순서로 재정렬
+    reorganizeCodeRows();
+    
+    // 3. 각 코드의 하위 코드 존재 여부 확인
+    allCodes.forEach(code => {
+        updateToggleIcon(code.seq, code.depth);
+    });
+    
+    // 4. Root 토글 아이콘 설정 (Depth 0 코드들이 있는지 확인)
+    const depth0Codes = allCodes.filter(code => code.depth === 0);
+    const $rootToggle = $('.toggle-icon[data-seq="0"]');
+    if (depth0Codes.length > 0) {
+        $rootToggle.removeClass('empty').show();
+        $('#Root').attr('data-has-children', 'true').addClass('has-children');
+        console.log(`🏠 Root에 Depth 0 코드 ${depth0Codes.length}개 있음`);
+    } else {
+        $rootToggle.addClass('empty').hide();
+        $('#Root').attr('data-has-children', 'false');
+        console.log('🏠 Root에 하위 코드 없음');
+    }
+    
+    // 5. 초기에는 Root만 표시하고 모든 코드 숨김
+    $('.code-item').hide();
+    
+    // 6. 통계 업데이트
+    updateStatistics();
+    updateLoadMoreButton();
+    
+    console.log('✅ 토글 아이콘 초기화 완료');
+}
+
+// DOM에서 코드 행들을 계층 순서로 재정렬
+function reorganizeCodeRows() {
+    console.log('📐 DOM 코드 행 재정렬 시작 (개선된 트리 구조)...');
+    
+    // 백엔드와 동일한 정렬: CodeSeq → parent_seq → Sort → Seq
+    const sortedCodes = [...allCodes].sort((a, b) => {
+        // 1. code_seq 오름차순 (null은 마지막에)
+        const codeSeqA = a.code_seq || 999999;
+        const codeSeqB = b.code_seq || 999999;
+        if (codeSeqA !== codeSeqB) {
+            return codeSeqA - codeSeqB;
+        }
+        
+        // 2. parent_seq 오름차순 (null은 먼저 - Root 코드들)
+        const parentA = a.parent_seq || 0;
+        const parentB = b.parent_seq || 0;
+        if (parentA !== parentB) {
+            return parentA - parentB;
+        }
+        
+        // 3. sort 오름차순
+        const sortA = parseInt(a.sort) || 999;
+        const sortB = parseInt(b.sort) || 999;
+        if (sortA !== sortB) {
+            return sortA - sortB;
+        }
+        
+        // 4. seq 오름차순
+        return a.seq - b.seq;
+    });
+    
+    console.log('🔧 정렬된 코드 순서 (첫 10개):');
+    sortedCodes.slice(0, 10).forEach((code, index) => {
+        const parentText = code.parent_seq ? `Parent: ${code.parent_seq}` : 'Root';
+        console.log(`  ${index + 1}. ${code.code} (CodeSeq: ${code.code_seq}, ${parentText}, Sort: ${code.sort})`);
+    });
+    
+    // DOM에서 순서대로 재배치
+    const $tbody = $('#sortableCodeList');
+    const $root = $('#Root');
+    
+    let $lastRow = $root;
+    
+    sortedCodes.forEach(code => {
+        const $row = $(`#row-${code.seq}`);
+        if ($row.length > 0) {
+            // 현재 위치에서 제거하고 올바른 위치에 삽입
+            $row.detach();
+            $lastRow.after($row);
+            $lastRow = $row;
+        }
+    });
+    
+    console.log('✅ DOM 코드 행 재정렬 완료 (트리 구조 최적화)');
+}
+
+// 모두 펼치기 (트리 구조)
+function expandAll() {
+    console.log('🌳 모든 트리 펼치기');
+    
+    // 모든 코드 표시
+    $('.code-item').show();
+    
+    // 모든 토글 아이콘을 펼쳐진 상태로
+    $('.toggle-icon:not(.empty)').removeClass('fa-chevron-right').addClass('expanded fa-chevron-down');
+    $('.toggleable-code[data-has-children="true"]').addClass('expanded');
+    
+    // 트리 구조 스타일 적용
+    allCodes.forEach(code => {
+        updateTreeStructure(code.seq, code.depth, code.parent_seq);
+    });
+    
+    updateStatistics();
+    updateLoadMoreButton();
+}
+
+// 모두 접기 (트리 구조)
+function collapseAll() {
+    console.log('🌳 모든 트리 접기');
+    
+    // 모든 코드 숨기기
+    $('.code-item').hide();
+    
+    // Depth 0만 표시
+    allCodes.filter(code => code.depth === 0)
+        .sort((a, b) => (parseInt(a.sort) || 999) - (parseInt(b.sort) || 999))
+        .forEach(code => {
+            $(`#row-${code.seq}`).show();
+            updateTreeStructure(code.seq, code.depth, code.parent_seq);
+        });
+    
+    // 모든 토글 상태 초기화
+    $('.toggle-icon').removeClass('expanded fa-chevron-down').addClass('fa-chevron-right');
+    $('.toggleable-code').removeClass('expanded');
+    
+    updateStatistics();
+    updateLoadMoreButton();
+}
+
+// 더보기 버튼 상태 업데이트
+function updateLoadMoreButton() {
+    const totalVisible = $('.code-item:visible').length;
+    const totalHidden = $('.code-item:hidden').length;
+    
+    if (totalHidden === 0) {
+        $('#loadMoreRow').hide();
+    } else {
+        $('#loadMoreBtn').html(`<i class="fas fa-plus"></i> 더 보기 (${totalHidden}개 남음)`);
+        $('#loadMoreRow').show();
+    }
+}
+
+// 통계 업데이트 함수
+function updateStatistics() {
+    if (allCodes.length === 0) return;
+    
+    // 깊이별 코드 개수 계산
+    const depthCounts = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0};
+    
+    allCodes.forEach(code => {
+        if (code.depth >= 0 && code.depth <= 4) {
+            depthCounts[code.depth]++;
+        }
+    });
+    
+    // HTML 업데이트 (카드에 표시)
+    $('.card-body .row .col-6').each(function(index) {
+        if (index < 5) { // Depth 0-4
+            $(this).find('h5').text(depthCounts[index]);
+        }
+    });
+    
+    console.log('📊 통계 업데이트:', depthCounts);
+}
+
+// 코드 행 생성
+function buildCodeRow(code) {
+    const depthColors = {
+        0: 'warning',
+        1: 'info', 
+        2: 'success',
+        3: 'secondary',
+        4: 'dark'
+    };
+    
+    const icons = {
+        0: 'folder text-warning',
+        1: 'folder-open text-info',
+        2: 'file-alt text-success', 
+        3: 'file text-secondary',
+        4: 'dot-circle text-muted'
+    };
+    
+    return `
+        <tr class="sortable-row depth-row-${code.depth} code-item" 
+            id="row-${code.seq}" 
+            data-seq="${code.seq}" 
+            data-depth="${code.depth}" 
+            data-parent-seq="${code.parent_seq || 0}"
+            data-sort="${code.sort || 1}">
+            <td class="drag-handle">
+                <i class="fas fa-grip-vertical" title="드래그하여 순서 변경"></i>
+            </td>
+            <td class="depth-${code.depth}">
+                <i class="fas fa-${icons[code.depth]} hierarchy-icon"></i>
+                <strong>${code.code}</strong>
+            </td>
+            <td class="depth-${code.depth}">${code.code_name}</td>
+            <td class="depth-${code.depth}">${code.code_info || '-'}</td>
+            <td class="text-center">
+                <span class="badge bg-${depthColors[code.depth]}">${code.depth}</span>
+            </td>
+            <td class="text-center sort-number">${code.sort || 1}</td>
+            <td class="code-actions">
+                <div class="btn-group btn-group-sm">
+                    ${code.depth < 4 ? `
+                    <button class="btn btn-outline-success btn-sm add-child-btn" 
+                            data-parent-seq="${code.seq}" 
+                            data-depth="${code.depth + 1}" 
+                            title="하위 코드 추가">
+                        <i class="fas fa-plus"></i>
+                    </button>` : ''}
+                    <button class="btn btn-outline-primary btn-sm edit-code-btn" 
+                            data-seq="${code.seq}" 
+                            title="수정">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm delete-code-btn" 
+                            data-seq="${code.seq}" 
+                            title="삭제">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `;
+}
+
+// 추가 폼 표시
+function showAddForm(parentSeq, depth) {
+    resetForm();
+    
+    $('#parent_seq').val(parentSeq);
+    $('#depth').val(depth);
+    $('#form-title').text(`코드 추가 (Depth ${depth})`);
+    $('#submit-text').text('추가');
+    
+    // 상위 코드 정보 표시
+    if (parentSeq == 0) {
+        $('#parent_info').val('Root (최상위)');
+    } else {
+        const parentCode = allCodes.find(c => c.seq == parentSeq);
+        if (parentCode) {
+            $('#parent_info').val(`${parentCode.code} - ${parentCode.code_name}`);
+        }
+    }
+}
+
+// 수정 폼 표시
+function showEditForm(seq) {
+    const code = allCodes.find(c => c.seq == seq);
+    if (!code) {
+        alert('코드 정보를 찾을 수 없습니다.');
+        return;
+    }
+    
+    $('#edit_seq').val(seq);
+    $('#parent_seq').val(code.parent_seq || 0);
+    $('#depth').val(code.depth);
+    $('#code').val(code.code);
+    $('#code_name').val(code.code_name);
+    $('#code_info').val(code.code_info || '');
+    $('#sort').val(code.sort || 1);
+    
+    $('#form-title').text(`코드 수정 (${code.code})`);
+    $('#submit-text').text('수정');
+    
+    // 상위 코드 정보 표시
+    if (code.parent_seq == 0 || !code.parent_seq) {
+        $('#parent_info').val('Root (최상위)');
+    } else {
+        const parentCode = allCodes.find(c => c.seq == code.parent_seq);
+        if (parentCode) {
+            $('#parent_info').val(`${parentCode.code} - ${parentCode.code_name}`);
+        }
+    }
+}
+
+// 폼 리셋
+function resetForm() {
+    $('#codeForm')[0].reset();
+    $('#edit_seq').val('');
+    $('#parent_seq').val('0');
+    $('#depth').val('1');
+    $('#sort').val('1');
+    $('#form-title').text('코드 등록');
+    $('#submit-text').text('저장');
+    $('#parent_info').val('');
+}
+
+// 폼 제출
+function submitForm() {
+    const formData = new FormData($('#codeForm')[0]);
+    const isEdit = $('#edit_seq').val() !== '';
+    
+    const url = isEdit ? '/admin/api/codes/update' : '/admin/api/codes/create';
     
     $.ajax({
-        url: '/admin/api/codes/get',
+        url: url,
         method: 'POST',
-        data: { seq: seq },
-        success: function(data) {
-            if (data.success && data.data) {
-                // 캐시에 저장
-                codeInfoCache[seq] = data.data;
-                displayCodeInfo(data.data);
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function(response) {
+            if (response.success) {
+                alert(isEdit ? '코드가 수정되었습니다.' : '코드가 추가되었습니다.');
+                location.reload(); // 페이지 새로고침
             } else {
-                $rightPanel.html('<div class="alert alert-warning">코드 정보를 불러올 수 없습니다.</div>');
+                alert('오류: ' + (response.message || '알 수 없는 오류'));
             }
         },
         error: function() {
-            $rightPanel.html('<div class="alert alert-danger">오류가 발생했습니다.</div>');
+            alert('서버 오류가 발생했습니다.');
         }
     });
 }
 
-// 코드 정보 표시 (템플릿 최적화)
-function displayCodeInfo(code) {
-    // 템플릿 문자열을 함수로 분리하여 성능 향상
-    const html = buildCodeInfoTemplate(code);
-    $('#rightPanel').html(html);
+// 코드 삭제
+function deleteCode(seq) {
+    $.ajax({
+        url: '/admin/api/codes/delete',
+        method: 'POST',
+        data: { seq: seq },
+        success: function(response) {
+            if (response.success) {
+                alert('코드가 삭제되었습니다.');
+                location.reload(); // 페이지 새로고침
+            } else {
+                alert('오류: ' + (response.message || '알 수 없는 오류'));
+            }
+        },
+        error: function() {
+            alert('서버 오류가 발생했습니다.');
+        }
+    });
 }
 
-// 템플릿 빌더 함수 (재사용 가능)
-function buildCodeInfoTemplate(code) {
+// 성공 시 코드 추가
+function addCodeToTable(newCode) {
+    console.log('✅ 새 코드를 테이블에 추가:', newCode);
+    
+    // allCodes 배열에 추가
+    allCodes.push(newCode);
+    
+    // 부모 코드 찾기 및 정렬 위치 계산
+    const parentSeq = newCode.parent_seq || 0;
+    const siblings = allCodes.filter(code => code.parent_seq === parentSeq && code.seq !== newCode.seq);
+    
+    // 정렬 순서에 따라 삽입 위치 찾기
+    siblings.sort((a, b) => (parseInt(a.sort) || 999) - (parseInt(b.sort) || 999));
+    
+    let insertAfterRow = null;
+    if (parentSeq === 0) {
+        // 최상위 코드인 경우
+        insertAfterRow = $('#Root');
+    } else {
+        // 하위 코드인 경우 부모 행 찾기
+        insertAfterRow = $(`#row-${parentSeq}`);
+    }
+    
+    // 같은 레벨의 코드들 중에서 정렬 순서에 맞는 위치 찾기
+    const newSort = parseInt(newCode.sort) || 999;
+    siblings.forEach(sibling => {
+        if ((parseInt(sibling.sort) || 999) < newSort) {
+            const siblingRow = $(`#row-${sibling.seq}`);
+            if (siblingRow.length > 0) {
+                insertAfterRow = siblingRow;
+            }
+        }
+    });
+    
+    // 새 행 생성 및 삽입
+    const newRow = buildCodeRowWithToggle(newCode);
+    insertAfterRow.after(newRow);
+    
+    // 부모의 토글 상태 업데이트
+    updateToggleIcon(parentSeq, (newCode.depth || 1) - 1);
+    
+    // 새 코드의 토글 아이콘도 설정
+    updateToggleIcon(newCode.seq, newCode.depth);
+    
+    // 부모가 펼쳐져 있으면 새 코드 표시
+    const $parentToggle = $(`.toggle-icon[data-seq="${parentSeq}"]`);
+    if (parentSeq === 0 || $parentToggle.hasClass('expanded')) {
+        $(`#row-${newCode.seq}`).show();
+    }
+    
+    // 통계 업데이트
+    updateStatistics();
+    
+    // 테이블 새로고침
+    reloadCodeTable();
+}
+
+// 토글 기능이 포함된 코드 행 생성
+function buildCodeRowWithToggle(code) {
+    const depthColors = {
+        0: 'warning',
+        1: 'info', 
+        2: 'success',
+        3: 'secondary',
+        4: 'dark'
+    };
+    
+    const icons = {
+        0: 'folder text-warning',
+        1: 'folder-open text-info',
+        2: 'file-alt text-success', 
+        3: 'file text-secondary',
+        4: 'dot-circle text-muted'
+    };
+    
     return `
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>코드 정보</h5>
-            </div>
-            <div class="card-body">
-                <div class="mb-3">
-                    <label class="form-label">코드</label>
-                    <input type="text" class="form-control" value="${code.code || ''}" readonly>
+        <tr class="sortable-row depth-row-${code.depth} code-item toggleable-code" 
+            id="row-${code.seq}" 
+            data-seq="${code.seq}" 
+            data-depth="${code.depth}" 
+            data-parent-seq="${code.parent_seq || 0}"
+            data-sort="${code.sort || 1}"
+            data-has-children="false">
+            <td class="drag-handle">
+                <i class="fas fa-grip-vertical" title="드래그하여 순서 변경"></i>
+            </td>
+            <td class="depth-${code.depth} code-cell">
+                <!-- 토글 아이콘 -->
+                <i class="toggle-icon fas fa-chevron-right empty" 
+                   data-seq="${code.seq}" 
+                   data-depth="${code.depth}"
+                   title="하위 코드 토글" style="display: none;"></i>
+                
+                <i class="fas fa-${icons[code.depth]} hierarchy-icon"></i>
+                <span class="code-text">${code.code}</span>
+            </td>
+            <td class="depth-${code.depth} code-cell">${code.code_name}</td>
+            <td class="depth-${code.depth} code-cell">${code.code_info || '-'}</td>
+            <td class="text-center">
+                <span class="badge bg-${depthColors[code.depth]}">${code.depth}</span>
+            </td>
+            <td class="text-center sort-number">${code.sort || 1}</td>
+            <td class="code-actions">
+                <div class="btn-group btn-group-sm">
+                    ${code.depth < 4 ? `
+                    <button class="btn btn-outline-success btn-sm add-child-btn" 
+                            data-parent-seq="${code.seq}" 
+                            data-depth="${code.depth + 1}" 
+                            title="하위 코드 추가">
+                        <i class="fas fa-plus"></i>
+                    </button>` : ''}
+                    <button class="btn btn-outline-primary btn-sm edit-code-btn" 
+                            data-seq="${code.seq}" 
+                            title="수정">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm delete-code-btn" 
+                            data-seq="${code.seq}" 
+                            title="삭제">
+                        <i class="fas fa-trash"></i>
+                    </button>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label">코드명</label>
-                    <input type="text" class="form-control" value="${code.code_name || ''}" readonly>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">설명</label>
-                    <textarea class="form-control" rows="3" readonly>${code.code_info || ''}</textarea>
-                </div>
-                <div class="row">
-                    <div class="col-6">
-                        <label class="form-label">깊이</label>
-                        <input type="text" class="form-control" value="${code.depth || 0}" readonly>
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">순서</label>
-                        <input type="text" class="form-control" value="${code.sort || 1}" readonly>
-                    </div>
-                </div>
-            </div>
-        </div>
+            </td>
+        </tr>
     `;
 }
 </script>
