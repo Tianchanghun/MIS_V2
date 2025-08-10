@@ -317,28 +317,97 @@ class Code(db.Model):
     
     @classmethod
     def get_codes_by_group_name(cls, group_name, company_id=None):
-        """그룹명으로 코드 목록 조회"""
-        # 특정 그룹명에 맞는 코드 그룹 찾기
-        if group_name == '브랜드':
-            # 브랜드는 별도 Brand 테이블 사용 (tbl_brand)
-            return []
-        elif group_name == '품목':
-            # 제품구분(PRT) 코드 사용
-            group = cls.query.filter_by(code='PRT', depth=0).first()
-        elif group_name == '타입':
-            # 타입(TP) 코드 사용
-            group = cls.query.filter_by(code='TP', depth=0).first()
-        elif group_name == '년도':
-            # 년도(YR) 코드 사용
-            group = cls.query.filter_by(code='YR', depth=0).first()
-        else:
-            group = None
+        """그룹명으로 코드 목록 조회 (동적 WHERE 절 사용)"""
+        try:
+            codes = []
             
-        if group:
-            codes = cls.query.filter_by(parent_seq=group.seq).order_by(cls.sort.asc(), cls.code_name.asc()).all()
-            return [{'seq': code.seq, 'code': code.code, 'code_name': code.code_name} for code in codes]
-        
-        return []
+            if group_name == '제품구분':
+                # 'PRT' 코드를 가진 depth=0 그룹 찾기 (제품구분)
+                parent_group = cls.query.filter_by(code='PRT', depth=0).first()
+                if parent_group:
+                    codes = cls.query.filter_by(parent_seq=parent_group.seq).order_by(cls.sort.asc()).all()
+                    
+            elif group_name == '품목':
+                # 'PRD' 코드를 가진 depth=0 그룹 찾기 (품목)
+                parent_group = cls.query.filter_by(code='PRD', depth=0).first()
+                if parent_group:
+                    codes = cls.query.filter_by(parent_seq=parent_group.seq).order_by(cls.sort.asc()).all()
+                    
+            elif group_name == '타입':
+                # '타입' 이름을 가진 depth=0 그룹 찾기 (기존 유지)
+                parent_group = cls.query.filter_by(code_name='타입', depth=0).first()
+                if parent_group:
+                    codes = cls.query.filter_by(parent_seq=parent_group.seq).order_by(cls.sort.asc()).all()
+                    
+            elif group_name == '년도':
+                # '년도' 이름을 가진 depth=0 그룹 찾기
+                parent_group = cls.query.filter_by(code_name='년도', depth=0).first()
+                if parent_group:
+                    # 년도는 최신순으로 정렬 (code 값 기준 내림차순)
+                    codes = cls.query.filter_by(parent_seq=parent_group.seq).order_by(cls.code.desc()).all()
+                    
+            elif group_name == '브랜드':
+                # '브랜드' 이름을 가진 depth=0 그룹 찾기
+                parent_group = cls.query.filter_by(code_name='브랜드', depth=0).first()
+                if parent_group:
+                    codes = cls.query.filter_by(parent_seq=parent_group.seq).order_by(cls.sort.asc()).all()
+                    
+            elif group_name == '색상':
+                # '색상' 이름을 가진 depth=0 그룹 찾기
+                parent_group = cls.query.filter_by(code_name='색상', depth=0).first()
+                if parent_group:
+                    codes = cls.query.filter_by(parent_seq=parent_group.seq).order_by(cls.sort.asc()).all()
+                    
+            elif group_name == '구분타입':
+                # 'DIVTYPE' 코드를 가진 depth=0 그룹 찾기
+                parent_group = cls.query.filter_by(code='DIVTYPE', depth=0).first()
+                if parent_group:
+                    codes = cls.query.filter_by(parent_seq=parent_group.seq).order_by(cls.sort.asc()).all()
+                    
+            elif group_name == '제품코드':
+                # '제품' 이름을 가진 depth=0 그룹 찾기
+                parent_group = cls.query.filter_by(code_name='제품', depth=0).first()
+                if parent_group:
+                    codes = cls.query.filter_by(parent_seq=parent_group.seq).order_by(cls.sort.asc()).all()
+                    
+            elif group_name == '타입2':
+                # '타입2' 이름을 가진 depth=0 그룹 찾기
+                parent_group = cls.query.filter_by(code_name='타입2', depth=0).first()
+                if parent_group:
+                    codes = cls.query.filter_by(parent_seq=parent_group.seq).order_by(cls.sort.asc()).all()
+                    
+            elif group_name == '품목그룹':
+                # 레거시 호환: 'PRT' 그룹 사용 (제품구분과 동일)
+                parent_group = cls.query.filter_by(code='PRT', depth=0).first()
+                if parent_group:
+                    codes = cls.query.filter_by(parent_seq=parent_group.seq).order_by(cls.sort.asc()).all()
+                    
+            elif group_name == '제품타입':
+                # 레거시 호환: 타입과 동일
+                parent_group = cls.query.filter_by(code_name='타입', depth=0).first()
+                if parent_group:
+                    codes = cls.query.filter_by(parent_seq=parent_group.seq).order_by(cls.sort.asc()).all()
+            else:
+                codes = []
+                
+            return codes
+            
+        except Exception as e:
+            from flask import current_app
+            current_app.logger.error(f"❌ 코드 조회 실패 ({group_name}): {e}")
+            return []
+    
+    @classmethod
+    def get_types_by_product_category(cls, product_category_seq):
+        """품목(PRD) 선택 시 해당 품목의 하위 타입들 조회"""
+        try:
+            # 선택된 품목(PRD 하위)을 parent_seq로 하는 타입들 조회
+            types = cls.query.filter_by(parent_seq=product_category_seq).order_by(cls.sort.asc()).all()
+            return types
+        except Exception as e:
+            from flask import current_app
+            current_app.logger.error(f"❌ 품목별 타입 조회 실패: {e}")
+            return []
     
     @classmethod
     def get_child_codes(cls, parent_seq):
@@ -1240,21 +1309,31 @@ class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     company_id = db.Column(db.Integer, db.ForeignKey('companies.id'), nullable=False)
     
-    # 분류 정보 (기존 코드 체계 활용)
-    brand_seq = db.Column(db.Integer, db.ForeignKey('tbl_brand.seq'))  # Brand 테이블 참조
-    category_code_seq = db.Column(db.Integer, db.ForeignKey('tbl_code.seq'))  # 품목
-    type_code_seq = db.Column(db.Integer, db.ForeignKey('tbl_code.seq'))      # 타입
+    # 분류 정보 (모두 코드 체계 활용)
+    brand_code_seq = db.Column(db.Integer, db.ForeignKey('tbl_code.seq'))      # 브랜드 (BRAND 그룹)
+    category_code_seq = db.Column(db.Integer, db.ForeignKey('tbl_code.seq'))   # 품목 (PRT 그룹)
+    type_code_seq = db.Column(db.Integer, db.ForeignKey('tbl_code.seq'))       # 타입 (TP 그룹)
+    year_code_seq = db.Column(db.Integer, db.ForeignKey('tbl_code.seq'))       # 년도 (YR 그룹)
+    
+    # 확장 분류 정보 (새로 추가)
+    color_code_seq = db.Column(db.Integer, db.ForeignKey('tbl_code.seq'))      # 색상 (COLOR 그룹)
+    div_type_code_seq = db.Column(db.Integer, db.ForeignKey('tbl_code.seq'))   # 구분타입 (DIVTYPE 그룹)
+    product_code_seq = db.Column(db.Integer, db.ForeignKey('tbl_code.seq'))    # 제품코드 (PRODCODE 그룹)
     
     # 상품 정보
     product_name = db.Column(db.String(100), nullable=False)
     product_code = db.Column(db.String(50))
-    product_year = db.Column(db.String(4))  # 제품 년도 (예: "24", "25")
+    std_product_code = db.Column(db.String(50))  # 자가코드 (레거시 StdDivProdCode)
     price = db.Column(db.Integer, default=0)  # 상품가격(Tag)
     description = db.Column(db.Text)  # 상품 정보
     manual_file_path = db.Column(db.String(500))  # 사용설명서 PDF 경로
     
     # 상태 관리
     is_active = db.Column(db.Boolean, default=True, nullable=False)  # 사용여부
+    use_yn = db.Column(db.String(1), default='Y')  # 레거시 호환용 UseYN
+    
+    # 레거시 연결 (새로 추가)
+    legacy_seq = db.Column(db.Integer, unique=True, nullable=True)  # 레거시 MstSeq 연결
     
     # 시스템 필드
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -1262,34 +1341,68 @@ class Product(db.Model):
     created_by = db.Column(db.String(50))
     updated_by = db.Column(db.String(50))
     
-    # 관계 설정
+    # 관계 설정 (모두 코드 체계 사용)
     company = db.relationship('Company', backref='products')
-    brand = db.relationship('Brand', foreign_keys=[brand_seq], backref='brand_products')
+    brand_code = db.relationship('Code', foreign_keys=[brand_code_seq], backref='brand_products')
     category_code = db.relationship('Code', foreign_keys=[category_code_seq], backref='category_products')
     type_code = db.relationship('Code', foreign_keys=[type_code_seq], backref='type_products')
+    year_code = db.relationship('Code', foreign_keys=[year_code_seq], backref='year_products')
+    
+    # 확장 분류 관계 설정 (새로 추가)
+    color_code = db.relationship('Code', foreign_keys=[color_code_seq], backref='color_products')
+    div_type_code = db.relationship('Code', foreign_keys=[div_type_code_seq], backref='div_type_products')
+    product_code = db.relationship('Code', foreign_keys=[product_code_seq], backref='product_code_products')
     
     def __repr__(self):
         return f'<Product {self.product_name}>'
     
     def to_dict(self):
         """딕셔너리 변환"""
+        # ProductDetail에서 자가코드 가져오기 (SQL 직접 사용)
+        std_code = None
+        try:
+            result = db.session.execute(db.text("""
+                SELECT std_div_prod_code 
+                FROM product_details 
+                WHERE product_id = :product_id 
+                LIMIT 1
+            """), {'product_id': self.id})
+            row = result.fetchone()
+            std_code = row.std_div_prod_code if row else None
+        except:
+            std_code = None
+        
         return {
             'id': self.id,
             'company_id': self.company_id,
             'company_name': self.company.company_name if self.company else '',
-            'brand_seq': self.brand_seq,
-            'brand_name': self.brand.brand_name if self.brand else '',
+            'brand_code_seq': self.brand_code_seq,
+            'brand_name': self.brand_code.code_name if self.brand_code else '',
             'category_code_seq': self.category_code_seq,
             'category_name': self.category_code.code_name if self.category_code else '',
             'type_code_seq': self.type_code_seq,
             'type_name': self.type_code.code_name if self.type_code else '',
+            'year_code_seq': self.year_code_seq,
+            'year_name': self.year_code.code_name if self.year_code else '',
+            'year_code_name': self.year_code.code_name if self.year_code else '',  # 템플릿 호환성
+            
+            # 확장 분류 정보 (새로 추가)
+            'color_code_seq': self.color_code_seq,
+            'color_name': self.color_code.code_name if self.color_code else '',
+            'div_type_code_seq': self.div_type_code_seq,
+            'div_type_name': self.div_type_code.code_name if self.div_type_code else '',
+            'product_code_seq': self.product_code_seq,
+            'product_code_name': self.product_code.code_name if self.product_code else '',
+            
             'product_name': self.product_name,
             'product_code': self.product_code,
-            'product_year': self.product_year,
+            'std_product_code': std_code,  # ProductDetail에서 가져온 실제 자가코드
             'price': self.price,
             'description': self.description,
             'manual_file_path': self.manual_file_path,
             'is_active': self.is_active,
+            'use_yn': self.use_yn,
+            'legacy_seq': self.legacy_seq,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'created_by': self.created_by,
@@ -1305,8 +1418,8 @@ class Product(db.Model):
         return query.order_by(cls.product_name).all()
     
     @classmethod
-    def search_products(cls, company_id, search_term=None, brand_seq=None, 
-                       category_code_seq=None, type_code_seq=None, active_only=True):
+    def search_products(cls, company_id, search_term=None, brand_code_seq=None, 
+                       category_code_seq=None, type_code_seq=None, year_code_seq=None, active_only=True):
         """상품 검색"""
         query = cls.query.filter_by(company_id=company_id)
         
@@ -1323,8 +1436,8 @@ class Product(db.Model):
                 )
             )
         
-        if brand_seq:
-            query = query.filter_by(brand_seq=brand_seq)
+        if brand_code_seq:
+            query = query.filter_by(brand_code_seq=brand_code_seq)
             
         if category_code_seq:
             query = query.filter_by(category_code_seq=category_code_seq)
@@ -1332,7 +1445,89 @@ class Product(db.Model):
         if type_code_seq:
             query = query.filter_by(type_code_seq=type_code_seq)
         
+        if year_code_seq:
+            query = query.filter_by(year_code_seq=year_code_seq)
+        
         return query.order_by(cls.product_name).all()
+
+class ProductDetail(db.Model):
+    """상품 상세 (색상별/옵션별 관리)"""
+    __tablename__ = 'product_details'
+    
+    # 기본 정보
+    id = db.Column(db.Integer, primary_key=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+    
+    # 자가코드 구성요소 (레거시 호환)
+    brand_code = db.Column(db.String(2))           # 브랜드 코드 (2자리)
+    div_type_code = db.Column(db.String(1))        # 구분타입 코드 (1자리)
+    prod_group_code = db.Column(db.String(2))      # 제품그룹 코드 (2자리) 
+    prod_type_code = db.Column(db.String(2))       # 제품타입 코드 (2자리)
+    prod_code = db.Column(db.String(2))            # 제품코드 (2자리)
+    prod_type2_code = db.Column(db.String(2))      # 제품타입2 코드 (2자리)
+    year_code = db.Column(db.String(1))            # 년도 코드 (1자리)
+    color_code = db.Column(db.String(3))           # 색상 코드 (3자리)
+    
+    # 완성된 자가코드
+    std_div_prod_code = db.Column(db.String(16), unique=True, nullable=False)  # 조합된 자가코드
+    
+    # 색상별 상품 정보
+    product_name = db.Column(db.String(200))        # 색상별 상품명
+    additional_price = db.Column(db.Integer, default=0)  # 색상별 추가 가격
+    stock_quantity = db.Column(db.Integer, default=0)    # 재고 수량
+    
+    # 상태 관리
+    status = db.Column(db.String(20), default='Active')  # Active, Inactive, Discontinued
+    
+    # 레거시 연결 (새로 추가)
+    legacy_seq = db.Column(db.Integer, unique=True, nullable=True)  # 레거시 Seq 연결
+    
+    # 시스템 필드
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_by = db.Column(db.String(50))
+    updated_by = db.Column(db.String(50))
+    
+    # 관계 설정
+    product = db.relationship('Product', backref='product_details')
+    
+    def __repr__(self):
+        return f'<ProductDetail {self.std_div_prod_code}>'
+    
+    def to_dict(self):
+        """딕셔너리 변환"""
+        return {
+            'id': self.id,
+            'product_id': self.product_id,
+            'brand_code': self.brand_code,
+            'div_type_code': self.div_type_code,
+            'prod_group_code': self.prod_group_code,
+            'prod_type_code': self.prod_type_code,
+            'prod_code': self.prod_code,
+            'prod_type2_code': self.prod_type2_code,
+            'year_code': self.year_code,
+            'color_code': self.color_code,
+            'std_div_prod_code': self.std_div_prod_code,
+            'product_name': self.product_name,
+            'additional_price': self.additional_price,
+            'stock_quantity': self.stock_quantity,
+            'status': self.status,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'created_by': self.created_by,
+            'updated_by': self.updated_by
+        }
+    
+    @classmethod
+    def generate_std_code(cls, brand_code, div_type_code, prod_group_code, 
+                         prod_type_code, prod_code, prod_type2_code, year_code, color_code):
+        """자가코드 생성 (16자리)"""
+        return f"{brand_code}{div_type_code}{prod_group_code}{prod_type_code}{prod_code}{prod_type2_code}{year_code}{color_code}"
+    
+    @classmethod
+    def find_by_std_code(cls, std_code):
+        """자가코드로 상품 상세 조회"""
+        return cls.query.filter_by(std_div_prod_code=std_code).first()
 
 class ProductHistory(db.Model):
     """상품 변경 이력"""

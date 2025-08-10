@@ -749,11 +749,27 @@ def api_export_excel():
                 shop.location or ''
             ]
             
-            # 동적 분류 데이터 추가
+            # 동적 분류 데이터 추가 (코드번호 → 텍스트명 변환)
             classification_data = []
             for group_key, group_info in classifications.items():
                 field_name = group_info['field_name']
                 field_value = getattr(shop, field_name, '') or ''
+                
+                # 코드번호를 텍스트명으로 변환
+                if field_value:
+                    # 해당 분류 그룹의 코드 정보 조회
+                    group = Code.query.filter_by(code=group_info['code'], depth=1).first()
+                    if group:
+                        # 하위 코드에서 field_value에 해당하는 코드명 찾기
+                        sub_code = Code.query.filter_by(
+                            parent_seq=group.seq, 
+                            code=field_value, 
+                            depth=2
+                        ).first()
+                        if sub_code:
+                            field_value = sub_code.code_name  # 코드명으로 변환
+                        # 코드를 찾을 수 없으면 원본 값 유지
+                
                 classification_data.append(field_value)
             
             # 나머지 데이터
@@ -1090,4 +1106,209 @@ def api_upload_excel():
         return jsonify({
             'success': False,
             'message': f'업로드 중 오류가 발생했습니다: {str(e)}'
+        }), 500 
+
+@shop_bp.route('/api/download-template')
+def api_download_template():
+    """매장 정보 엑셀 업로드 템플릿 다운로드 API"""
+    try:
+        # 세션 체크
+        if not session.get('member_seq'):
+            return jsonify({'success': False, 'message': '로그인이 필요합니다.'}), 401
+        
+        current_company_id = session.get('current_company_id', 1)
+        
+        logger.info(f"📄 템플릿 다운로드 요청: company_id={current_company_id}")
+        
+        # 현재 동적 분류 정보 조회
+        classifications = {}
+        classification_headers = []
+        
+        # CST 그룹 찾기
+        cst_group = Code.query.filter_by(code='CST', depth=0).first()
+        if cst_group:
+            classification_groups = Code.query.filter_by(
+                parent_seq=cst_group.seq, 
+                depth=1
+            ).order_by(Code.sort.asc()).all()
+            
+            for group in classification_groups:
+                group_key = group.code.lower()
+                classifications[group_key] = {
+                    'code': group.code,
+                    'name': group.code_name,
+                    'field_name': f'{group_key}_type' if group_key not in ['dis', 'ch', 'sl', 'ty'] else {
+                        'dis': 'distribution_type',
+                        'ch': 'channel_type', 
+                        'sl': 'sales_type',
+                        'ty': 'business_form'
+                    }.get(group_key, f'{group_key}_type')
+                }
+                classification_headers.append(group.code_name)
+        
+        # 엑셀 워크북 생성
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "매장업로드템플릿"
+        
+        # 스타일 정의
+        header_font = Font(bold=True, color="FFFFFF")
+        header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+        example_fill = PatternFill(start_color="E7F3FF", end_color="E7F3FF", fill_type="solid")
+        
+        # 템플릿 헤더 구성
+        base_headers = [
+            "거래처코드", "거래처명", "대표자", "사업자번호", "업태", "종목",
+            "전화번호", "팩스번호", "우리담당자", "상대방담당자", "상대방담당자전화", "상대방담당자전화2",
+            "세금계산서우편번호", "세금계산서주소", "배송지우편번호", "배송지주소", 
+            "로케이션"
+        ]
+        
+        headers = base_headers + classification_headers + [
+            "세금담당자", "세금담당자전화", "세금담당자이메일", "매장사용", 
+            "비고", "메모"
+        ]
+        
+        # 헤더 행 추가
+        for col, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col, value=header)
+            cell.font = header_font
+            cell.fill = header_fill
+        
+        # 실제 분류 코드명 예시 수집
+        classification_examples = {}
+        for group_key, group_info in classifications.items():
+            group = Code.query.filter_by(code=group_info['code'], depth=1).first()
+            if group:
+                sub_codes = Code.query.filter_by(parent_seq=group.seq, depth=2).order_by(Code.sort.asc()).all()
+                if sub_codes:
+                    classification_examples[group_info['name']] = sub_codes[0].code_name
+        
+        # 예시 데이터 행 추가
+        example_data = [
+            "A001", "매장명 예시1", "대표자명", "123-45-67890", "소매업", "화장품",
+            "02-1234-5678", "02-1234-5679", "김담당", "박담당", "010-1234-5678", "010-1234-5679",
+            "06234", "서울시 강남구", "06234", "서울시 강남구",
+            "강남점"
+        ]
+        
+        # 분류 예시 데이터 추가
+        for header in classification_headers:
+            example_value = classification_examples.get(header, "예시값")
+            example_data.append(example_value)
+        
+        # 나머지 예시 데이터
+        example_data.extend([
+            "세금담당자", "02-1234-5680", "tax@example.com", "매장",
+            "비고 내용", "메모 내용"
+        ])
+        
+        # 예시 데이터 행 삽입
+        for col, value in enumerate(example_data, 1):
+            cell = ws.cell(row=2, column=col, value=value)
+            cell.fill = example_fill
+        
+        # 두 번째 예시 행 추가
+        example_data2 = [
+            "B002", "매장명 예시2", "대표자명2", "234-56-78901", "도매업", "의류",
+            "031-1234-5678", "031-1234-5679", "이담당", "최담당", "010-2345-6789", "010-2345-6790",
+            "13579", "경기도 성남시", "13579", "경기도 성남시",
+            "분당점"
+        ]
+        
+        # 분류 예시 데이터 추가 (다른 값으로)
+        for idx, header in enumerate(classification_headers):
+            group_key = next((k for k, v in classifications.items() if v['name'] == header), None)
+            if group_key:
+                group = Code.query.filter_by(code=classifications[group_key]['code'], depth=1).first()
+                if group:
+                    sub_codes = Code.query.filter_by(parent_seq=group.seq, depth=2).order_by(Code.sort.asc()).all()
+                    example_value = sub_codes[1].code_name if len(sub_codes) > 1 else sub_codes[0].code_name if sub_codes else "예시값"
+                    example_data2.append(example_value)
+                else:
+                    example_data2.append("예시값")
+            else:
+                example_data2.append("예시값")
+        
+        example_data2.extend([
+            "세금담당자2", "031-1234-5680", "tax2@example.com", "매장아님",
+            "비고 내용2", "메모 내용2"
+        ])
+        
+        for col, value in enumerate(example_data2, 1):
+            cell = ws.cell(row=3, column=col, value=value)
+            cell.fill = example_fill
+        
+        # 분류 코드 정보 시트 추가
+        ws_codes = wb.create_sheet("분류코드참조표")
+        ws_codes.cell(row=1, column=1, value="분류그룹").font = header_font
+        ws_codes.cell(row=1, column=2, value="분류코드").font = header_font
+        ws_codes.cell(row=1, column=3, value="분류명").font = header_font
+        ws_codes.cell(row=1, column=4, value="사용법").font = header_font
+        
+        code_row = 2
+        for group_key, group_info in classifications.items():
+            group = Code.query.filter_by(code=group_info['code'], depth=1).first()
+            if group:
+                sub_codes = Code.query.filter_by(parent_seq=group.seq, depth=2).order_by(Code.sort.asc()).all()
+                for sub_code in sub_codes:
+                    ws_codes.cell(row=code_row, column=1, value=group_info['name'])
+                    ws_codes.cell(row=code_row, column=2, value=sub_code.code)
+                    ws_codes.cell(row=code_row, column=3, value=sub_code.code_name)
+                    ws_codes.cell(row=code_row, column=4, value=f"'{sub_code.code_name}' 또는 '{sub_code.code}' 입력 가능")
+                    code_row += 1
+        
+        # 매장사용 코드 설명 추가
+        ws_codes.cell(row=code_row, column=1, value="매장사용")
+        ws_codes.cell(row=code_row, column=2, value="Y")
+        ws_codes.cell(row=code_row, column=3, value="매장")
+        ws_codes.cell(row=code_row, column=4, value="매장으로 사용하는 경우")
+        code_row += 1
+        
+        ws_codes.cell(row=code_row, column=1, value="매장사용")
+        ws_codes.cell(row=code_row, column=2, value="N")
+        ws_codes.cell(row=code_row, column=3, value="매장아님")
+        ws_codes.cell(row=code_row, column=4, value="매장으로 사용하지 않는 경우")
+        
+        # 컬럼 너비 자동 조정
+        for sheet in [ws, ws_codes]:
+            for column in sheet.columns:
+                max_length = 0
+                column_letter = column[0].column_letter
+                
+                for cell in column:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except:
+                        pass
+                
+                adjusted_width = min(max_length + 2, 50)
+                sheet.column_dimensions[column_letter].width = adjusted_width
+        
+        # 메모리 파일로 저장
+        excel_file = io.BytesIO()
+        wb.save(excel_file)
+        excel_file.seek(0)
+        
+        # 파일명 생성
+        from urllib.parse import quote
+        company_name = "에이원" if current_company_id == 1 else "에이원월드"
+        filename = f"매장업로드템플릿_{company_name}.xlsx"
+        encoded_filename = quote(filename.encode('utf-8'))
+        
+        logger.info(f"✅ 템플릿 파일 생성 완료: {len(classifications)}개 동적 분류 포함, 파일명: {filename}")
+        
+        return send_file(
+            excel_file,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        
+    except Exception as e:
+        logger.error(f"❌ 템플릿 다운로드 실패: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': f'템플릿 생성 중 오류가 발생했습니다: {str(e)}'
         }), 500 

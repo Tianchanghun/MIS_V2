@@ -1,0 +1,20 @@
+완전한 레거시 상품 데이터 마이그레이션 시작...
+================================================================================
+Traceback (most recent call last):
+  File "C:\mis_v2\complete_product_migration_final.py", line 42, in get_legacy_connection
+    print("\u2705 레거시 DB 연결 성공")
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'cp949' codec can't encode character '\u2705' in position 0: illegal multibyte sequence
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\mis_v2\complete_product_migration_final.py", line 583, in <module>
+    main()
+    ~~~~^^
+  File "C:\mis_v2\complete_product_migration_final.py", line 527, in main
+    legacy_conn = get_legacy_connection()
+  File "C:\mis_v2\complete_product_migration_final.py", line 45, in get_legacy_connection
+    print(f"\u274c 레거시 DB 연결 실패: {e}")
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'cp949' codec can't encode character '\u274c' in position 0: illegal multibyte sequence

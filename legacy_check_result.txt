@@ -1,0 +1,73 @@
+레거시 DB 코드 체계 확인
+==================================================
+[OK] 레거시 DB 연결 성공
+
+[INFO] tbl_Product 샘플 데이터의 코드 값들:
+  - 상품 61: 스핀 360
+    Company=581, Brand=583, ProdGroup=110, ProdType=111, ProdYear=18
+  - 상품 62: 스핀 360 클래식
+    Company=581, Brand=583, ProdGroup=110, ProdType=111, ProdYear=18
+  - 상품 63: 아이앵커
+    Company=581, Brand=583, ProdGroup=110, ProdType=111, ProdYear=14
+  - 상품 64: 아이스테이지스
+    Company=581, Brand=583, ProdGroup=110, ProdType=111, ProdYear=18
+  - 상품 66: 스테이지스 LX 아이소픽스
+    Company=581, Brand=583, ProdGroup=110, ProdType=111, ProdYear=16
+
+[INFO] tbl_Brand 테이블:
+  - Seq:1, Code:RY, Name:리안
+  - Seq:2, Code:JI, Name:조이
+  - Seq:3, Code:NN, Name:뉴나
+  - Seq:4, Code:TT, Name:팀택스
+  - Seq:5, Code:PL, Name:팔리
+  - Seq:6, Code:LG, Name:르그로브
+  - Seq:7, Code:IC, Name:아이캐리
+  - Seq:8, Code:MD, Name:맘푸쉬
+  - Seq:9, Code:BM, Name:베비모드
+  - Seq:10, Code:SR, Name:S.P.R
+
+[INFO] tbl_Code 그룹들 (Depth=0):
+  - Seq:1, Code:JPT, Name:직책
+  - Seq:2, Code:RPT, Name:직급
+  - Seq:28, Code:BRAND, Name:브랜드
+  - Seq:39, Code:PRT, Name:제품구분
+  - Seq:49, Code:PRD, Name:제품
+  - Seq:334, Code:CST, Name:거래처
+  - Seq:580, Code:CB, Name:회사/브랜드
+  - Seq:620, Code:VISRSN, Name:매장방문사유
+  - Seq:625, Code:TYR, Name:무역발주년도
+  - Seq:667, Code:CTIM, Name:CIT 카테고리
+  - Seq:679, Code:ASPROC, Name:AS처리방법
+  - Seq:690, Code:ASSTAT, Name:AS진행 상태
+  - Seq:2332, Code:WCR, Name:근태 변경 조정 사유
+  - Seq:2333, Code:WOR, Name:휴무 지급 사유
+  - Seq:2481, Code:CRC, Name:통화
+  - Seq:210, Code:TP, Name:타입
+  - Seq:219, Code:YR, Name:년도
+  - Seq:230, Code:CR, Name:색상
+
+[INFO] 각 그룹의 하위 코드 샘플:
+  [제품구분] (PRT):
+    - Seq:45, Code:2, Name:소품(국내)
+    - Seq:44, Code:1, Name:제품
+    - Seq:43, Code:P, Name:Fisher Price
+    - Seq:42, Code:X, Name:럭스
+    - Seq:41, Code:A, Name:NANIA
+  [타입] (TP):
+    - Seq:211, Code:00, Name:없음
+    - Seq:212, Code:A1, Name:일반
+    - Seq:213, Code:A2, Name:럭스
+    - Seq:214, Code:A3, Name:퀼트
+    - Seq:215, Code:A4, Name:퍼스트
+  [년도] (YR):
+    - Seq:220, Code:11, Name:2011
+    - Seq:221, Code:12, Name:2012
+    - Seq:222, Code:13, Name:2013
+    - Seq:223, Code:14, Name:2014
+    - Seq:224, Code:15, Name:2015
+  [브랜드] (BRAND):
+    - Seq:34, Code:PL, Name:팔리
+    - Seq:33, Code:LG, Name:Le grove
+    - Seq:32, Code:TT, Name:TEAMTEX
+    - Seq:31, Code:NN, Name:NUNA
+    - Seq:30, Code:JI, Name:JOIE

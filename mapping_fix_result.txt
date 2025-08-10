@@ -1,0 +1,29 @@
+Traceback (most recent call last):
+  File "C:\mis_v2\app\common\models.py", line 990, in init_db
+    print("\u2705 레거시 + 멀티테넌트 데이터베이스 초기화 완료")
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'cp949' codec can't encode character '\u2705' in position 0: illegal multibyte sequence
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\mis_v2\app\__init__.py", line 475, in init_db
+    init_models()
+    ~~~~~~~~~~~^^
+  File "C:\mis_v2\app\common\models.py", line 992, in init_db
+    print(f"\u274c 데이터베이스 초기화 실패: {e}")
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'cp949' codec can't encode character '\u274c' in position 0: illegal multibyte sequence
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\mis_v2\fix_product_mapping.py", line 16, in <module>
+    app = create_app()
+  File "C:\mis_v2\app\__init__.py", line 53, in create_app
+    init_db(app)  # 데이터베이스 초기화
+    ~~~~~~~^^^^^
+  File "C:\mis_v2\app\__init__.py", line 481, in init_db
+    print(f"\u274c 데이터베이스 초기화 오류: {e}")
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'cp949' codec can't encode character '\u274c' in position 0: illegal multibyte sequence

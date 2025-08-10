@@ -445,6 +445,42 @@ def delete_code():
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)})
 
+@admin_bp.route('/api/codes/update-sort-order', methods=['POST'])
+def update_codes_sort_order():
+    """코드 정렬 순서 업데이트"""
+    if 'member_seq' not in session:
+        return redirect('/auth/login')
+    
+    try:
+        data = request.get_json()
+        orders = data.get('orders', [])
+        
+        if not orders:
+            return jsonify({'success': False, 'message': '정렬 순서 데이터가 필요합니다.'})
+        
+        # 트랜잭션 시작
+        for order in orders:
+            seq = order.get('seq')
+            sort = order.get('sort')
+            
+            if seq and sort:
+                code = Code.query.filter_by(seq=seq).first()
+                if code:
+                    code.sort = sort
+                    code.upt_user = session.get('member_id', 'admin')
+                    code.upt_date = db.func.now()
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '정렬 순서가 성공적으로 업데이트되었습니다.'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)})
+
 # ==================== 부서 관리 API ====================
 
 @admin_bp.route('/api/departments/get', methods=['POST'])
