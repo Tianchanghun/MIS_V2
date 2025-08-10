@@ -454,7 +454,7 @@ th:hover {
                         </div>
                         
                         <!-- 히든 필드: 구분타입 "일반"으로 고정 -->
-                        <input type="hidden" id="div_type_code_seq" name="div_type_code_seq" value="">
+                        <input type="hidden" id="div_type_code_seq" name="div_type_code_seq" value="3">
                         
                         <!-- 구분선 -->
                         <hr class="my-4">
@@ -624,20 +624,15 @@ th:hover {
 // 전역 변수
 let products = [];
 let filteredProducts = [];
-let currentProductId = null;
-
-// 페이징 변수 (새로 추가)
 let currentPage = 1;
-let perPage = 50;
-let totalProducts = 0;
-let totalPages = 1;
-let isLoading = false;
-
-// 정렬 변수 (새로 추가)
+let currentPerPage = 50;
+let pagination = {};
 let currentSort = {
     column: 'created_at',
     direction: 'desc'
 };
+let isLoading = false;
+let currentProductId = null;
 
 $(document).ready(function() {
     console.log('상품 관리 시스템 초기화');
@@ -811,26 +806,101 @@ function generateProductCode(buttonElement) {
     const prodCodeSelect = document.getElementById('prod_code_seq'); // 품목
     const prodTypeSelect = document.getElementById('prod_type_code_seq'); // 타입
     const yearSelect = document.getElementById('year_code_seq');
-    const divTypeSelect = document.getElementById('div_type_code_seq');
+    const divTypeInput = document.getElementById('div_type_code_seq'); // hidden 필드
     
     // 제품모델 개별 정보
     const colorSelect = container.find('.color-code')[0];
     
-    // 필수 값들 확인
-    if (!brandSelect.value || !prodGroupSelect.value || !prodCodeSelect.value || 
-        !prodTypeSelect.value || !yearSelect.value || !colorSelect.value) {
-        alert('자사코드 생성을 위해 브랜드, 제품구분, 품목, 타입, 년식, 색상을 모두 선택해주세요.');
+    // 디버깅: 각 필드의 상태 확인 (더 상세하게)
+    console.log('🔍 자사코드 생성 필드 체크:', {
+        brandSelect: {
+            element: !!brandSelect,
+            value: brandSelect?.value || 'null',
+            selectedIndex: brandSelect?.selectedIndex || -1,
+            optionsCount: brandSelect?.options?.length || 0
+        },
+        prodGroupSelect: {
+            element: !!prodGroupSelect,
+            value: prodGroupSelect?.value || 'null',
+            selectedIndex: prodGroupSelect?.selectedIndex || -1,
+            optionsCount: prodGroupSelect?.options?.length || 0
+        },
+        prodCodeSelect: {
+            element: !!prodCodeSelect,
+            value: prodCodeSelect?.value || 'null',
+            selectedIndex: prodCodeSelect?.selectedIndex || -1,
+            optionsCount: prodCodeSelect?.options?.length || 0
+        },
+        prodTypeSelect: {
+            element: !!prodTypeSelect,
+            value: prodTypeSelect?.value || 'null',
+            selectedIndex: prodTypeSelect?.selectedIndex || -1,
+            optionsCount: prodTypeSelect?.options?.length || 0
+        },
+        yearSelect: {
+            element: !!yearSelect,
+            value: yearSelect?.value || 'null',
+            selectedIndex: yearSelect?.selectedIndex || -1,
+            optionsCount: yearSelect?.options?.length || 0
+        },
+        colorSelect: {
+            element: !!colorSelect,
+            value: colorSelect ? $(colorSelect).val() : 'null',
+            selectedIndex: colorSelect?.selectedIndex || -1,
+            optionsCount: colorSelect?.options?.length || 0
+        },
+        divTypeInput: {
+            element: !!divTypeInput,
+            value: divTypeInput?.value || 'null'
+        }
+    });
+    
+    // 필수 값들 확인 (더 엄격한 체크)
+    const missingFields = [];
+    
+    if (!brandSelect?.value || brandSelect.value === '' || brandSelect.selectedIndex <= 0) {
+        missingFields.push('브랜드');
+    }
+    if (!prodGroupSelect?.value || prodGroupSelect.value === '' || prodGroupSelect.selectedIndex <= 0) {
+        missingFields.push('제품구분');
+    }
+    if (!prodCodeSelect?.value || prodCodeSelect.value === '' || prodCodeSelect.selectedIndex <= 0) {
+        missingFields.push('품목');
+    }
+    if (!prodTypeSelect?.value || prodTypeSelect.value === '' || prodTypeSelect.selectedIndex <= 0) {
+        missingFields.push('타입');
+    }
+    if (!yearSelect?.value || yearSelect.value === '' || yearSelect.selectedIndex <= 0) {
+        missingFields.push('년식');
+    }
+    if (!colorSelect || !$(colorSelect).val() || $(colorSelect).val() === '' || colorSelect.selectedIndex <= 0) {
+        missingFields.push('색상');
+    }
+    
+    if (missingFields.length > 0) {
+        console.log('❌ 누락된 필드:', missingFields);
+        alert(`자사코드 생성을 위해 다음 필드를 선택해주세요: ${missingFields.join(', ')}`);
         return;
     }
     
-    // 선택된 옵션에서 code 값 추출
-    const brandCode = brandSelect.value;  // SEQ 값을 그대로 전달
-    const prodGroupCode = prodGroupSelect.value;  // SEQ 값을 그대로 전달
-    const prodCode = prodCodeSelect.value;  // SEQ 값을 그대로 전달
-    const prodTypeCode = prodTypeSelect.value;  // SEQ 값을 그대로 전달
-    const yearCode = yearSelect.value;  // SEQ 값을 그대로 전달
-    const divTypeCode = divTypeSelect ? divTypeSelect.value : '3';  // 기본값
-    const colorCode = $(colorSelect).find('option:selected').val();
+    // 선택된 옵션에서 SEQ 값들 추출
+    const brandCode = brandSelect.value;
+    const prodGroupCode = prodGroupSelect.value;
+    const prodCode = prodCodeSelect.value;
+    const prodTypeCode = prodTypeSelect.value;
+    const yearCode = yearSelect.value;
+    const divTypeCode = divTypeInput ? divTypeInput.value : '3'; // 기본값 3
+    const colorCode = $(colorSelect).val();
+    
+    console.log('✅ 자사코드 생성 파라미터:', {
+        brand_code: brandCode,
+        div_type_code: divTypeCode,
+        prod_group_code: prodGroupCode,
+        prod_type_code: prodTypeCode,
+        prod_code: prodCode,
+        year_code: yearCode,
+        color_code: colorCode
+    });
     
     // 자사코드 생성 API 호출
     const formData = new FormData();
@@ -851,13 +921,14 @@ function generateProductCode(buttonElement) {
     .then(data => {
         if (data.success) {
             container.find('.std-product-code').val(data.std_code);
-            console.log('자사코드 생성 성공:', data.std_code);
+            console.log('✅ 자사코드 생성 성공:', data.std_code);
         } else {
+            console.error('❌ 자사코드 생성 실패:', data.message);
             alert('자사코드 생성 실패: ' + (data.message || '알 수 없는 오류'));
         }
     })
     .catch(error => {
-        console.error('자사코드 생성 오류:', error);
+        console.error('❌ 자사코드 생성 오류:', error);
         alert('자사코드 생성 중 오류가 발생했습니다.');
     });
 }
@@ -1031,7 +1102,10 @@ function updateSortIcons() {
 
 // 상품 목록 로드 (페이징 지원 + 중복 호출 방지)
 function loadProducts(page = 1) {
-    if (isLoading) return;
+    if (isLoading) {
+        console.log('⏳ 이미 로딩 중입니다.');
+        return;
+    }
     
     isLoading = true;
     showLoading(true);
@@ -1041,52 +1115,64 @@ function loadProducts(page = 1) {
     const brandCodeSeq = document.getElementById('brandFilter').value || '';
     const categoryCodeSeq = document.getElementById('categoryFilter').value || '';
     const typeCodeSeq = document.getElementById('typeFilter').value || '';
+    const yearCodeSeq = document.getElementById('yearFilter').value || '';
+    const showInactive = document.getElementById('statusFilter').value === 'false' ? 'true' : 'false';
     
-    // API 요청 URL 구성
     const params = new URLSearchParams({
         page: page,
-        per_page: perPage,
-        sort_by: currentSort.column,        // 정렬 컬럼 추가
-        sort_direction: currentSort.direction  // 정렬 방향 추가
+        per_page: currentPerPage,
+        sort_by: currentSort.column,
+        sort_direction: currentSort.direction
     });
     
+    // 검색어와 필터 추가
     if (searchTerm) params.append('search', searchTerm);
     if (brandCodeSeq) params.append('brand_code_seq', brandCodeSeq);
     if (categoryCodeSeq) params.append('category_code_seq', categoryCodeSeq);
     if (typeCodeSeq) params.append('type_code_seq', typeCodeSeq);
+    if (yearCodeSeq) params.append('year_code_seq', yearCodeSeq);
+    if (showInactive === 'true') params.append('show_inactive', 'true');
+    
+    console.log('📡 상품 목록 로드 요청:', params.toString());
     
     fetch(`/product/api/list?${params.toString()}`)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
         .then(data => {
+            console.log('✅ 상품 목록 로드 성공:', data);
+            
             if (data.success) {
                 products = data.products || [];
-                filteredProducts = [...products]; // filteredProducts를 products와 동일하게 설정
+                pagination = data.pagination || {};
                 
-                // 페이징 정보 업데이트
-                if (data.pagination) {
-                    currentPage = data.pagination.page;
-                    perPage = data.pagination.per_page;
-                    totalProducts = data.pagination.total;
-                    totalPages = data.pagination.pages;
-                }
-                
+                filteredProducts = [...products];
                 renderProducts();
-                renderPagination();
-                updatePageInfo();
-                updateCounters(); // 카운터 업데이트 추가
-                updateSortIcons();  // 정렬 아이콘 업데이트 추가
+                updatePagination();
+                updateCounters();
+                
+                console.log(`📦 로드된 상품 수: ${products.length}`);
             } else {
-                console.error('API 오류:', data.message);
-                showAlert('상품 목록을 불러오는데 실패했습니다: ' + data.message, 'error');
+                throw new Error(data.message || '상품 목록을 불러올 수 없습니다.');
             }
         })
         .catch(error => {
-            console.error('Error:', error);
-            showAlert('서버 오류가 발생했습니다', 'error');
+            console.error('❌ 상품 목록 로드 실패:', error);
+            showAlert(`상품 목록을 불러오는 중 오류가 발생했습니다: ${error.message}`, 'error');
+            
+            // 빈 목록 표시
+            products = [];
+            filteredProducts = [];
+            renderProducts();
+            updateCounters();
         })
         .finally(() => {
             isLoading = false;
             showLoading(false);
+            console.log('🏁 로딩 완료');
         });
 }
 
@@ -1123,7 +1209,7 @@ function renderTableView() {
     filteredProducts.forEach((product, index) => {
         const row = `
             <tr onclick="editProduct(${product.id})" style="cursor: pointer;">
-                <td>${(currentPage - 1) * perPage + index + 1}</td>
+                <td>${(currentPage - 1) * currentPerPage + index + 1}</td>
                 <td>
                     <span class="badge company-badge-${product.company_id}">
                         ${product.company_id === 1 ? '에이원' : '에이원월드'}
@@ -1223,66 +1309,49 @@ function renderCardView() {
 
 // 검색 함수 (코드 기준으로 개선)
 function searchProducts() {
-    const search = document.getElementById('searchInput').value.toLowerCase();
+    const searchTerm = document.getElementById('searchInput').value.trim();
     
-    if (!search) {
-        loadProducts(1); // 검색어가 없으면 전체 목록 로드
+    if (searchTerm.length === 0) {
+        // 검색어가 없으면 전체 목록 로드
+        loadProducts();
         return;
     }
     
-    // API에 검색 요청
+    if (searchTerm.length < 2) {
+        // 2글자 미만이면 검색하지 않음
+        return;
+    }
+    
+    showLoading(true);
+    
     const params = new URLSearchParams({
         page: 1,
-        per_page: perPage,
-        search: search,
+        per_page: currentPerPage,
+        search: searchTerm,
         sort_by: currentSort.column,
         sort_direction: currentSort.direction
     });
-    
-    // 현재 필터값들도 포함
-    const brandFilter = document.getElementById('brandFilter').value;
-    const categoryFilter = document.getElementById('categoryFilter').value;
-    const statusFilter = document.getElementById('statusFilter').value;
-    
-    if (brandFilter) params.append('brand_code_seq', brandFilter);
-    if (categoryFilter) params.append('category_code_seq', categoryFilter);
-    if (statusFilter) params.append('status', statusFilter);
-    
-    if (isLoading) return;
-    
-    isLoading = true;
-    showLoading(true);
     
     fetch(`/product/api/list?${params.toString()}`)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
                 products = data.products || [];
+                pagination = data.pagination || {};
+                
                 filteredProducts = [...products];
-                
-                // 페이징 정보 업데이트
-                if (data.pagination) {
-                    currentPage = data.pagination.page;
-                    perPage = data.pagination.per_page;
-                    totalProducts = data.pagination.total;
-                    totalPages = data.pagination.pages;
-                }
-                
                 renderProducts();
-                renderPagination();
-                updatePageInfo();
+                updatePagination();
                 updateCounters();
             } else {
-                console.error('검색 오류:', data.message);
-                showAlert('검색에 실패했습니다: ' + data.message, 'error');
+                showAlert('검색 중 오류가 발생했습니다: ' + data.message, 'error');
             }
         })
         .catch(error => {
             console.error('검색 오류:', error);
-            showAlert('검색 중 오류가 발생했습니다', 'error');
+            showAlert('검색 중 서버 오류가 발생했습니다', 'error');
         })
         .finally(() => {
-            isLoading = false;
             showLoading(false);
         });
 }
@@ -1477,85 +1546,97 @@ function openAddModal() {
 }
 
 // 상품 수정
-function editProduct(id) {
-    currentProductId = id;
+function editProduct(productId) {
+    console.log('🔧 상품 수정 시작:', productId);
     
-    fetch('/product/api/get/' + id)
-        .then(response => response.json())
+    if (!productId) {
+        alert('상품 ID가 없습니다.');
+        return;
+    }
+    
+    // 로딩 표시
+    showLoading('상품 정보를 불러오는 중...');
+    
+    // 제품 정보 조회
+    fetch(`/product/api/get/${productId}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
         .then(data => {
+            hideLoading();
+            
             if (data.success) {
                 const product = data.product;
+                console.log('📝 제품 수정 데이터 설정:', product);
                 
-                document.getElementById('productModalLabel').innerHTML = '<i class="fas fa-edit me-2"></i>상품 수정';
-                document.getElementById('productModalLabel').className = 'modal-title';
-                document.querySelector('.modal-header').className = 'modal-header modal-header-edit';
+                // 모달 제목 변경
+                document.getElementById('productModalLabel').textContent = '상품 수정';
                 
-                // 폼 데이터 설정 (필드명 정확히 매핑)
-                document.getElementById('productId').value = product.id;
-                document.getElementById('isEditMode').value = 'true';
-                document.getElementById('company_id').value = product.company_id || '1';
+                // 폼 필드 설정
+                document.getElementById('company_id').value = product.company_id || '';
                 document.getElementById('product_name').value = product.product_name || '';
-                document.getElementById('price').value = product.price || '';
-                document.getElementById('use_yn').value = product.is_active ? 'Y' : 'N';
-                document.getElementById('div_type_code_seq').value = product.div_type_code_seq || '';
                 document.getElementById('description').value = product.description || '';
+                document.getElementById('price').value = product.price || '';
+                document.getElementById('use_yn').value = product.use_yn || 'Y';
                 
-                // 셀렉트 박스 값 설정 - 올바른 순서로 설정
+                // 선택 필드들 설정
                 setTimeout(() => {
-                    // 브랜드 설정
-                    if (product.brand_code_seq) {
-                        const brandSelect = document.getElementById('brand_code_seq');
-                        brandSelect.value = product.brand_code_seq;
-                        console.log('브랜드 설정:', product.brand_code_seq, '현재값:', brandSelect.value);
-                    }
+                    const selectFields = [
+                        { id: 'brand_code_seq', value: product.brand_code_seq },
+                        { id: 'prod_group_code_seq', value: product.prod_group_code_seq || product.category_code_seq },
+                        { id: 'prod_code_seq', value: product.prod_code_seq },
+                        { id: 'prod_type_code_seq', value: product.prod_type_code_seq || product.type_code_seq },
+                        { id: 'year_code_seq', value: product.year_code_seq },
+                        { id: 'div_type_code_seq', value: product.div_type_code_seq || '3' }
+                    ];
                     
-                    // 품목 설정
-                    if (product.category_code_seq) {
-                        const groupSelect = document.getElementById('prod_group_code_seq');
-                        groupSelect.value = product.category_code_seq;
-                        console.log('품목 설정:', product.category_code_seq, '현재값:', groupSelect.value);
-                        
-                        // 품목 설정 후 타입 로드
-                        updateTypesForCategory(product.category_code_seq).then(() => {
-                            if (product.type_code_seq) {
-                                const typeSelect = document.getElementById('prod_type_code_seq');
-                                typeSelect.value = product.type_code_seq;
-                                console.log('타입 설정:', product.type_code_seq, '현재값:', typeSelect.value);
+                    selectFields.forEach(field => {
+                        const element = document.getElementById(field.id);
+                        if (element && field.value) {
+                            element.value = field.value;
+                            console.log(`✅ ${field.id} 설정:`, field.value);
+                        }
+                    });
+                    
+                    // 타입 로드 (제품구분 선택에 따라)
+                    const prodGroupSeq = product.prod_group_code_seq || product.category_code_seq;
+                    if (prodGroupSeq) {
+                        updateTypesForCategory(prodGroupSeq).then(() => {
+                            const prodTypeElement = document.getElementById('prod_type_code_seq');
+                            if (prodTypeElement && (product.prod_type_code_seq || product.type_code_seq)) {
+                                prodTypeElement.value = product.prod_type_code_seq || product.type_code_seq;
                             }
                         });
                     }
                     
-                    // 년식 설정
-                    if (product.year_code_seq) {
-                        const yearSelect = document.getElementById('year_code_seq');
-                        yearSelect.value = product.year_code_seq;
-                        console.log('년식 설정:', product.year_code_seq, '현재값:', yearSelect.value);
+                    // 품목별 타입 로드
+                    const prodCodeSeq = product.prod_code_seq;
+                    if (prodCodeSeq) {
+                        updateTypesForProduct(prodCodeSeq);
                     }
+                    
+                    // 제품 모델 로드
+                    loadProductModelsForProduct(productId);
                 }, 100);
                 
-                console.log('제품 수정 데이터 설정:', {
-                    id: product.id,
-                    brand_code_seq: product.brand_code_seq,
-                    category_code_seq: product.category_code_seq,
-                    type_code_seq: product.type_code_seq,
-                    year_code_seq: product.year_code_seq,
-                    div_type_code_seq: product.div_type_code_seq
-                });
-                
-                // 제품모델 목록 로드 및 표시
-                loadProductModelsForProduct(product.id);
+                // 현재 제품 ID 저장
+                currentProductId = productId;
                 
                 // 모달 표시
                 const modal = new bootstrap.Modal(document.getElementById('productModal'));
                 modal.show();
                 
             } else {
-                showAlert('상품 정보를 불러오는데 실패했습니다', 'error');
+                alert('상품 정보를 가져올 수 없습니다: ' + data.message);
             }
         })
         .catch(error => {
-            console.error('Error:', error);
-            showAlert('서버 오류가 발생했습니다', 'error');
+            hideLoading();
+            console.error('❌ 상품 정보 조회 오류:', error);
+            alert('상품 정보를 가져오는 중 오류가 발생했습니다: ' + error.message);
         });
 }
 
@@ -1853,9 +1934,22 @@ function updateCounters() {
 
 // 로딩 인디케이터 표시/숨김
 function showLoading(show = true) {
-    const loadingIndicator = document.getElementById('loadingIndicator');
-    if (loadingIndicator) {
-        loadingIndicator.style.display = show ? 'block' : 'none';
+    console.log('로딩 상태:', show);
+    
+    // 기존 로딩 모달 제거
+    $('.loading-modal').remove();
+    
+    if (show) {
+        // 새 로딩 모달 생성
+        const loadingHtml = `
+            <div class="loading-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; display: flex; align-items: center; justify-content: center;">
+                <div style="background: white; padding: 30px; border-radius: 10px; text-align: center;">
+                    <div class="spinner-border text-primary mb-3" role="status"></div>
+                    <p class="mb-0">데이터를 불러오는 중...</p>
+                </div>
+            </div>
+        `;
+        $('body').append(loadingHtml);
     }
 }
 
@@ -2349,7 +2443,7 @@ function changePage(page) {
 
 // 페이지당 항목 수 변경 (새로 추가)
 function changePerPage() {
-    perPage = parseInt(document.getElementById('perPageSelect').value);
+    currentPerPage = parseInt(document.getElementById('perPageSelect').value);
     currentPage = 1; // 첫 페이지로 리셋
     loadProducts(1);
 }
@@ -2506,6 +2600,248 @@ function updateTypesForProduct(productSeq) {
         .catch(error => {
             console.error('품목별 타입 로드 오류:', error);
         });
+}
+
+// 로딩 표시/숨김
+function showLoading(message = '처리 중...') {
+    if (!document.getElementById('loadingModal')) {
+        const loadingHtml = `
+            <div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static">
+                <div class="modal-dialog modal-sm modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-body text-center">
+                            <div class="spinner-border text-primary mb-3" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <div id="loadingMessage">${message}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', loadingHtml);
+    }
+    
+    document.getElementById('loadingMessage').textContent = message;
+    const modal = new bootstrap.Modal(document.getElementById('loadingModal'));
+    modal.show();
+}
+
+function hideLoading() {
+    const loadingModal = document.getElementById('loadingModal');
+    if (loadingModal) {
+        const modal = bootstrap.Modal.getInstance(loadingModal);
+        if (modal) {
+            modal.hide();
+        }
+    }
+}
+
+// 상품 상세 보기
+function viewProduct(productId) {
+    console.log('👁️ 상품 보기:', productId);
+    
+    if (!productId) {
+        showAlert('상품 ID가 없습니다.', 'warning');
+        return;
+    }
+    
+    // 로딩 표시
+    showLoading(true);
+    
+    // 제품 정보 조회
+    fetch(`/product/api/get/${productId}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success && data.product) {
+                showProductDetailModal(data.product);
+            } else {
+                showAlert('상품 정보를 불러오는데 실패했습니다', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showAlert('서버 오류가 발생했습니다: ' + error.message, 'error');
+        })
+        .finally(() => {
+            showLoading(false);
+        });
+}
+
+// 상품 상세 모달 표시
+function showProductDetailModal(product) {
+    const modalHtml = `
+        <div class="modal fade" id="productDetailModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-eye me-2"></i>상품 상세 정보
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6 class="fw-bold">기본 정보</h6>
+                                <table class="table table-sm">
+                                    <tr><td>상품명</td><td>${product.product_name || '-'}</td></tr>
+                                    <tr><td>브랜드</td><td>${product.brand_name || '-'}</td></tr>
+                                    <tr><td>제품구분</td><td>${product.category_name || '-'}</td></tr>
+                                    <tr><td>타입</td><td>${product.type_name || '-'}</td></tr>
+                                    <tr><td>년식</td><td>${product.year_name || '-'}</td></tr>
+                                    <tr><td>가격</td><td>${product.price ? product.price.toLocaleString() + '원' : '-'}</td></tr>
+                                    <tr><td>상태</td><td>${product.use_yn === 'Y' ? '사용' : '미사용'}</td></tr>
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="fw-bold">상세 정보</h6>
+                                <table class="table table-sm">
+                                    <tr><td>등록일</td><td>${product.created_at ? new Date(product.created_at).toLocaleDateString() : '-'}</td></tr>
+                                    <tr><td>수정일</td><td>${product.updated_at ? new Date(product.updated_at).toLocaleDateString() : '-'}</td></tr>
+                                    <tr><td>등록자</td><td>${product.created_by || '-'}</td></tr>
+                                </table>
+                                ${product.description ? `
+                                    <div class="mt-3">
+                                        <h6 class="fw-bold">설명</h6>
+                                        <p class="border p-2 rounded">${product.description}</p>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary" onclick="editProduct(${product.id})">
+                            <i class="fas fa-edit me-1"></i>수정
+                        </button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 기존 모달 제거
+    const existingModal = document.getElementById('productDetailModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // 새 모달 추가
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // 모달 표시
+    const modal = new bootstrap.Modal(document.getElementById('productDetailModal'));
+    modal.show();
+    
+    // 모달 숨겨진 후 제거
+    document.getElementById('productDetailModal').addEventListener('hidden.bs.modal', function () {
+        this.remove();
+    });
+}
+
+// 페이지네이션 업데이트
+function updatePagination() {
+    if (!pagination) return;
+    
+    const paginationEl = document.getElementById('pagination');
+    let paginationHTML = '';
+    
+    const { page: currentPage, pages: totalPages, total: totalItems, per_page: perPage } = pagination;
+    
+    // 페이지 정보 업데이트
+    document.getElementById('currentPageNum').textContent = currentPage;
+    document.getElementById('totalPages').textContent = totalPages;
+    document.getElementById('totalProducts').textContent = totalItems;
+    
+    if (totalPages <= 1) {
+        paginationEl.innerHTML = '';
+        return;
+    }
+    
+    // 이전 페이지 버튼
+    if (currentPage > 1) {
+        paginationHTML += `
+            <li class="page-item">
+                <a class="page-link" href="#" onclick="changePage(${currentPage - 1}); return false;">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+            </li>
+        `;
+    }
+    
+    // 페이지 번호들
+    const startPage = Math.max(1, currentPage - 2);
+    const endPage = Math.min(totalPages, currentPage + 2);
+    
+    // 첫 페이지
+    if (startPage > 1) {
+        paginationHTML += `
+            <li class="page-item">
+                <a class="page-link" href="#" onclick="changePage(1); return false;">1</a>
+            </li>
+        `;
+        if (startPage > 2) {
+            paginationHTML += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        }
+    }
+    
+    // 중간 페이지들
+    for (let i = startPage; i <= endPage; i++) {
+        paginationHTML += `
+            <li class="page-item ${i === currentPage ? 'active' : ''}">
+                <a class="page-link" href="#" onclick="changePage(${i}); return false;">${i}</a>
+            </li>
+        `;
+    }
+    
+    // 마지막 페이지
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            paginationHTML += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        }
+        paginationHTML += `
+            <li class="page-item">
+                <a class="page-link" href="#" onclick="changePage(${totalPages}); return false;">${totalPages}</a>
+            </li>
+        `;
+    }
+    
+    // 다음 페이지 버튼
+    if (currentPage < totalPages) {
+        paginationHTML += `
+            <li class="page-item">
+                <a class="page-link" href="#" onclick="changePage(${currentPage + 1}); return false;">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+            </li>
+        `;
+    }
+    
+    paginationEl.innerHTML = paginationHTML;
+}
+
+// 페이지 변경
+function changePage(page) {
+    if (isLoading) return;
+    
+    currentPage = page;
+    loadProducts(page);
+}
+
+// 페이지당 항목 수 변경
+function changePerPage() {
+    const newPerPage = parseInt(document.getElementById('perPageSelect').value);
+    if (newPerPage !== currentPerPage) {
+        currentPerPage = newPerPage;
+        currentPage = 1; // 첫 페이지로 리셋
+        loadProducts(1);
+    }
 }
 </script>
 {% endblock %} 

@@ -317,84 +317,40 @@ class Code(db.Model):
     
     @classmethod
     def get_codes_by_group_name(cls, group_name, company_id=None):
-        """그룹명으로 코드 목록 조회 (동적 WHERE 절 사용)"""
+        """그룹명으로 코드 목록 조회 (개선된 정렬)"""
         try:
-            codes = []
-            
-            if group_name == '제품구분':
-                # 'PRT' 코드를 가진 depth=0 그룹 찾기 (제품구분)
-                parent_group = cls.query.filter_by(code='PRT', depth=0).first()
-                if parent_group:
-                    codes = cls.query.filter_by(parent_seq=parent_group.seq).order_by(cls.sort.asc()).all()
-                    
-            elif group_name == '품목':
-                # 'PRD' 코드를 가진 depth=0 그룹 찾기 (품목)
-                parent_group = cls.query.filter_by(code='PRD', depth=0).first()
-                if parent_group:
-                    codes = cls.query.filter_by(parent_seq=parent_group.seq).order_by(cls.sort.asc()).all()
-                    
-            elif group_name == '타입':
-                # '타입' 이름을 가진 depth=0 그룹 찾기 (기존 유지)
-                parent_group = cls.query.filter_by(code_name='타입', depth=0).first()
-                if parent_group:
-                    codes = cls.query.filter_by(parent_seq=parent_group.seq).order_by(cls.sort.asc()).all()
-                    
-            elif group_name == '년도':
-                # '년도' 이름을 가진 depth=0 그룹 찾기
-                parent_group = cls.query.filter_by(code_name='년도', depth=0).first()
-                if parent_group:
-                    # 년도는 최신순으로 정렬 (code 값 기준 내림차순)
-                    codes = cls.query.filter_by(parent_seq=parent_group.seq).order_by(cls.code.desc()).all()
-                    
-            elif group_name == '브랜드':
-                # '브랜드' 이름을 가진 depth=0 그룹 찾기
-                parent_group = cls.query.filter_by(code_name='브랜드', depth=0).first()
-                if parent_group:
-                    codes = cls.query.filter_by(parent_seq=parent_group.seq).order_by(cls.sort.asc()).all()
-                    
-            elif group_name == '색상':
-                # '색상' 이름을 가진 depth=0 그룹 찾기
-                parent_group = cls.query.filter_by(code_name='색상', depth=0).first()
-                if parent_group:
-                    codes = cls.query.filter_by(parent_seq=parent_group.seq).order_by(cls.sort.asc()).all()
-                    
-            elif group_name == '구분타입':
-                # 'DIVTYPE' 코드를 가진 depth=0 그룹 찾기
-                parent_group = cls.query.filter_by(code='DIVTYPE', depth=0).first()
-                if parent_group:
-                    codes = cls.query.filter_by(parent_seq=parent_group.seq).order_by(cls.sort.asc()).all()
-                    
-            elif group_name == '제품코드':
-                # '제품' 이름을 가진 depth=0 그룹 찾기
-                parent_group = cls.query.filter_by(code_name='제품', depth=0).first()
-                if parent_group:
-                    codes = cls.query.filter_by(parent_seq=parent_group.seq).order_by(cls.sort.asc()).all()
-                    
-            elif group_name == '타입2':
-                # '타입2' 이름을 가진 depth=0 그룹 찾기
-                parent_group = cls.query.filter_by(code_name='타입2', depth=0).first()
-                if parent_group:
-                    codes = cls.query.filter_by(parent_seq=parent_group.seq).order_by(cls.sort.asc()).all()
-                    
-            elif group_name == '품목그룹':
-                # 레거시 호환: 'PRT' 그룹 사용 (제품구분과 동일)
-                parent_group = cls.query.filter_by(code='PRT', depth=0).first()
-                if parent_group:
-                    codes = cls.query.filter_by(parent_seq=parent_group.seq).order_by(cls.sort.asc()).all()
-                    
-            elif group_name == '제품타입':
-                # 레거시 호환: 타입과 동일
-                parent_group = cls.query.filter_by(code_name='타입', depth=0).first()
-                if parent_group:
-                    codes = cls.query.filter_by(parent_seq=parent_group.seq).order_by(cls.sort.asc()).all()
-            else:
-                codes = []
+            # 년도는 최신순, 나머지는 sort 기준 정렬
+            if group_name == '년도':
+                # 부모 그룹 찾기
+                parent_group = cls.query.filter(
+                    cls.code_name == group_name,
+                    cls.depth == 0
+                ).first()
                 
+                if parent_group:
+                    codes = cls.query.filter(
+                        cls.parent_seq == parent_group.seq
+                    ).order_by(cls.code.desc()).all()  # 년도는 내림차순 (최신순)
+                else:
+                    codes = []
+            else:
+                # 다른 코드들은 sort 기준 오름차순
+                parent_group = cls.query.filter(
+                    cls.code_name == group_name,
+                    cls.depth == 0
+                ).first()
+                
+                if parent_group:
+                    codes = cls.query.filter(
+                        cls.parent_seq == parent_group.seq
+                    ).order_by(cls.sort.asc(), cls.seq.asc()).all()
+                else:
+                    codes = []
+            
             return codes
             
         except Exception as e:
-            from flask import current_app
-            current_app.logger.error(f"❌ 코드 조회 실패 ({group_name}): {e}")
+            print(f"코드 조회 오류: {e}")
             return []
     
     @classmethod

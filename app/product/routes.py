@@ -465,12 +465,8 @@ def api_generate_std_code():
         else:
             data = request.form.to_dict()
         
-        # 필수 파라미터 확인
-        required_fields = [
-            'brand_code', 'div_type_code', 'prod_group_code', 
-            'prod_type_code', 'prod_code', 'prod_type2_code', 
-            'year_code', 'color_code'
-        ]
+        # 필수 파라미터 확인 (더 안전한 체크)
+        required_fields = ['brand_code', 'prod_group_code', 'prod_type_code', 'prod_code', 'year_code', 'color_code']
         
         for field in required_fields:
             if not data.get(field):
@@ -491,26 +487,34 @@ def api_generate_std_code():
         
         # 실제 코드값들 조회 (SEQ → 코드값 변환)
         brand_code = get_code_by_seq(data.get('brand_code')) or 'RY'  # 기본값: RY
-        div_type_code = get_code_by_seq(data.get('div_type_code')) or '3'  # 기본값: 3
+        div_type_code = str(data.get('div_type_code', '3'))[:1]  # 기본값: 3
         prod_group_code = get_code_by_seq(data.get('prod_group_code')) or 'SG'  # 기본값: SG
         prod_type_code = get_code_by_seq(data.get('prod_type_code')) or 'TR'  # 기본값: TR
         prod_code = get_code_by_seq(data.get('prod_code')) or 'TJ'  # 기본값: TJ
-        prod_type2_code = get_code_by_seq(data.get('prod_type2_code')) or '00'  # 기본값: 00
+        prod_type2_code = str(data.get('prod_type2_code', '00'))[:2].ljust(2, '0')  # 기본값: 00
         year_code = get_code_by_seq(data.get('year_code')) or '25'  # 기본값: 25
         color_code = str(data.get('color_code', 'BLK')).upper()  # 색상은 직접 입력값 사용
         
         # 16자리 자사코드 조합 (RY3SGTRTJ0025BLK 형태)
         # 브랜드(2) + 구분타입(1) + 제품구분(2) + 타입(2) + 품목(2) + 타입2(2) + 년도(2) + 색상(3)
-        std_code = (
-            brand_code[:2].ljust(2, '0') +           # RY (2자리)
-            div_type_code[:1] +                      # 3 (1자리)  
-            prod_group_code[:2].ljust(2, '0') +      # SG (2자리)
-            prod_type_code[:2].ljust(2, '0') +       # TR (2자리)
-            prod_code[:2].ljust(2, '0') +            # TJ (2자리)
-            prod_type2_code[:2].ljust(2, '0') +      # 00 (2자리)
-            year_code[-2:].ljust(2, '0') +           # 25 (2자리)
-            color_code[:3].ljust(3, '0')             # BLK (3자리)
-        )
+        
+        # 각 구성요소를 정확한 길이로 맞춤
+        brand_part = str(brand_code)[:2].ljust(2, '0')           # 2자리 (RY)
+        div_type_part = str(div_type_code)[:1].ljust(1, '0')     # 1자리 (3)  
+        prod_group_part = str(prod_group_code)[:2].ljust(2, '0') # 2자리 (SG)
+        prod_type_part = str(prod_type_code)[:2].ljust(2, '0')   # 2자리 (TR)
+        prod_code_part = str(prod_code)[:2].ljust(2, '0')        # 2자리 (TJ)
+        prod_type2_part = str(prod_type2_code)[:2].ljust(2, '0') # 2자리 (00)
+        year_part = str(year_code)[-2:].ljust(2, '0')            # 2자리 (25)
+        color_part = str(color_code)[:3].ljust(3, '0')           # 3자리 (BLK)
+        
+        std_code = (brand_part + div_type_part + prod_group_part + 
+                   prod_type_part + prod_code_part + prod_type2_part + 
+                   year_part + color_part)
+        
+        # 16자리 확인
+        if len(std_code) != 16:
+            std_code = std_code[:16].ljust(16, '0')  # 강제로 16자리 맞춤
         
         current_app.logger.info(f"✅ 자사코드 생성 성공: {std_code}")
         current_app.logger.info(f"🔧 구성: {brand_code}+{div_type_code}+{prod_group_code}+{prod_type_code}+{prod_code}+{prod_type2_code}+{year_code}+{color_code}")

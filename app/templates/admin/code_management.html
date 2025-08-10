@@ -91,7 +91,7 @@
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2><i class="fas fa-code"></i> 코드 관리</h2>
-        <button class="btn btn-primary" onclick="showInsertPanel(0, 0)">
+        <button class="btn btn-primary add-child-btn" data-parent-seq="0" data-depth="0">
             <i class="fas fa-plus"></i> 코드 그룹 추가
         </button>
     </div>
@@ -158,14 +158,14 @@
                                     <td class="code-actions">
                                         <div class="btn-group btn-group-sm">
                                             {% if code.depth < 2 %}
-                                            <button class="btn btn-outline-success btn-sm" onclick="showInsertPanel({{ code.seq }}, {{ code.depth + 1 }})" title="하위 코드 추가">
+                                            <button class="btn btn-outline-success btn-sm add-child-btn" data-parent-seq="{{ code.seq }}" data-depth="{{ code.depth + 1 }}" title="하위 코드 추가">
                                                 <i class="fas fa-plus"></i>
                                             </button>
                                             {% endif %}
-                                            <button class="btn btn-outline-primary btn-sm" onclick="editCode({{ code.seq }})" title="수정">
+                                            <button class="btn btn-outline-primary btn-sm edit-code-btn" data-seq="{{ code.seq }}" title="수정">
                                                 <i class="fas fa-edit"></i>
                                             </button>
-                                            <button class="btn btn-outline-danger btn-sm" onclick="deleteCode({{ code.seq }})" title="삭제">
+                                            <button class="btn btn-outline-danger btn-sm delete-code-btn" data-seq="{{ code.seq }}" title="삭제">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </div>
@@ -180,7 +180,7 @@
         </div>
         
         <!-- 우측: 코드 등록 폼 (5컬럼) -->
-        <div class="col-md-5" id="code-insert-panel">
+        <div class="col-md-5" id="rightPanel">
             <div class="card">
                 <div class="card-header">
                     <h5 class="mb-0">
@@ -206,9 +206,9 @@
                         </div>
                         
                         <div class="mb-3">
-                            <label for="code_info" class="form-label">설명</label>
+                            <label for="code_info" class="form-label">코드 설명</label>
                             <textarea class="form-control" id="code_info" name="code_info" rows="3" 
-                                      placeholder="코드에 대한 설명을 입력하세요"></textarea>
+                                      placeholder="코드에 대한 상세 설명을 입력하세요"></textarea>
                         </div>
                         
                         <div class="mb-3">
@@ -216,12 +216,9 @@
                             <input type="number" class="form-control" id="sort" name="sort" value="1" min="1">
                         </div>
                         
-                        <div class="d-grid gap-2">
-                            <button type="button" class="btn btn-primary" onclick="saveCode()">
-                                <i class="fas fa-save"></i> <span id="btn-text">등록</span>
-                            </button>
-                            <button type="button" class="btn btn-secondary" onclick="cancelForm()">
-                                <i class="fas fa-times"></i> 취소
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> 저장
                             </button>
                         </div>
                     </form>
@@ -252,260 +249,152 @@
 {% endblock %}
 
 {% block extra_js %}
-<!-- jQuery UI 라이브러리 -->
-<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
-<link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/ui-lightness/jquery-ui.css">
-
 <script>
 $(document).ready(function() {
-    // 드래그 앤 드롭 정렬 초기화
-    initSortable();
+    console.log('✅ 코드 관리 페이지 시작');
     
-    // 기존 기능들
-    loadCodeData();
+    // 초기 설정
+    setupInitialView();
+    setupEventHandlers();
     
-    // 계층 구조 토글 기능
-    $('.parent-code, .group-code').click(function() {
-        const seq = $(this).data('seq');
-        const depth = $(this).data('depth');
-        toggleChildren(seq, depth);
-    });
+    console.log('✅ 코드 관리 페이지 초기화 완료');
 });
 
-// 드래그 앤 드롭 정렬 초기화
-function initSortable() {
-    $('#sortableCodeList').sortable({
-        handle: '.drag-handle',
-        placeholder: 'ui-sortable-placeholder',
-        helper: function(e, tr) {
-            var helper = tr.clone();
-            helper.children().each(function() {
-                $(this).width(tr.children().eq($(this).index()).width());
-            });
-            return helper;
-        },
-        start: function(e, ui) {
-            ui.placeholder.height(ui.item.height());
-            ui.item.addClass('ui-sortable-helper');
-        },
-        stop: function(e, ui) {
-            ui.item.removeClass('ui-sortable-helper');
-            updateSortOrder();
-        },
-        update: function(e, ui) {
-            // 정렬 순서가 변경되었을 때
-            updateSortNumbers();
+// 초기 화면 설정
+function setupInitialView() {
+    // 모든 하위 코드 숨기기
+    $('tr[data-depth]').each(function() {
+        const depth = parseInt($(this).data('depth'));
+        if (depth > 0) {
+            $(this).hide();
         }
     });
     
-    // Root 행은 정렬에서 제외
-    $('#Root').addClass('ui-sortable-disabled');
+    // depth 0만 표시
+    $('tr[data-depth="0"]').show();
+    
+    console.log('✅ 초기 화면 설정 완료');
 }
 
-// 정렬 순서 업데이트
-function updateSortOrder() {
-    const orders = [];
-    
-    $('#sortableCodeList .sortable-row').each(function(index) {
+// 이벤트 핸들러 설정
+function setupEventHandlers() {
+    // 코드 행 클릭
+    $(document).on('click', '.parent-code, .group-code', function(e) {
+        e.preventDefault();
         const seq = $(this).data('seq');
-        const parentSeq = $(this).data('parent-seq');
         const depth = $(this).data('depth');
         
-        orders.push({
-            seq: seq,
-            parent_seq: parentSeq,
-            depth: depth,
-            sort: index + 1
-        });
+        console.log('코드 클릭:', seq, 'depth:', depth);
+        
+        if (seq && seq > 0) {
+            showCodeInfo(seq);
+        }
+        
+        if (depth === 0) {
+            toggleChildren(seq);
+        }
     });
     
-    // 서버에 정렬 순서 저장
-    saveSortOrder(orders);
-}
-
-// 정렬 번호 시각적 업데이트
-function updateSortNumbers() {
-    $('#sortableCodeList .sortable-row').each(function(index) {
-        $(this).find('.sort-number').text(index + 1);
-        $(this).data('sort', index + 1);
+    // 버튼 클릭
+    $(document).on('click', '.add-child-btn', function() {
+        const parentSeq = $(this).data('parent-seq');
+        const depth = $(this).data('depth');
+        console.log('하위 코드 추가:', parentSeq, depth);
+        alert('하위 코드 추가 기능은 개발 예정입니다.');
+    });
+    
+    $(document).on('click', '.edit-code-btn', function() {
+        const seq = $(this).data('seq');
+        console.log('코드 수정:', seq);
+        alert('코드 수정 기능은 개발 예정입니다.');
+    });
+    
+    $(document).on('click', '.delete-code-btn', function() {
+        const seq = $(this).data('seq');
+        console.log('코드 삭제:', seq);
+        if (confirm('정말 삭제하시겠습니까?')) {
+            alert('코드 삭제 기능은 개발 예정입니다.');
+        }
     });
 }
 
-// 서버에 정렬 순서 저장
-function saveSortOrder(orders) {
+// 하위 항목 토글
+function toggleChildren(parentSeq) {
+    const parentRow = $(`.sortable-row[data-seq="${parentSeq}"]`);
+    const childRows = $(`tr[data-parent-seq="${parentSeq}"]`);
+    const isExpanded = parentRow.hasClass('expanded');
+    
+    if (isExpanded) {
+        // 축소
+        childRows.hide();
+        parentRow.removeClass('expanded');
+        console.log('축소:', parentSeq);
+    } else {
+        // 확장
+        childRows.show();
+        parentRow.addClass('expanded');
+        console.log('확장:', parentSeq);
+    }
+}
+
+// 코드 정보 표시
+function showCodeInfo(seq) {
+    console.log('코드 정보 조회:', seq);
+    
+    $('#rightPanel').html('<div class="text-center p-4"><i class="fas fa-spinner fa-spin"></i> 로딩 중...</div>');
+    
     $.ajax({
-        url: '/admin/api/codes/update-sort-order',
+        url: '/admin/api/codes/get',
         method: 'POST',
-        contentType: 'application/json',
-        data: JSON.stringify({ orders: orders }),
-        success: function(response) {
-            if (response.success) {
-                showAlert('정렬 순서가 저장되었습니다.', 'success');
+        data: { seq: seq },
+        success: function(data) {
+            if (data.success && data.data) {
+                displayCodeInfo(data.data);
             } else {
-                showAlert('정렬 순서 저장에 실패했습니다: ' + response.message, 'error');
-                location.reload(); // 실패 시 페이지 새로고침
+                $('#rightPanel').html('<div class="alert alert-warning">코드 정보를 불러올 수 없습니다.</div>');
             }
         },
         error: function() {
-            showAlert('정렬 순서 저장 중 오류가 발생했습니다.', 'error');
-            location.reload(); // 오류 시 페이지 새로고침
+            $('#rightPanel').html('<div class="alert alert-danger">오류가 발생했습니다.</div>');
         }
     });
 }
 
-// 계층 구조 토글
-function toggleChildren(parentSeq, parentDepth) {
-    const childDepth = parentDepth + 1;
-    
-    $(`tr[data-parent-seq="${parentSeq}"][data-depth="${childDepth}"]`).each(function() {
-        if ($(this).is(':visible')) {
-            $(this).hide();
-            // 하위의 하위도 숨기기
-            hideAllChildren($(this).data('seq'));
-        } else {
-            $(this).show();
-        }
-    });
-}
-
-// 모든 하위 요소 숨기기
-function hideAllChildren(parentSeq) {
-    $(`tr[data-parent-seq="${parentSeq}"]`).each(function() {
-        $(this).hide();
-        hideAllChildren($(this).data('seq'));
-    });
-}
-
-// 기존 함수들...
-function loadCodeData() {
-    // 기존 코드...
-}
-
-// 등록 패널 표시
-function showInsertPanel(parentSeq, depth) {
-    resetForm();
-    $('#code-insert-panel').slideUp(200).slideDown(400);
-    
-    if (parentSeq === 0) {
-        $('#form-title').text('최상위 코드 그룹 등록');
-        $('#parent_seq').val('0');
-        $('#depth').val('0');
-    } else {
-        var nextDepth = depth;
-        $('#form-title').text(`${depth === 1 ? '분류 그룹' : '하위 코드'} 등록`);
-        $('#parent_seq').val(parentSeq);
-        $('#depth').val(nextDepth);
-    }
-    
-    $('#btn-text').text('등록');
-    isEditMode = false;
-}
-
-// 코드 수정
-function editCode(seq) {
-    $.post('/admin/api/codes/get', {seq: seq}, function(data) {
-        if (data.success) {
-            const code = data.data;
-            $('#code-insert-panel').slideUp(200).slideDown(400);
-            $('#form-title').text('코드 수정');
-            $('#btn-text').text('수정');
-            $('#edit_seq').val(code.seq);
-            $('#parent_seq').val(code.parent_seq || '0');
-            $('#depth').val(code.depth);
-            $('#code').val(code.code);
-            $('#code_name').val(code.code_name);
-            $('#code_info').val(code.code_info || '');
-            $('#sort').val(code.sort);
-            isEditMode = true;
-        } else {
-            showAlert('코드 정보 조회 실패: ' + data.message, 'error');
-        }
-    });
-}
-
-// 코드 삭제
-function deleteCode(seq) {
-    if (!confirm('정말로 이 코드를 삭제하시겠습니까?\n하위 코드가 있는 경우 함께 삭제됩니다.')) {
-        return;
-    }
-    
-    $.post('/admin/api/codes/delete', {seq: seq}, function(data) {
-        if (data.success) {
-            showAlert('코드가 삭제되었습니다.', 'success');
-            location.reload();
-        } else {
-            showAlert('삭제 실패: ' + data.message, 'error');
-        }
-    });
-}
-
-// 코드 저장
-function saveCode() {
-    const formData = {
-        seq: $('#edit_seq').val(),
-        parent_seq: $('#parent_seq').val(),
-        depth: $('#depth').val(),
-        code: $('#code').val().trim(),
-        code_name: $('#code_name').val().trim(),
-        code_info: $('#code_info').val().trim(),
-        sort: $('#sort').val()
-    };
-    
-    // 유효성 검사
-    if (!formData.code || !formData.code_name) {
-        showAlert('코드와 코드명은 필수입니다.', 'error');
-        return;
-    }
-    
-    const url = isEditMode ? '/admin/api/codes/update' : '/admin/api/codes/create';
-    
-    $.post(url, formData, function(data) {
-        if (data.success) {
-            showAlert(isEditMode ? '코드가 수정되었습니다.' : '코드가 등록되었습니다.', 'success');
-            location.reload();
-        } else {
-            showAlert((isEditMode ? '수정' : '등록') + ' 실패: ' + data.message, 'error');
-        }
-    });
-}
-
-// 폼 리셋
-function resetForm() {
-    $('#codeForm')[0].reset();
-    $('#edit_seq').val('');
-    $('#parent_seq').val('0');
-    $('#depth').val('0');
-    $('#sort').val('1');
-}
-
-// 취소
-function cancelForm() {
-    $('#code-insert-panel').slideUp(400);
-    resetForm();
-}
-
-// 전역 변수
-let isEditMode = false;
-
-function showAlert(message, type) {
-    const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
-    const alertHtml = `
-        <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+// 코드 정보 표시
+function displayCodeInfo(code) {
+    const html = `
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>코드 정보</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">코드</label>
+                    <input type="text" class="form-control" value="${code.code || ''}" readonly>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">코드명</label>
+                    <input type="text" class="form-control" value="${code.code_name || ''}" readonly>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">설명</label>
+                    <textarea class="form-control" rows="3" readonly>${code.code_info || ''}</textarea>
+                </div>
+                <div class="row">
+                    <div class="col-6">
+                        <label class="form-label">깊이</label>
+                        <input type="text" class="form-control" value="${code.depth || 0}" readonly>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">순서</label>
+                        <input type="text" class="form-control" value="${code.sort || 1}" readonly>
+                    </div>
+                </div>
+            </div>
         </div>
     `;
     
-    // 기존 알림 제거
-    $('.alert').remove();
-    
-    // 새 알림 추가
-    $('.container-fluid').prepend(alertHtml);
-    
-    // 3초 후 자동 제거
-    setTimeout(() => {
-        $('.alert').fadeOut();
-    }, 3000);
+    $('#rightPanel').html(html);
 }
 </script>
 {% endblock %}

@@ -5,7 +5,7 @@
 메뉴관리, 코드관리, 부서관리, 사용자관리, 권한관리, 브랜드관리
 """
 
-from flask import Blueprint, render_template, redirect, url_for, request, flash, jsonify, session
+from flask import Blueprint, render_template, redirect, url_for, request, flash, jsonify, session, current_app
 from flask_login import login_required, current_user
 from app.common.models import Menu, User, Department, Code, Brand, MemberAuth, DeptAuth, db
 from datetime import datetime
@@ -71,10 +71,10 @@ def code_management():
         return redirect('/auth/login')
     """코드 관리"""
     try:
-        # 계층 구조로 코드 정렬하는 함수
+        # 계층 구조로 코드 정렬하는 함수 (올바른 계층 구조)
         def build_hierarchical_codes():
             # 모든 코드를 가져와서 parent_seq별로 그룹화
-            all_codes = Code.query.all()
+            all_codes = Code.query.order_by(Code.sort.asc(), Code.seq.asc()).all()
             codes_by_parent = {}
             
             for code in all_codes:
@@ -85,14 +85,14 @@ def code_management():
             
             # 각 그룹을 sort로 정렬
             for parent_key in codes_by_parent:
-                codes_by_parent[parent_key].sort(key=lambda x: x.sort)
+                codes_by_parent[parent_key].sort(key=lambda x: (x.sort or 999, x.seq))
             
             # 계층 구조로 재구성
             def add_children(parent_seq, result):
                 if parent_seq in codes_by_parent:
                     for code in codes_by_parent[parent_seq]:
                         result.append(code)
-                        add_children(code.seq, result)
+                        add_children(code.seq, result)  # 재귀적으로 하위 코드 추가
             
             hierarchical_codes = []
             add_children(0, hierarchical_codes)  # 최상위부터 시작
@@ -103,6 +103,7 @@ def code_management():
         
         return render_template('admin/code_management.html', codes=codes)
     except Exception as e:
+        current_app.logger.error(f"코드 관리 페이지 오류: {e}")
         flash(f'코드 목록 조회 중 오류가 발생했습니다: {str(e)}', 'error')
         return render_template('admin/code_management.html', codes=[])
 
