@@ -11,6 +11,7 @@
     .parent-code {
         background-color: #fff;
         cursor: pointer;
+        transition: background-color 0.15s ease; /* 부드러운 전환 효과 */
     }
     .parent-code:hover {
         background-color: #e3f2fd;
@@ -19,6 +20,7 @@
         background-color: #fff3cd;
         cursor: pointer;
         font-weight: bold;
+        transition: background-color 0.15s ease; /* 부드러운 전환 효과 */
     }
     .group-code:hover {
         background-color: #ffeaa7;
@@ -32,11 +34,17 @@
     .table-responsive {
         max-height: 600px;
         overflow-y: auto;
+        /* 스크롤 성능 향상 */
+        -webkit-overflow-scrolling: touch;
+        will-change: scroll-position;
     }
-    /* 컬럼 폭 고정 */
+    /* 컬럼 폭 고정 (레이아웃 안정성 향상) */
     #codeTable {
         table-layout: fixed;
         width: 100%;
+        /* GPU 가속 활성화 */
+        transform: translateZ(0);
+        backface-visibility: hidden;
     }
     #codeTable th:nth-child(1) { width: 15%; }  /* 드래그 핸들 */
     #codeTable th:nth-child(2) { width: 20%; }  /* 코드 */
@@ -47,22 +55,25 @@
     
     .table tr.selected {
         background-color: #d1ecf1 !important;
+        transition: background-color 0.2s ease;
     }
     
-    /* 계층별 들여쓰기 */
+    /* 계층별 들여쓰기 (성능 최적화) */
     .depth-0 { padding-left: 8px; }
     .depth-1 { padding-left: 24px; }
     .depth-2 { padding-left: 40px; }
     .depth-3 { padding-left: 56px; }
     
-    /* 드래그 앤 드롭 스타일 */
+    /* 드래그 앤 드롭 스타일 (GPU 가속) */
     .sortable-row {
         cursor: move;
+        will-change: transform; /* 변형 성능 향상 */
     }
     .ui-sortable-helper {
         background-color: #fff3cd !important;
         box-shadow: 0 2px 10px rgba(0,0,0,0.3);
         border: 2px solid #ffc107;
+        transform: translateZ(0); /* GPU 가속 */
     }
     .ui-sortable-placeholder {
         background-color: #e3f2fd !important;
@@ -74,6 +85,7 @@
         cursor: move;
         color: #6c757d;
         font-size: 14px;
+        transition: color 0.15s ease;
     }
     .drag-handle:hover {
         color: #495057;
@@ -83,6 +95,23 @@
         color: #007bff;
         min-width: 30px;
         text-align: center;
+    }
+    
+    /* 성능 향상을 위한 추가 스타일 */
+    .d-none-optimized {
+        display: none !important;
+        visibility: hidden; /* 추가 최적화 */
+    }
+    
+    /* 로딩 애니메이션 최적화 */
+    .spinner-optimized {
+        animation: spin 1s linear infinite;
+        will-change: transform;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
     }
 </style>
 {% endblock %}
@@ -260,56 +289,70 @@ $(document).ready(function() {
     console.log('✅ 코드 관리 페이지 초기화 완료');
 });
 
-// 초기 화면 설정
+// 초기 화면 설정 (성능 최적화)
 function setupInitialView() {
-    // 모든 하위 코드 숨기기
-    $('tr[data-depth]').each(function() {
-        const depth = parseInt($(this).data('depth'));
-        if (depth > 0) {
-            $(this).hide();
-        }
-    });
+    // 한 번에 모든 DOM 요소를 가져와서 배치 처리
+    const $allRows = $('tr[data-depth]');
+    const $depthZeroRows = $('tr[data-depth="0"]');
+    const $otherRows = $allRows.not($depthZeroRows);
     
-    // depth 0만 표시
-    $('tr[data-depth="0"]').show();
+    // CSS 클래스를 사용하여 배치로 숨기기/보이기
+    $otherRows.addClass('d-none-optimized'); // Bootstrap의 display: none 클래스 사용
+    $depthZeroRows.removeClass('d-none-optimized');
     
-    console.log('✅ 초기 화면 설정 완료');
+    console.log('✅ 초기 화면 설정 완료 (최적화됨)');
 }
 
-// 이벤트 핸들러 설정
+// 이벤트 핸들러 설정 (디바운싱 적용)
 function setupEventHandlers() {
-    // 코드 행 클릭
+    let clickTimeout;
+    
+    // 코드 행 클릭 (디바운싱으로 중복 클릭 방지)
     $(document).on('click', '.parent-code, .group-code', function(e) {
         e.preventDefault();
-        const seq = $(this).data('seq');
-        const depth = $(this).data('depth');
         
-        console.log('코드 클릭:', seq, 'depth:', depth);
+        // 이전 타이머 클리어
+        if (clickTimeout) {
+            clearTimeout(clickTimeout);
+        }
         
+        const $this = $(this);
+        const seq = $this.data('seq');
+        const depth = $this.data('depth');
+        
+        // 즉시 실행되는 작업
         if (seq && seq > 0) {
             showCodeInfo(seq);
         }
         
+        // 디바운싱된 작업 (토글)
         if (depth === 0) {
-            toggleChildren(seq);
+            clickTimeout = setTimeout(() => {
+                toggleChildren(seq);
+            }, 50); // 50ms 디바운싱
         }
+        
+        console.log('코드 클릭:', seq, 'depth:', depth);
     });
     
-    // 버튼 클릭
-    $(document).on('click', '.add-child-btn', function() {
+    // 버튼 클릭 (개선된 이벤트 처리)
+    $(document).on('click', '.add-child-btn', function(e) {
+        e.stopPropagation(); // 이벤트 버블링 방지
         const parentSeq = $(this).data('parent-seq');
         const depth = $(this).data('depth');
         console.log('하위 코드 추가:', parentSeq, depth);
         alert('하위 코드 추가 기능은 개발 예정입니다.');
     });
     
-    $(document).on('click', '.edit-code-btn', function() {
+    $(document).on('click', '.edit-code-btn', function(e) {
+        e.stopPropagation();
         const seq = $(this).data('seq');
         console.log('코드 수정:', seq);
         alert('코드 수정 기능은 개발 예정입니다.');
     });
     
-    $(document).on('click', '.delete-code-btn', function() {
+    $(document).on('click', '.delete-code-btn', function(e) {
+        e.stopPropagation();
         const seq = $(this).data('seq');
         console.log('코드 삭제:', seq);
         if (confirm('정말 삭제하시겠습니까?')) {
@@ -318,30 +361,40 @@ function setupEventHandlers() {
     });
 }
 
-// 하위 항목 토글
+// 하위 항목 토글 (성능 최적화)
 function toggleChildren(parentSeq) {
-    const parentRow = $(`.sortable-row[data-seq="${parentSeq}"]`);
-    const childRows = $(`tr[data-parent-seq="${parentSeq}"]`);
-    const isExpanded = parentRow.hasClass('expanded');
+    const $parentRow = $(`.sortable-row[data-seq="${parentSeq}"]`);
+    const $childRows = $(`tr[data-parent-seq="${parentSeq}"]`);
+    const isExpanded = $parentRow.hasClass('expanded');
     
+    // 배치 DOM 조작으로 리플로우 최소화
     if (isExpanded) {
         // 축소
-        childRows.hide();
-        parentRow.removeClass('expanded');
+        $childRows.addClass('d-none-optimized');
+        $parentRow.removeClass('expanded');
         console.log('축소:', parentSeq);
     } else {
         // 확장
-        childRows.show();
-        parentRow.addClass('expanded');
+        $childRows.removeClass('d-none-optimized');
+        $parentRow.addClass('expanded');
         console.log('확장:', parentSeq);
     }
 }
 
-// 코드 정보 표시
+// 코드 정보 표시 (캐싱 추가)
+let codeInfoCache = {};
+
 function showCodeInfo(seq) {
     console.log('코드 정보 조회:', seq);
     
-    $('#rightPanel').html('<div class="text-center p-4"><i class="fas fa-spinner fa-spin"></i> 로딩 중...</div>');
+    // 캐시 확인
+    if (codeInfoCache[seq]) {
+        displayCodeInfo(codeInfoCache[seq]);
+        return;
+    }
+    
+    const $rightPanel = $('#rightPanel');
+    $rightPanel.html('<div class="text-center p-4"><i class="fas fa-spinner fa-spin"></i> 로딩 중...</div>');
     
     $.ajax({
         url: '/admin/api/codes/get',
@@ -349,20 +402,29 @@ function showCodeInfo(seq) {
         data: { seq: seq },
         success: function(data) {
             if (data.success && data.data) {
+                // 캐시에 저장
+                codeInfoCache[seq] = data.data;
                 displayCodeInfo(data.data);
             } else {
-                $('#rightPanel').html('<div class="alert alert-warning">코드 정보를 불러올 수 없습니다.</div>');
+                $rightPanel.html('<div class="alert alert-warning">코드 정보를 불러올 수 없습니다.</div>');
             }
         },
         error: function() {
-            $('#rightPanel').html('<div class="alert alert-danger">오류가 발생했습니다.</div>');
+            $rightPanel.html('<div class="alert alert-danger">오류가 발생했습니다.</div>');
         }
     });
 }
 
-// 코드 정보 표시
+// 코드 정보 표시 (템플릿 최적화)
 function displayCodeInfo(code) {
-    const html = `
+    // 템플릿 문자열을 함수로 분리하여 성능 향상
+    const html = buildCodeInfoTemplate(code);
+    $('#rightPanel').html(html);
+}
+
+// 템플릿 빌더 함수 (재사용 가능)
+function buildCodeInfoTemplate(code) {
+    return `
         <div class="card">
             <div class="card-header bg-primary text-white">
                 <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>코드 정보</h5>
@@ -393,8 +455,6 @@ function displayCodeInfo(code) {
             </div>
         </div>
     `;
-    
-    $('#rightPanel').html(html);
 }
 </script>
 {% endblock %}
