@@ -1,0 +1,285 @@
+{% extends 'base.html' %}
+
+{% block title %}상품관리{% endblock %}
+
+{% block extra_css %}
+<style>
+    .required { color: red; }
+    .company-badge-1 { background-color: #007bff; }
+    .company-badge-2 { background-color: #28a745; }
+    .product-status-active { color: #28a745; font-weight: bold; }
+    .product-status-inactive { color: #6c757d; }
+    .product-card:hover { transform: translateY(-2px); transition: all 0.3s ease; }
+    
+    .form-disabled { opacity: 0.7; pointer-events: none; }
+    
+    /* DataTables 한국어 스타일 개선 */
+    .dataTables_wrapper .dataTables_length,
+    .dataTables_wrapper .dataTables_filter,
+    .dataTables_wrapper .dataTables_info,
+    .dataTables_wrapper .dataTables_paginate {
+        margin: 10px 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 알림 컨테이너 -->
+    <div id="alertContainer"></div>
+    
+    <!-- 헤더 -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="fas fa-box"></i> 상품관리</h2>
+            <p class="text-muted mb-0">상품 정보를 등록, 수정, 삭제할 수 있습니다.</p>
+        </div>
+        <div class="btn-group">
+            <button type="button" class="btn btn-primary" id="addProductBtn">
+                <i class="fas fa-plus"></i> 상품 등록
+            </button>
+            <button type="button" class="btn btn-outline-secondary" id="refreshBtn">
+                <i class="fas fa-sync-alt"></i> 새로고침
+            </button>
+            <button type="button" class="btn btn-outline-success" id="excelDownloadBtn">
+                <i class="fas fa-file-excel"></i> 엑셀
+            </button>
+        </div>
+    </div>
+
+    <!-- 검색 및 필터 -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-search"></i> 검색 및 필터</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <label for="searchInput" class="form-label">통합검색</label>
+                    <input type="text" class="form-control" id="searchInput" placeholder="상품명, 코드, 브랜드명...">
+                </div>
+                <div class="col-md-2">
+                    <label for="companyFilter" class="form-label">회사</label>
+                    <select class="form-control" id="companyFilter">
+                        <option value="">전체</option>
+                        <option value="1">에이원</option>
+                        <option value="2">에이원월드</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="brandFilter" class="form-label">브랜드</label>
+                    <select class="form-control" id="brandFilter">
+                        <option value="">전체</option>
+                        {% for brand in brand_codes %}
+                        <option value="{{ brand.seq }}">{{ brand.code_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="categoryFilter" class="form-label">품목</label>
+                    <select class="form-control" id="categoryFilter">
+                        <option value="">전체</option>
+                        {% for category in category_codes %}
+                        <option value="{{ category.seq }}">{{ category.code_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="statusFilter" class="form-label">상태</label>
+                    <select class="form-control" id="statusFilter">
+                        <option value="">전체</option>
+                        <option value="true">활성</option>
+                        <option value="false">비활성</option>
+                    </select>
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="button" class="btn btn-outline-danger d-block" id="resetFiltersBtn">
+                        <i class="fas fa-eraser"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 뷰 모드 선택 및 통계 -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="btn-group" role="group">
+            <input type="radio" class="btn-check" name="viewMode" id="tableView" value="table" checked>
+            <label class="btn btn-outline-secondary" for="tableView">
+                <i class="fas fa-table"></i> 테이블
+            </label>
+            <input type="radio" class="btn-check" name="viewMode" id="cardView" value="card">
+            <label class="btn btn-outline-secondary" for="cardView">
+                <i class="fas fa-th-large"></i> 카드
+            </label>
+        </div>
+        
+        <div class="d-flex align-items-center">
+            <span class="me-3">총 상품 목록: <strong id="productCount">0</strong>개</span>
+            <select class="form-select form-select-sm" id="perPageSelect" style="width: auto;">
+                <option value="25">25개씩</option>
+                <option value="50" selected>50개씩</option>
+                <option value="100">100개씩</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- 테이블 뷰 -->
+    <div id="tableViewContainer">
+        <div class="card">
+            <div class="card-body">
+                <table class="table table-hover" id="productTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>회사</th>
+                            <th>브랜드</th>
+                            <th>상품명</th>
+                            <th>품목</th>
+                            <th>타입</th>
+                            <th>년도</th>
+                            <th>가격</th>
+                            <th>상태</th>
+                            <th>등록일</th>
+                            <th>작업</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- DataTables로 동적 로딩 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 카드 뷰 -->
+    <div id="cardViewContainer" style="display: none;">
+        <div class="row" id="productCards">
+            <!-- 동적 생성 -->
+        </div>
+    </div>
+</div>
+
+<!-- 상품 등록/수정 모달 -->
+<div class="modal fade" id="productModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="productModalLabel">상품 등록</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="productForm" enctype="multipart/form-data">
+                <input type="hidden" id="productId" name="productId">
+                <input type="hidden" id="isEditMode" value="false">
+                
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="company_id" class="form-label">회사 <span class="required">*</span></label>
+                                <select class="form-control" id="company_id" name="company_id" required>
+                                    <option value="">선택하세요</option>
+                                    <option value="1">에이원</option>
+                                    <option value="2">에이원 월드</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="brand_code_seq" class="form-label">브랜드 <span class="required">*</span></label>
+                                <select class="form-control" id="brand_code_seq" name="brand_code_seq" required>
+                                    <option value="">선택하세요</option>
+                                    {% for brand in brand_codes %}
+                                    <option value="{{ brand.seq }}">{{ brand.code_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="prod_group_code_seq" class="form-label">제품구분 <span class="required">*</span></label>
+                                <select class="form-control" id="prod_group_code_seq" name="prod_group_code_seq" required>
+                                    <option value="">선택하세요</option>
+                                    {% for category in category_codes %}
+                                    <option value="{{ category.seq }}">{{ category.code_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="product_name" class="form-label">상품명 <span class="required">*</span></label>
+                                <input type="text" class="form-control" id="product_name" name="product_name" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="price" class="form-label">상품가격 <span class="required">*</span></label>
+                                <input type="number" class="form-control" id="price" name="price" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="use_yn" class="form-label">사용여부 <span class="required">*</span></label>
+                                <select class="form-control" id="use_yn" name="use_yn" required>
+                                    <option value="Y">사용</option>
+                                    <option value="N">미사용</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">설명</label>
+                        <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                    </div>
+
+                    <!-- 제품 모델 섹션 -->
+                    <div class="mt-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="fw-bold">색상별 제품 모델</h6>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="addModelBtn">
+                                <i class="fas fa-plus"></i> 모델 추가
+                            </button>
+                        </div>
+                        <div id="productModelsContainer">
+                            <!-- 동적 생성 -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="submit" class="btn btn-primary" id="productSubmitBtn">저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 전역 데이터 -->
+<script>
+    window.colorCodes = {{ color_codes | tojson | safe }};
+    window.typeCodes = {{ type_codes | tojson | safe }};
+    window.yearCodes = {{ year_codes | tojson | safe }};
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<!-- 공통 라이브러리 -->
+<script src="{{ url_for('static', filename='js/common/ajax-helper.js') }}"></script>
+<script src="{{ url_for('static', filename='js/common/ui-components.js') }}"></script>
+<script src="{{ url_for('static', filename='js/common/datatable-config.js') }}"></script>
+
+<!-- 상품 모듈 -->
+<script src="{{ url_for('static', filename='js/modules/product/product-list.js') }}"></script>
+<script src="{{ url_for('static', filename='js/modules/product/product-form.js') }}"></script>
+<script src="{{ url_for('static', filename='js/modules/product/product-detail.js') }}"></script>
+{% endblock %} 
