@@ -479,8 +479,8 @@ th:hover {
                                 <div class="row">
                                     <div class="col-md-4">
                                         <div class="mb-3">
-                                            <label for="color_code_0" class="form-label">색상 <span class="required">*</span></label>
-                                            <select id="color_code_0" class="form-control color-code" name="color_code[]" required>
+                                            <label class="form-label">색상 <span class="required">*</span></label>
+                                            <select class="form-control color-code" name="color_code[]" required>
                                                 <option value="">선택하세요</option>
                                                 {% for color in color_codes %}
                                                 <option value="{{ color.code }}" data-seq="{{ color.seq }}">{{ color.code_name }} ({{ color.code }})</option>
@@ -491,16 +491,16 @@ th:hover {
                                     
                                     <div class="col-md-4">
                                         <div class="mb-3">
-                                            <label for="product_model_name_0" class="form-label">제품명</label>
-                                            <input type="text" id="product_model_name_0" class="form-control product-model-name" name="product_model_name[]" placeholder="색상별 제품명 (선택사항)">
+                                            <label class="form-label">제품명</label>
+                                            <input type="text" class="form-control product-model-name" name="product_model_name[]" placeholder="색상별 제품명 (선택사항)">
                                         </div>
                                     </div>
                                     
                                     <div class="col-md-4">
                                         <div class="mb-3">
-                                            <label for="std_product_code_0" class="form-label">자사코드</label>
+                                            <label class="form-label">자사코드</label>
                                             <div class="input-group">
-                                                <input type="text" id="std_product_code_0" class="form-control std-product-code" name="std_product_code[]" placeholder="자동생성됨" readonly>
+                                                <input type="text" class="form-control std-product-code" name="std_product_code[]" placeholder="자동생성됨" readonly>
                                                 <button type="button" class="btn btn-primary btn-generate-code">자동생성</button>
                                             </div>
                                         </div>
@@ -636,43 +636,6 @@ let currentProductId = null;
 
 $(document).ready(function() {
     console.log('상품 관리 시스템 초기화');
-    
-    // 전역 에러 핸들러 추가
-    window.addEventListener('error', function(e) {
-        console.error('전역 에러:', e.error);
-        $('#simple-loading').remove(); // 에러 시 로딩 제거
-    });
-    
-    // jQuery AJAX 전역 에러 핸들러
-    $(document).ajaxError(function(event, xhr, settings, error) {
-        console.error('AJAX 에러:', error);
-        $('#simple-loading').remove(); // AJAX 에러 시 로딩 제거
-    });
-    
-    // DOM에 false 값이 삽입되는 것을 방지하는 전역 감시
-    const observer = new MutationObserver(function(mutations) {
-        mutations.forEach(function(mutation) {
-            mutation.addedNodes.forEach(function(node) {
-                if (node.nodeType === Node.TEXT_NODE && node.textContent === 'false') {
-                    console.warn('⚠️ false 텍스트 노드 감지 및 제거:', node);
-                    node.remove();
-                } else if (node.nodeType === Node.ELEMENT_NODE) {
-                    // 요소 노드의 텍스트가 'false'인 경우도 확인
-                    if (node.textContent === 'false' && node.children.length === 0) {
-                        console.warn('⚠️ false 요소 노드 감지 및 제거:', node);
-                        node.remove();
-                    }
-                }
-            });
-        });
-    });
-    
-    // body에 대한 변화 감시 시작
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true
-    });
-    
     loadProducts();
     setupEventHandlers();
     initializeDivType();
@@ -994,8 +957,8 @@ function addProductModelRow() {
             <div class="row">
                 <div class="col-md-4">
                     <div class="mb-3">
-                        <label for="color_code_${newIndex}" class="form-label">색상 <span class="required">*</span></label>
-                        <select id="color_code_${newIndex}" class="form-control color-code" name="color_code[]" required>
+                        <label class="form-label">색상 <span class="required">*</span></label>
+                        <select class="form-control color-code" name="color_code[]" required>
                             <option value="">선택하세요</option>
                             {% for color in color_codes %}
                             <option value="{{ color.code }}" data-seq="{{ color.seq }}">{{ color.code_name }} ({{ color.code }})</option>
@@ -1006,16 +969,16 @@ function addProductModelRow() {
                 
                 <div class="col-md-4">
                     <div class="mb-3">
-                        <label for="product_model_name_${newIndex}" class="form-label">제품명</label>
-                        <input type="text" id="product_model_name_${newIndex}" class="form-control product-model-name" name="product_model_name[]" placeholder="색상별 제품명 (선택사항)">
+                        <label class="form-label">제품명</label>
+                        <input type="text" class="form-control product-model-name" name="product_model_name[]" placeholder="색상별 제품명 (선택사항)">
                     </div>
                 </div>
                 
                 <div class="col-md-4">
                     <div class="mb-3">
-                        <label for="std_product_code_${newIndex}" class="form-label">자사코드</label>
+                        <label class="form-label">자사코드</label>
                         <div class="input-group">
-                            <input type="text" id="std_product_code_${newIndex}" class="form-control std-product-code" name="std_product_code[]" placeholder="자동생성됨" readonly>
+                            <input type="text" class="form-control std-product-code" name="std_product_code[]" placeholder="자동생성됨" readonly>
                             <button type="button" class="btn btn-primary btn-generate-code">자동생성</button>
                         </div>
                     </div>
@@ -1971,27 +1934,22 @@ function updateCounters() {
 
 // 로딩 인디케이터 표시/숨김
 function showLoading(show = true) {
-    console.log('🔧 showLoading 호출됨:', show, typeof show);
+    console.log('로딩 상태:', show);
     
-    // false 값이 문자열로 변환되어 표시되는 것을 방지
-    if (show === false || show === 'false') {
-        console.log('⚠️ showLoading: 로딩 숨김');
-        $('#simple-loading').remove();
-        return;
-    }
+    // 기존 로딩 모달 제거
+    $('.loading-modal').remove();
     
-    if (show === true || show === 'true' || show) {
-        console.log('⚠️ showLoading: 로딩 표시');
-        // 기존 로딩 제거
-        $('#simple-loading').remove();
-        
-        // 간단한 로딩 표시
-        if (!$('#simple-loading').length) {
-            $('body').append('<div id="simple-loading" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:white;padding:20px;border-radius:5px;box-shadow:0 2px 10px rgba(0,0,0,0.3)"><div class="spinner-border text-primary"></div><div class="mt-2">로딩 중...</div></div>');
-        }
-    } else {
-        console.log('⚠️ showLoading: 예상치 못한 값:', show);
-        $('#simple-loading').remove();
+    if (show) {
+        // 새 로딩 모달 생성
+        const loadingHtml = `
+            <div class="loading-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; display: flex; align-items: center; justify-content: center;">
+                <div style="background: white; padding: 30px; border-radius: 10px; text-align: center;">
+                    <div class="spinner-border text-primary mb-3" role="status"></div>
+                    <p class="mb-0">데이터를 불러오는 중...</p>
+                </div>
+            </div>
+        `;
+        $('body').append(loadingHtml);
     }
 }
 
@@ -2732,22 +2690,28 @@ function showProductDetailModal(product) {
                             <div class="col-md-6">
                                 <h6 class="fw-bold">기본 정보</h6>
                                 <table class="table table-sm">
-                                    <tr><td class="fw-bold">상품명</td><td>${product.product_name || '-'}</td></tr>
-                                    <tr><td class="fw-bold">상품코드:</td><td>${product.product_code || '-'}</td></tr>
-                                    <tr><td class="fw-bold">회사:</td><td>${product.company_id === 1 ? '에이원' : '에이원월드'}</td></tr>
-                                    <tr><td class="fw-bold">브랜드:</td><td>${product.brand_name || '미지정'}</td></tr>
-                                    <tr><td class="fw-bold">가격:</td><td>${product.price ? formatPrice(product.price) + '원' : '미정'}</td></tr>
+                                    <tr><td>상품명</td><td>${product.product_name || '-'}</td></tr>
+                                    <tr><td>브랜드</td><td>${product.brand_name || '-'}</td></tr>
+                                    <tr><td>제품구분</td><td>${product.category_name || '-'}</td></tr>
+                                    <tr><td>타입</td><td>${product.type_name || '-'}</td></tr>
+                                    <tr><td>년식</td><td>${product.year_name || '-'}</td></tr>
+                                    <tr><td>가격</td><td>${product.price ? product.price.toLocaleString() + '원' : '-'}</td></tr>
+                                    <tr><td>상태</td><td>${product.use_yn === 'Y' ? '사용' : '미사용'}</td></tr>
                                 </table>
                             </div>
                             <div class="col-md-6">
-                                <h6 class="fw-bold">분류 정보</h6>
+                                <h6 class="fw-bold">상세 정보</h6>
                                 <table class="table table-sm">
-                                    <tr><td class="fw-bold">품목:</td><td>${product.category_name || '미지정'}</td></tr>
-                                    <tr><td class="fw-bold">타입:</td><td>${product.type_name || '미지정'}</td></tr>
-                                    <tr><td class="fw-bold">년도:</td><td>${product.year_code_name || '-'}</td></tr>
-                                    <tr><td class="fw-bold">상태:</td><td><span class="product-status-${product.is_active ? 'active' : 'inactive'}">${product.is_active ? '활성' : '비활성'}</span></td></tr>
-                                    <tr><td class="fw-bold">등록일:</td><td>${formatDate(product.created_at)}</td></tr>
+                                    <tr><td>등록일</td><td>${product.created_at ? new Date(product.created_at).toLocaleDateString() : '-'}</td></tr>
+                                    <tr><td>수정일</td><td>${product.updated_at ? new Date(product.updated_at).toLocaleDateString() : '-'}</td></tr>
+                                    <tr><td>등록자</td><td>${product.created_by || '-'}</td></tr>
                                 </table>
+                                ${product.description ? `
+                                    <div class="mt-3">
+                                        <h6 class="fw-bold">설명</h6>
+                                        <p class="border p-2 rounded">${product.description}</p>
+                                    </div>
+                                ` : ''}
                             </div>
                         </div>
                     </div>
