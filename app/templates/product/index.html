@@ -303,13 +303,26 @@ body.modal-open {
     }
 }
 
-/* 모달 z-index 보장 */
+/* 모달 z-index 보장 - 사이드바보다 높게 */
 .modal {
-    z-index: 1060 !important;
+    z-index: 2000 !important;
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
 }
 
 .modal-backdrop {
-    z-index: 1050 !important;
+    z-index: 1900 !important;
+}
+
+/* 모달 다이얼로그 위치 조정 */
+.modal-dialog {
+    margin: 1rem auto !important;
+    position: relative !important;
+    z-index: 2001 !important;
+    width: auto !important;
 }
 
 /* 모달 표시 강제 */
@@ -1042,13 +1055,21 @@ function scrollToBottom() {
 
 // 상품 관리를 위한 전역 함수들 (레거시 호환) - 강화 버전
 function addProduct() {
-    console.log('📝 상품 등록 버튼 클릭됨');
+    console.log('📝 상품 등록 버튼 클릭됨 - 타임스탬프:', new Date().toISOString());
+    
+    // 🚨 중복 클릭 방지
+    if (window.addProductInProgress) {
+        console.warn('⚠️ 상품 등록이 이미 진행 중입니다');
+        return;
+    }
+    window.addProductInProgress = true;
     
     // 🔥 1단계: ProductManager 시도
     try {
         if (window.productManager && typeof window.productManager.showAddModal === 'function') {
             console.log('✅ ProductManager로 모달 열기');
             window.productManager.showAddModal();
+            setTimeout(() => { window.addProductInProgress = false; }, 1000); // 1초 후 잠금 해제
             return;
         }
     } catch (error) {
@@ -1065,6 +1086,7 @@ function addProduct() {
             if (window.productManager.showAddModal) {
                 console.log('✅ 강제 생성 후 모달 열기');
                 window.productManager.showAddModal();
+                setTimeout(() => { window.addProductInProgress = false; }, 1000); // 1초 후 잠금 해제
                 return;
             }
         }
@@ -1080,7 +1102,14 @@ function addProduct() {
         if (!modalElement) {
             console.error('❌ productModal 요소를 찾을 수 없습니다');
             alert('모달 요소가 존재하지 않습니다. 페이지를 새로고침해주세요.');
+            window.addProductInProgress = false;
             return;
+        }
+        
+        // 기존 모달 인스턴스 제거
+        const existingModal = bootstrap.Modal.getInstance(modalElement);
+        if (existingModal) {
+            existingModal.dispose();
         }
         
         // 모달 상태 초기화
@@ -1092,18 +1121,20 @@ function addProduct() {
         // Bootstrap 5 모달 인스턴스 생성 및 표시
         const modal = new bootstrap.Modal(modalElement, {
             backdrop: 'static',
-            keyboard: false
+            keyboard: false,
+            focus: true
         });
         
         // 모달 표시
         modal.show();
         
-        // 강제 표시 확인
+        // 강제 표시 확인 및 z-index 설정
         setTimeout(() => {
             if (!modalElement.classList.contains('show')) {
                 console.warn('⚠️ 모달이 show 클래스가 없음 - 강제 추가');
                 modalElement.classList.add('show');
                 modalElement.style.display = 'block';
+                modalElement.style.zIndex = '2000';
                 modalElement.setAttribute('aria-modal', 'true');
                 modalElement.removeAttribute('aria-hidden');
                 
@@ -1111,10 +1142,12 @@ function addProduct() {
                 if (!document.querySelector('.modal-backdrop')) {
                     const backdrop = document.createElement('div');
                     backdrop.className = 'modal-backdrop fade show';
+                    backdrop.style.zIndex = '1900';
                     document.body.appendChild(backdrop);
                 }
             }
-        }, 100);
+            window.addProductInProgress = false; // 잠금 해제
+        }, 200);
         
         console.log('✅ Bootstrap 모달 직접 열기 성공');
         
@@ -1126,9 +1159,11 @@ function addProduct() {
             console.log('🆘 jQuery 모달 시도');
             $('#productModal').modal('show');
             console.log('✅ jQuery 모달 성공');
+            setTimeout(() => { window.addProductInProgress = false; }, 1000);
         } catch (jqueryError) {
             console.error('❌ jQuery 모달도 실패:', jqueryError);
             alert('모달을 열 수 없습니다. 페이지를 새로고침 후 다시 시도해주세요.');
+            window.addProductInProgress = false;
         }
     }
 }

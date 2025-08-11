@@ -414,26 +414,41 @@ class ProductManager {
                 const categoryValue = String(productData.category_code_seq);
                 console.log('🔧 제품구분 설정 시도:', categoryValue, typeof categoryValue);
                 
-                $('#prod_group_code_seq').val(categoryValue).trigger('change');
+                // 옵션 존재 확인
+                const categorySelect = $('#prod_group_code_seq');
+                const categoryOptions = categorySelect.find('option');
+                console.log('📋 제품구분 셀렉트박스:', categorySelect.length > 0 ? '존재' : '없음');
+                console.log('📋 제품구분 옵션 개수:', categoryOptions.length);
+                console.log('📋 제품구분 옵션들:', categoryOptions.map(function() { return $(this).val() + ':' + $(this).text(); }).get());
+                
+                if (categoryOptions.length <= 1) {
+                    console.error('❌ 제품구분 옵션이 로드되지 않았습니다! 기본 옵션만 존재');
+                    return;
+                }
+                
+                // 해당 값이 옵션에 있는지 확인
+                const targetOption = categorySelect.find(`option[value="${categoryValue}"]`);
+                console.log('🎯 찾는 제품구분 옵션:', targetOption.length > 0 ? targetOption.text() : '없음');
+                
+                if (targetOption.length === 0) {
+                    console.error('❌ 제품구분 옵션에서 값을 찾을 수 없습니다:', categoryValue);
+                    return;
+                }
+                
+                categorySelect.val(categoryValue).trigger('change');
                 console.log('🔥 제품구분 코드 강제 적용:', categoryValue);
                 
                 // 강제 확인
-                const currentVal = $('#prod_group_code_seq').val();
+                const currentVal = categorySelect.val();
                 if (currentVal != categoryValue) {
                     console.warn('⚠️ 제품구분 재시도. 기대값:', categoryValue, '현재값:', currentVal);
-                    $('#prod_group_code_seq option').each(function() {
-                        const optionVal = String($(this).val());
-                        if (optionVal === categoryValue) {
-                            $(this).prop('selected', true);
-                            console.log('✅ 제품구분 옵션 강제 선택:', $(this).text());
-                        } else {
-                            $(this).prop('selected', false);
-                        }
-                    });
+                    targetOption.prop('selected', true);
+                    categorySelect.trigger('change');
+                    console.log('✅ 제품구분 옵션 강제 선택:', targetOption.text());
                 } else {
                     console.log('✅ 제품구분 선택 성공:', currentVal);
                 }
-            }, 200);
+            }, 350);
         }
         
         // 🔥 품목(PRD) 코드 강제 selected
@@ -442,26 +457,41 @@ class ProductManager {
                 const prdValue = String(productData.category_code_seq);
                 console.log('🔧 품목(PRD) 설정 시도:', prdValue, typeof prdValue);
                 
-                $('#prod_code_seq').val(prdValue).trigger('change');
+                // 옵션 존재 확인
+                const prdSelect = $('#prod_code_seq');
+                const prdOptions = prdSelect.find('option');
+                console.log('📋 품목 셀렉트박스:', prdSelect.length > 0 ? '존재' : '없음');
+                console.log('📋 품목 옵션 개수:', prdOptions.length);
+                console.log('📋 품목 옵션들:', prdOptions.map(function() { return $(this).val() + ':' + $(this).text(); }).get());
+                
+                if (prdOptions.length <= 1) {
+                    console.error('❌ 품목 옵션이 로드되지 않았습니다! 기본 옵션만 존재');
+                    return;
+                }
+                
+                // 해당 값이 옵션에 있는지 확인
+                const targetOption = prdSelect.find(`option[value="${prdValue}"]`);
+                console.log('🎯 찾는 품목 옵션:', targetOption.length > 0 ? targetOption.text() : '없음');
+                
+                if (targetOption.length === 0) {
+                    console.error('❌ 품목 옵션에서 값을 찾을 수 없습니다:', prdValue);
+                    return;
+                }
+                
+                prdSelect.val(prdValue).trigger('change');
                 console.log('🔥 품목(PRD) 코드 강제 적용:', prdValue);
                 
                 // 강제 확인
-                const currentVal = $('#prod_code_seq').val();
+                const currentVal = prdSelect.val();
                 if (currentVal != prdValue) {
                     console.warn('⚠️ 품목 재시도. 기대값:', prdValue, '현재값:', currentVal);
-                    $('#prod_code_seq option').each(function() {
-                        const optionVal = String($(this).val());
-                        if (optionVal === prdValue) {
-                            $(this).prop('selected', true);
-                            console.log('✅ 품목 옵션 강제 선택:', $(this).text());
-                        } else {
-                            $(this).prop('selected', false);
-                        }
-                    });
+                    targetOption.prop('selected', true);
+                    prdSelect.trigger('change');
+                    console.log('✅ 품목 옵션 강제 선택:', targetOption.text());
                 } else {
                     console.log('✅ 품목 선택 성공:', currentVal);
                 }
-            }, 300);
+            }, 400);
             
             // 품목 선택 후 하위 타입 로드 및 강제 선택
             try {
@@ -473,26 +503,41 @@ class ProductManager {
                         const typeValue = String(productData.type_code_seq);
                         console.log('🔧 타입 설정 시도:', typeValue, typeof typeValue);
                         
-                        $('#prod_type_code_seq').val(typeValue).trigger('change');
+                        // 옵션 존재 확인
+                        const typeSelect = $('#prod_type_code_seq');
+                        const typeOptions = typeSelect.find('option');
+                        console.log('📋 타입 셀렉트박스:', typeSelect.length > 0 ? '존재' : '없음');
+                        console.log('📋 타입 옵션 개수:', typeOptions.length);
+                        console.log('📋 타입 옵션들:', typeOptions.map(function() { return $(this).val() + ':' + $(this).text(); }).get());
+                        
+                        if (typeOptions.length <= 1) {
+                            console.error('❌ 타입 옵션이 로드되지 않았습니다! 기본 옵션만 존재');
+                            return;
+                        }
+                        
+                        // 해당 값이 옵션에 있는지 확인
+                        const targetOption = typeSelect.find(`option[value="${typeValue}"]`);
+                        console.log('🎯 찾는 타입 옵션:', targetOption.length > 0 ? targetOption.text() : '없음');
+                        
+                        if (targetOption.length === 0) {
+                            console.error('❌ 타입 옵션에서 값을 찾을 수 없습니다:', typeValue);
+                            return;
+                        }
+                        
+                        typeSelect.val(typeValue).trigger('change');
                         console.log('🔥 타입 코드 강제 적용:', typeValue);
                         
                         // 강제 확인
-                        const currentVal = $('#prod_type_code_seq').val();
+                        const currentVal = typeSelect.val();
                         if (currentVal != typeValue) {
                             console.warn('⚠️ 타입 재시도. 기대값:', typeValue, '현재값:', currentVal);
-                            $('#prod_type_code_seq option').each(function() {
-                                const optionVal = String($(this).val());
-                                if (optionVal === typeValue) {
-                                    $(this).prop('selected', true);
-                                    console.log('✅ 타입 옵션 강제 선택:', $(this).text());
-                                } else {
-                                    $(this).prop('selected', false);
-                                }
-                            });
+                            targetOption.prop('selected', true);
+                            typeSelect.trigger('change');
+                            console.log('✅ 타입 옵션 강제 선택:', targetOption.text());
                         } else {
                             console.log('✅ 타입 선택 성공:', currentVal);
                         }
-                    }, 500);
+                    }, 600);
                 }
             } catch (error) {
                 console.error('❌ 타입 로드 실패:', error);
@@ -505,26 +550,41 @@ class ProductManager {
                 const yearValue = String(productData.year_code_seq);
                 console.log('🔧 년식 설정 시도:', yearValue, typeof yearValue);
                 
-                $('#year_code_seq').val(yearValue).trigger('change');
+                // 옵션 존재 확인
+                const yearSelect = $('#year_code_seq');
+                const yearOptions = yearSelect.find('option');
+                console.log('📋 년식 셀렉트박스:', yearSelect.length > 0 ? '존재' : '없음');
+                console.log('📋 년식 옵션 개수:', yearOptions.length);
+                console.log('📋 년식 옵션들:', yearOptions.map(function() { return $(this).val() + ':' + $(this).text(); }).get());
+                
+                if (yearOptions.length <= 1) {
+                    console.error('❌ 년식 옵션이 로드되지 않았습니다! 기본 옵션만 존재');
+                    return;
+                }
+                
+                // 해당 값이 옵션에 있는지 확인
+                const targetOption = yearSelect.find(`option[value="${yearValue}"]`);
+                console.log('🎯 찾는 년식 옵션:', targetOption.length > 0 ? targetOption.text() : '없음');
+                
+                if (targetOption.length === 0) {
+                    console.error('❌ 년식 옵션에서 값을 찾을 수 없습니다:', yearValue);
+                    return;
+                }
+                
+                yearSelect.val(yearValue).trigger('change');
                 console.log('🔥 년식 코드 강제 적용:', yearValue);
                 
                 // 강제 확인
-                const currentVal = $('#year_code_seq').val();
+                const currentVal = yearSelect.val();
                 if (currentVal != yearValue) {
                     console.warn('⚠️ 년식 재시도. 기대값:', yearValue, '현재값:', currentVal);
-                    $('#year_code_seq option').each(function() {
-                        const optionVal = String($(this).val());
-                        if (optionVal === yearValue) {
-                            $(this).prop('selected', true);
-                            console.log('✅ 년식 옵션 강제 선택:', $(this).text());
-                        } else {
-                            $(this).prop('selected', false);
-                        }
-                    });
+                    targetOption.prop('selected', true);
+                    yearSelect.trigger('change');
+                    console.log('✅ 년식 옵션 강제 선택:', targetOption.text());
                 } else {
                     console.log('✅ 년식 선택 성공:', currentVal);
                 }
-            }, 400);
+            }, 500);
         }
         
         // 기존 자사코드들 로드 (tbl_Product_DTL 연동)
