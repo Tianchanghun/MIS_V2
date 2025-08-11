@@ -31,25 +31,37 @@ class ProductListManager {
      * 이벤트 바인딩
      */
     bindEvents() {
-        // 검색 입력 이벤트
-        $('#searchInput').on('keyup', this.debounce(() => {
+        // 실시간 검색 입력 이벤트 (debounce 시간 단축)
+        $('#searchInput').on('input keyup', this.debounce(() => {
+            console.log('🔍 실시간 검색 시작:', $('#searchInput').val());
             this.searchProducts();
-        }, 300));
+        }, 200)); // 300ms에서 200ms로 단축
         
-        // 필터 변경 이벤트
+        // PRD 품목 필터 변경 시 타입 코드 동적 로드
+        $('#productCodeFilter').on('change', () => {
+            const selectedPrdSeq = $('#productCodeFilter').val();
+            console.log('📦 PRD 품목 선택:', selectedPrdSeq);
+            this.loadTypeCodesByProduct(selectedPrdSeq);
+            this.searchProducts();
+        });
+        
+        // 필터 변경 이벤트 (기존 + PRD/타입 추가)
         $('#brandFilter, #categoryFilter, #statusFilter, #typeFilter, #yearFilter').on('change', () => {
+            console.log('🔧 필터 변경됨');
             this.searchProducts();
         });
         
-        // 고급 필터 이벤트
-        $('#colorFilter, #divTypeFilter, #productCodeFilter').on('change', () => {
+        // 고급 필터 이벤트 (색상 코드 CR 연동)
+        $('#colorFilter, #divTypeFilter').on('change', () => {
+            console.log('🎨 고급 필터 변경됨');
             this.searchProducts();
         });
         
-        // 자가코드 검색
-        $('#stdCodeFilter').on('keyup', this.debounce(() => {
+        // 자가코드 실시간 검색
+        $('#stdCodeFilter').on('input keyup', this.debounce(() => {
+            console.log('🏷️ 자가코드 검색:', $('#stdCodeFilter').val());
             this.searchProducts();
-        }, 300));
+        }, 200));
         
         // 정렬 변경
         $('#sortSelect').on('change', () => {
@@ -59,6 +71,14 @@ class ProductListManager {
         // 페이지당 표시 개수 변경
         $('[onchange="changePerPage(this.value)"]').on('change', (e) => {
             this.changePerPage($(e.target).val());
+        });
+        
+        // Enter 키 즉시 검색
+        $('#searchInput').on('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.searchProducts();
+            }
         });
     }
     
@@ -511,6 +531,42 @@ class ProductListManager {
             clearTimeout(timeout);
             timeout = setTimeout(later, wait);
         };
+    }
+
+    /**
+     * PRD 품목 선택에 따른 타입 코드 동적 로드
+     */
+    async loadTypeCodesByProduct(productSeq) {
+        try {
+            if (!productSeq) {
+                // 품목이 선택되지 않으면 타입 코드 초기화
+                $('#typeFilter').html('<option value="">전체</option>');
+                return;
+            }
+            
+            console.log('🔗 타입 코드 로드 시작:', productSeq);
+            
+            const response = await AjaxHelper.get('/admin/api/codes/children', {
+                parent_seq: productSeq
+            });
+            
+            if (response.success) {
+                const typeFilterSelect = $('#typeFilter');
+                typeFilterSelect.html('<option value="">전체</option>');
+                
+                response.data.forEach(typeCode => {
+                    typeFilterSelect.append(
+                        `<option value="${typeCode.seq}">${typeCode.code_name} (${typeCode.code})</option>`
+                    );
+                });
+                
+                console.log('✅ 타입 코드 로드 완료:', response.data.length + '개');
+            } else {
+                console.warn('⚠️ 타입 코드 로드 실패:', response.message);
+            }
+        } catch (error) {
+            console.error('❌ 타입 코드 로드 에러:', error);
+        }
     }
 }
 

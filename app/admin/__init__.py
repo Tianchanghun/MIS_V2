@@ -379,6 +379,85 @@ def get_child_codes():
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
 
+@admin_bp.route('/api/codes/children', methods=['GET'])
+def get_children_codes():
+    """상위 코드의 하위 코드들 조회"""
+    if 'member_seq' not in session:
+        return redirect('/auth/login')
+    
+    try:
+        parent_seq = request.args.get('parent_seq', type=int)
+        
+        if not parent_seq:
+            return jsonify({'success': False, 'message': '상위 코드 번호가 필요합니다.'})
+        
+        # 하위 코드들 조회
+        children_codes = Code.query.filter_by(parent_seq=parent_seq).order_by(Code.sort.asc(), Code.seq.asc()).all()
+        
+        children_data = []
+        for code in children_codes:
+            children_data.append({
+                'seq': code.seq,
+                'code': code.code,
+                'code_name': code.code_name,
+                'code_info': code.code_info,
+                'depth': code.depth,
+                'sort': code.sort,
+                'parent_seq': code.parent_seq
+            })
+        
+        return jsonify({
+            'success': True,
+            'data': children_data,
+            'count': len(children_data)
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"하위 코드 조회 실패: {e}")
+        return jsonify({'success': False, 'message': f'하위 코드 조회 중 오류가 발생했습니다: {str(e)}'})
+
+@admin_bp.route('/api/codes/group/<group_name>')
+def get_codes_by_group(group_name):
+    """그룹명으로 코드 조회 (PRD, CR 등)"""
+    if 'member_seq' not in session:
+        return redirect('/auth/login')
+    
+    try:
+        # 그룹 코드 조회 (최상위 코드)
+        group_code = Code.query.filter_by(code=group_name, depth=0).first()
+        
+        if not group_code:
+            return jsonify({'success': False, 'message': f'{group_name} 그룹을 찾을 수 없습니다.'})
+        
+        # 해당 그룹의 하위 코드들 조회
+        codes = Code.query.filter_by(parent_seq=group_code.seq).order_by(Code.sort.asc(), Code.seq.asc()).all()
+        
+        codes_data = []
+        for code in codes:
+            codes_data.append({
+                'seq': code.seq,
+                'code': code.code,
+                'code_name': code.code_name,
+                'code_info': code.code_info,
+                'depth': code.depth,
+                'sort': code.sort,
+                'parent_seq': code.parent_seq
+            })
+        
+        return jsonify({
+            'success': True,
+            'data': codes_data,
+            'group': {
+                'seq': group_code.seq,
+                'code': group_code.code,
+                'code_name': group_code.code_name
+            }
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"그룹 코드 조회 실패: {e}")
+        return jsonify({'success': False, 'message': f'코드 조회 중 오류가 발생했습니다: {str(e)}'})
+
 @admin_bp.route('/api/codes/update', methods=['POST'])
 def update_code():
     """코드 수정"""

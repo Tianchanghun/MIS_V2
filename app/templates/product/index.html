@@ -192,8 +192,9 @@ th:hover {
                     <label for="searchInput" class="form-label">
                         <i class="fas fa-search me-1"></i>통합검색
                     </label>
-                        <input type="text" class="form-control" id="searchInput" 
-                           placeholder="상품명, 코드, 브랜드명...">
+                    <input type="text" class="form-control" id="searchInput" 
+                           placeholder="상품명, 코드, 브랜드명... (실시간 검색)"
+                           autocomplete="off">
                 </div>
                 <div class="col-md-2">
                     <label for="companyFilter" class="form-label">회사</label>
@@ -213,11 +214,49 @@ th:hover {
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <label for="categoryFilter" class="form-label">품목</label>
-                    <select class="form-select" id="categoryFilter">
+                    <label for="productCodeFilter" class="form-label">
+                        <i class="fas fa-cube me-1"></i>품목 (PRD)
+                    </label>
+                    <select class="form-select" id="productCodeFilter">
                         <option value="">전체</option>
-                        {% for category in category_codes %}
-                        <option value="{{ category.seq }}">{{ category.code_name }}</option>
+                        {% for product in product_codes %}
+                        <option value="{{ product.seq }}">{{ product.code_name }} ({{ product.code }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="typeFilter" class="form-label">타입</label>
+                    <select class="form-select" id="typeFilter">
+                        <option value="">전체</option>
+                        <!-- 품목 선택 시 동적으로 로드됨 -->
+                    </select>
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button type="button" class="btn btn-outline-light btn-sm w-100" onclick="resetFilters()" title="필터 초기화">
+                        <i class="fas fa-refresh"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 확장 필터 (2행) -->
+            <div class="row g-2 mt-1">
+                <div class="col-md-2">
+                    <label for="colorFilter" class="form-label">
+                        <i class="fas fa-palette me-1"></i>색상 (CR)
+                    </label>
+                    <select class="form-select" id="colorFilter">
+                        <option value="">전체</option>
+                        {% for color in color_codes %}
+                        <option value="{{ color.seq }}">{{ color.code_name }} ({{ color.code }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="yearFilter" class="form-label">년도</label>
+                    <select class="form-select" id="yearFilter">
+                        <option value="">전체</option>
+                        {% for year in year_codes %}
+                        <option value="{{ year.seq }}">{{ year.code_name }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -229,10 +268,19 @@ th:hover {
                         <option value="false">비활성</option>
                     </select>
                 </div>
-                <div class="col-md-1 d-flex align-items-end">
-                    <button type="button" class="btn btn-outline-light btn-sm w-100" onclick="resetFilters()">
-                        <i class="fas fa-refresh"></i>
-                    </button>
+                <div class="col-md-3">
+                    <label for="stdCodeFilter" class="form-label">
+                        <i class="fas fa-barcode me-1"></i>자가코드 검색
+                    </label>
+                    <input type="text" class="form-control" id="stdCodeFilter" 
+                           placeholder="16자리 자가코드 검색..."
+                           autocomplete="off">
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <small class="text-light">
+                        <i class="fas fa-info-circle me-1"></i>
+                        PRD 품목 선택 시 타입이 자동으로 로드됩니다 (ERPia 연동 없음)
+                    </small>
                 </div>
             </div>
         </div>
@@ -432,21 +480,25 @@ th:hover {
                             </div>
                             
                             <div class="col-md-4">
-                                <label for="prod_code_seq" class="form-label">품목 <span class="required">*</span></label>
+                                <label for="prod_code_seq" class="form-label">
+                                    <i class="fas fa-cube me-1"></i>품목 (PRD) <span class="required">*</span>
+                                </label>
                                 <select class="form-select" id="prod_code_seq" name="prod_code_seq" required>
-                                    <option value="">선택하세요</option>
+                                    <option value="">품목을 선택하세요</option>
                                     {% for product in product_codes %}
-                                    <option value="{{ product.seq }}">{{ product.code_name }}</option>
+                                    <option value="{{ product.seq }}" data-code="{{ product.code }}">{{ product.code_name }} ({{ product.code }})</option>
                                     {% endfor %}
                                 </select>
+                                <small class="text-muted">ERPia 연동 없이 자체 관리됩니다</small>
                             </div>
                             
                             <div class="col-md-4">
                                 <label for="prod_type_code_seq" class="form-label">타입 <span class="required">*</span></label>
                                 <select class="form-select" id="prod_type_code_seq" name="prod_type_code_seq" required>
-                                    <option value="">선택하세요</option>
+                                    <option value="">품목을 먼저 선택하세요</option>
                                     <!-- 품목 선택 시 동적으로 로드됨 -->
                                 </select>
+                                <small class="text-muted">품목 선택 후 자동 로드</small>
                             </div>
                         </div>
                         
@@ -454,7 +506,8 @@ th:hover {
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="product_name" class="form-label">상품명 <span class="required">*</span></label>
-                                    <input type="text" class="form-control" id="product_name" name="product_name" required>
+                                    <input type="text" class="form-control" id="product_name" name="product_name" required 
+                                           placeholder="상품명을 입력하세요">
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -470,90 +523,111 @@ th:hover {
                             </div>
                         </div>
                         
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="price" class="form-label">상품가격(Tag) <span class="required">*</span></label>
-                                    <input type="number" class="form-control" id="price" name="price" required>
+                        <!-- 제품 세부 정보 (tbl_Product_DTL 연동) -->
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-cogs me-2"></i>제품 모델 정보 (tbl_Product_DTL)
+                                </h6>
                             </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                    <label for="use_yn" class="form-label">사용여부 <span class="required">*</span></label>
-                                    <select class="form-control" id="use_yn" name="use_yn" required>
-                                        <option value="Y">사용</option>
-                                        <option value="N">미사용</option>
-                                </select>
-                            </div>
-                        </div>
-                        </div>
-                        
-                        <!-- 히든 필드: 구분타입 "일반"으로 고정 -->
-                        <input type="hidden" id="div_type_code_seq" name="div_type_code_seq" value="">
-                        
-                        <!-- 구분선 -->
-                        <hr class="my-4">
-                        
-                        <!-- 2단계: 제품 모델 등록 -->
-                        <div class="bg-primary text-white p-2 mb-3">
-                            <h6 class="mb-0"><i class="fas fa-cubes me-2"></i>제품 모델 등록</h6>
-                        </div>
-                        
-                        <!-- 기존 자사코드 목록 표시 (수정 모드에서만) -->
-                        <div id="existingProductModels" style="display: none;">
-                            <!-- 동적으로 로드됨 -->
-                        </div>
-                        
-                        <div id="productModelsContainer">
-                            <div class="product-model-item border p-3 mb-3" data-index="0">
-                                <div class="row">
-                                    <div class="col-md-4">
-                                        <div class="mb-3">
-                                            <label class="form-label">색상 <span class="required">*</span></label>
-                                            <select class="form-control color-code" name="color_code[]" required>
-                                                <option value="">선택하세요</option>
-                                                {% for color in color_codes %}
-                                                <option value="{{ color.code }}" data-seq="{{ color.seq }}">{{ color.code_name }} ({{ color.code }})</option>
-                                                {% endfor %}
-                                            </select>
+                            <div class="card-body">
+                                <div id="productModelsContainer">
+                                    <!-- 제품 모델 템플릿이 여기에 추가됨 -->
+                                    <div class="product-model-item border p-3 mb-3" data-index="0">
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <div class="mb-3">
+                                                    <label class="form-label">
+                                                        <i class="fas fa-palette me-1"></i>색상 (CR) <span class="required">*</span>
+                                                    </label>
+                                                    <select class="form-select color-code" name="color_code[]" required>
+                                                        <option value="">색상을 선택하세요</option>
+                                                        {% for color in color_codes %}
+                                                        <option value="{{ color.seq }}" data-code="{{ color.code }}">{{ color.code_name }} ({{ color.code }})</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                    <small class="text-muted">CR 코드 그룹에서 관리</small>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="col-md-4">
+                                                <div class="mb-3">
+                                                    <label class="form-label">제품명 (색상별)</label>
+                                                    <input type="text" class="form-control product-model-name" 
+                                                           name="product_model_name[]" 
+                                                           placeholder="색상별 제품명 (선택사항)">
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="col-md-4">
+                                                <div class="mb-3">
+                                                    <label class="form-label">16자리 자가코드</label>
+                                                    <div class="input-group">
+                                                        <input type="text" class="form-control std-product-code" 
+                                                               name="std_product_code[]" 
+                                                               placeholder="자동생성됨" readonly>
+                                                        <button type="button" class="btn btn-primary btn-generate-code" title="선택된 코드 기준으로 생성">
+                                                            <i class="fas fa-magic"></i> 자동생성
+                                                        </button>
+                                                    </div>
+                                                    <small class="text-muted">선택된 코드들 기준으로 자동 생성</small>
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
-                                    
-                                    <div class="col-md-4">
-                                        <div class="mb-3">
-                                            <label class="form-label">제품명</label>
-                                            <input type="text" class="form-control product-model-name" name="product_model_name[]" placeholder="색상별 제품명 (선택사항)">
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="col-md-4">
-                                        <div class="mb-3">
-                                            <label class="form-label">자사코드</label>
-                                            <div class="input-group">
-                                                <input type="text" class="form-control std-product-code" name="std_product_code[]" placeholder="자동생성됨" readonly>
-                                                <button type="button" class="btn btn-primary btn-generate-code">자동생성</button>
+                                        
+                                        <div class="row">
+                                            <div class="col-md-10"></div>
+                                            <div class="col-md-2">
+                                                <button type="button" class="btn btn-outline-danger btn-sm btn-remove-model w-100">
+                                                    <i class="fas fa-times me-1"></i>제거
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                                 
+                                <div class="text-end mt-2">
+                                    <button type="button" class="btn btn-outline-primary btn-sm" id="addProductModelBtn">
+                                        <i class="fas fa-plus me-1"></i>색상 모델 추가
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 기본 상품 정보 (tbl_Product) -->
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-tag me-2"></i>기본 상품 정보 (tbl_Product)
+                                </h6>
+                            </div>
+                            <div class="card-body">
                                 <div class="row">
-                                    <div class="col-md-10"></div>
-                                    <div class="col-md-2">
-                                        <button type="button" class="btn btn-outline-danger btn-sm btn-remove-model w-100">
-                                            <i class="fas fa-times me-1"></i>제거
-                                        </button>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="price" class="form-label">상품가격(Tag) <span class="required">*</span></label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">₩</span>
+                                                <input type="number" class="form-control" id="price" name="price" 
+                                                       required min="0" placeholder="0">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="use_yn" class="form-label">사용여부 <span class="required">*</span></label>
+                                            <select class="form-select" id="use_yn" name="use_yn" required>
+                                                <option value="Y" selected>사용</option>
+                                                <option value="N">미사용</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                         
-                        <!-- 자사코드 추가 버튼 -->
-                        <div class="text-center mb-3">
-                            <button type="button" class="btn btn-outline-primary" id="addProductModelBtn">
-                                <i class="fas fa-plus me-1"></i>자사코드 추가
-                            </button>
-                        </div>
+                        <!-- 히든 필드: 구분타입 "일반"으로 고정 -->
+                        <input type="hidden" id="div_type_code_seq" name="div_type_code_seq" value="">
                         
                         <!-- 추가 정보 (선택사항) -->
                         <hr class="my-4">
@@ -624,6 +698,13 @@ $(document).ready(function() {
 
 // 모달 이벤트 설정
 function setupModalEvents() {
+    // PRD 품목 선택 시 타입 코드 동적 로드
+    $('#prod_code_seq').on('change', function() {
+        const selectedPrdSeq = $(this).val();
+        console.log('📦 모달에서 PRD 품목 선택:', selectedPrdSeq);
+        loadTypeCodesForModal(selectedPrdSeq);
+    });
+    
     // 제품 모델 추가 버튼
     $('#addProductModelBtn').on('click', function() {
         addProductModel();
@@ -643,11 +724,60 @@ function setupModalEvents() {
         }
     });
     
-    // 자사코드 생성 버튼 (이벤트 위임)
+    // 자가코드 생성 버튼 (이벤트 위임) - 레거시 방식 적용
     $(document).on('click', '.btn-generate-code', function() {
         const stdCodeInput = $(this).siblings('.std-product-code');
-        generateStdCode(stdCodeInput);
+        generateStdCodeFromSelection(stdCodeInput);
     });
+    
+    // 색상 선택 시 자동으로 제품명 업데이트
+    $(document).on('change', '.color-code', function() {
+        const selectedColorName = $(this).find('option:selected').text();
+        const productModelName = $(this).closest('.product-model-item').find('.product-model-name');
+        const baseProductName = $('#product_name').val();
+        
+        if (baseProductName && selectedColorName && selectedColorName !== '색상을 선택하세요') {
+            const colorName = selectedColorName.split('(')[0].trim(); // 코드 부분 제거
+            productModelName.val(baseProductName + ' - ' + colorName);
+        }
+    });
+}
+
+// 모달용 타입 코드 로드
+async function loadTypeCodesForModal(productSeq) {
+    try {
+        const typeSelect = $('#prod_type_code_seq');
+        typeSelect.html('<option value="">로딩 중...</option>');
+        
+        if (!productSeq) {
+            typeSelect.html('<option value="">품목을 먼저 선택하세요</option>');
+            return;
+        }
+        
+        console.log('🔗 모달 타입 코드 로드 시작:', productSeq);
+        
+        const response = await AjaxHelper.get('/admin/api/codes/children', {
+            parent_seq: productSeq
+        });
+        
+        if (response.success) {
+            typeSelect.html('<option value="">타입을 선택하세요</option>');
+            
+            response.data.forEach(typeCode => {
+                typeSelect.append(
+                    `<option value="${typeCode.seq}" data-code="${typeCode.code}">${typeCode.code_name} (${typeCode.code})</option>`
+                );
+            });
+            
+            console.log('✅ 모달 타입 코드 로드 완료:', response.data.length + '개');
+        } else {
+            typeSelect.html('<option value="">타입 코드 로드 실패</option>');
+            console.warn('⚠️ 모달 타입 코드 로드 실패:', response.message);
+        }
+    } catch (error) {
+        console.error('❌ 모달 타입 코드 로드 에러:', error);
+        $('#prod_type_code_seq').html('<option value="">로드 오류</option>');
+    }
 }
 
 // 제품 모델 추가
@@ -660,29 +790,38 @@ function addProductModel() {
             <div class="row">
                 <div class="col-md-4">
                     <div class="mb-3">
-                        <label class="form-label">색상 <span class="required">*</span></label>
-                        <select class="form-control color-code" name="color_code[]" required>
-                            <option value="">선택하세요</option>
+                        <label class="form-label">
+                            <i class="fas fa-palette me-1"></i>색상 (CR) <span class="required">*</span>
+                        </label>
+                        <select class="form-select color-code" name="color_code[]" required>
+                            <option value="">색상을 선택하세요</option>
                             {% for color in color_codes %}
-                            <option value="{{ color.code }}" data-seq="{{ color.seq }}">{{ color.code_name }} ({{ color.code }})</option>
+                            <option value="{{ color.seq }}" data-code="{{ color.code }}">{{ color.code_name }} ({{ color.code }})</option>
                             {% endfor %}
                         </select>
+                        <small class="text-muted">CR 코드 그룹에서 관리</small>
                     </div>
                 </div>
                 
                 <div class="col-md-4">
                     <div class="mb-3">
-                        <label class="form-label">제품명</label>
-                        <input type="text" class="form-control product-model-name" name="product_model_name[]" placeholder="색상별 제품명 (선택사항)">
+                        <label class="form-label">제품명 (색상별)</label>
+                        <input type="text" class="form-control product-model-name" 
+                               name="product_model_name[]" 
+                               placeholder="색상별 제품명 (선택사항)">
                     </div>
                 </div>
                 
                 <div class="col-md-4">
                     <div class="mb-3">
-                        <label class="form-label">자사코드</label>
+                        <label class="form-label">16자리 자가코드</label>
                         <div class="input-group">
-                            <input type="text" class="form-control std-product-code" name="std_product_code[]" placeholder="자동생성됨" readonly>
-                            <button type="button" class="btn btn-primary btn-generate-code">자동생성</button>
+                            <input type="text" class="form-control std-product-code" 
+                                   name="std_product_code[]" 
+                                   placeholder="자동생성됨" readonly>
+                            <button type="button" class="btn btn-primary btn-generate-code" title="선택된 코드 기준으로 생성">
+                                <i class="fas fa-magic"></i> 자동생성
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -709,12 +848,69 @@ function updateModelIndices() {
     });
 }
 
-// 자사코드 생성 (간단 버전)
-function generateStdCode(inputElement) {
-    // 16자리 랜덤 코드 생성 (실제로는 비즈니스 로직에 따라 생성)
-    const randomCode = 'A' + Date.now().toString().slice(-15);
-    inputElement.val(randomCode);
-    UIHelper.showAlert('자사코드가 생성되었습니다', 'success');
+// 레거시 방식에 따른 자가코드 생성 (선택된 코드 기준)
+function generateStdCodeFromSelection(inputElement) {
+    try {
+        // 선택된 코드들 수집
+        const brandSeq = $('#brand_code_seq').val();
+        const prodGroupSeq = $('#prod_group_code_seq').val();
+        const prodCodeSeq = $('#prod_code_seq').val();
+        const prodTypeSeq = $('#prod_type_code_seq').val();
+        const yearSeq = $('#year_code_seq').val();
+        
+        // 현재 모델의 색상 코드
+        const colorSeq = inputElement.closest('.product-model-item').find('.color-code').val();
+        
+        if (!brandSeq || !prodGroupSeq || !prodCodeSeq || !prodTypeSeq || !yearSeq || !colorSeq) {
+            UIHelper.showAlert('모든 필수 코드를 먼저 선택해주세요', 'warning');
+            return;
+        }
+        
+        console.log('🔧 자가코드 생성 시작:', {
+            brandSeq, prodGroupSeq, prodCodeSeq, prodTypeSeq, yearSeq, colorSeq
+        });
+        
+        // 서버에 코드 조합 요청
+        generateCodeFromServer({
+            brandSeq, prodGroupSeq, prodCodeSeq, prodTypeSeq, yearSeq, colorSeq
+        }).then(generatedCode => {
+            inputElement.val(generatedCode);
+            UIHelper.showAlert('자가코드가 생성되었습니다: ' + generatedCode, 'success');
+        }).catch(error => {
+            console.error('❌ 자가코드 생성 실패:', error);
+            // 실패 시 임시 코드 생성
+            const tempCode = generateTempCode();
+            inputElement.val(tempCode);
+            UIHelper.showAlert('임시 자가코드가 생성되었습니다: ' + tempCode, 'warning');
+        });
+        
+    } catch (error) {
+        console.error('❌ 자가코드 생성 오류:', error);
+        UIHelper.showAlert('자가코드 생성 중 오류가 발생했습니다', 'error');
+    }
+}
+
+// 서버에서 레거시 방식으로 코드 생성
+async function generateCodeFromServer(codeData) {
+    try {
+        const response = await AjaxHelper.post('/product/api/generate-code', codeData);
+        
+        if (response.success) {
+            return response.generated_code;
+        } else {
+            throw new Error(response.message || '코드 생성 실패');
+        }
+    } catch (error) {
+        console.error('❌ 서버 코드 생성 실패:', error);
+        throw error;
+    }
+}
+
+// 임시 코드 생성 (16자리)
+function generateTempCode() {
+    const timestamp = Date.now().toString();
+    const random = Math.random().toString(36).substring(2, 8);
+    return (timestamp + random).substring(0, 16).toUpperCase();
 }
 
 // 스크롤 네비게이션 함수들
