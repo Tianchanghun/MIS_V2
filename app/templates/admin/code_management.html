@@ -93,7 +93,7 @@
         background-color: #bbdefb !important;
     }
     
-    /* TableDnD 드래그 시 스타일 대폭 강화 */
+    /* HTML5 드래그 앤 드롭 시각적 효과 강화 */
     .tDnD_whileDrag {
         background-color: #fff3cd !important;
         border: 3px solid #ffc107 !important;
@@ -516,23 +516,8 @@ $(document).ready(function() {
         // 3. 통계 업데이트
         updateStatistics();
         
-        // 4. TableDnD 드래그 앤 드롭 초기화 (지연 로딩)
-        setTimeout(function() {
-            if (typeof $.fn.tableDnD === 'function') {
-                initializeTableDnD();
-                console.log('✅ TableDnD 초기화 완료');
-            } else {
-                console.warn('⚠️ TableDnD 라이브러리가 로드되지 않았습니다');
-                // 다시 시도
-                setTimeout(function() {
-                    if (typeof $.fn.tableDnD === 'function') {
-                        initializeTableDnD();
-                    } else {
-                        console.error('❌ TableDnD 로드 실패');
-                    }
-                }, 1000);
-            }
-        }, 500);
+        // 4. HTML5 네이티브 드래그 앤 드롭 초기화
+        initializeHTML5DragDrop();
         
         console.log('✅ 코드 관리 초기화 완료');
         
@@ -694,7 +679,7 @@ function hideChildren(parentSeq) {
 }
 
 // HTML5 네이티브 드래그 앤 드롭 구현 (TableDnD 대신)
-function initializeTableDnD() {
+function initializeHTML5DragDrop() {
     console.log('🔧 HTML5 드래그 앤 드롭 초기화 시작...');
     
     // 모든 드래그 가능한 행 설정
