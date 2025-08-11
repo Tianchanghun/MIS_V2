@@ -220,9 +220,28 @@ class ProductListManager {
      * 테이블 행 생성
      */
     createTableRow(product, index) {
+        console.log('🔧 테이블 행 생성:', product.product_name);
+        
         const globalIndex = ((this.currentPage - 1) * this.currentPerPage) + index + 1;
         
-        return `
+        // 가격 포맷팅 (안전하게)
+        let priceDisplay = '미정';
+        if (product.price && product.price > 0) {
+            priceDisplay = parseInt(product.price).toLocaleString() + '원';
+        }
+        
+        // 날짜 포맷팅 (안전하게)
+        let dateDisplay = '-';
+        if (product.created_at) {
+            try {
+                const date = new Date(product.created_at);
+                dateDisplay = date.toLocaleDateString('ko-KR');
+            } catch (e) {
+                dateDisplay = '-';
+            }
+        }
+        
+        const rowHtml = `
             <tr onclick="editProduct(${product.id})" style="cursor: pointer;">
                 <td class="text-center">${globalIndex}</td>
                 <td>
@@ -240,14 +259,14 @@ class ProductListManager {
                 <td>${product.category_name || '미지정'}</td>
                 <td>${product.type_name || '-'}</td>
                 <td>${product.year_code_name || '-'}</td>
-                <td class="price-display">${product.price ? this.formatPrice(product.price) + '원' : '미정'}</td>
+                <td class="price-display">${priceDisplay}</td>
                 <td>
                     <span class="badge ${product.is_active ? 'bg-success' : 'bg-secondary'}">
                         ${product.is_active ? '활성' : '비활성'}
                     </span>
                 </td>
                 <td class="text-center">
-                    <small class="text-muted">${this.formatDate(product.created_at)}</small>
+                    <small class="text-muted">${dateDisplay}</small>
                 </td>
                 <td class="text-center">
                     <div class="btn-group btn-group-sm" role="group">
@@ -265,6 +284,9 @@ class ProductListManager {
                 </td>
             </tr>
         `;
+        
+        console.log('✅ 테이블 행 생성 완료:', globalIndex);
+        return rowHtml;
     }
     
     /**

@@ -349,6 +349,12 @@ body.modal-open {
             <button type="button" class="btn btn-primary" onclick="addProduct()">
                 <i class="fas fa-plus me-1"></i>상품 등록
             </button>
+            
+            <!-- 긴급 테스트 버튼 추가 -->
+            <button type="button" class="btn btn-warning" onclick="testDirectRender()">
+                <i class="fas fa-bug me-1"></i>테스트 렌더링
+            </button>
+            
             <div class="btn-group" role="group">
                 <button type="button" class="btn btn-excel dropdown-toggle" data-bs-toggle="dropdown">
                     <i class="fas fa-file-excel me-1"></i>엑셀
@@ -1104,6 +1110,33 @@ function syncERPia() {
     } else {
         console.error('❌ ProductManager가 초기화되지 않았습니다');
     }
+}
+
+// 긴급 테스트 함수
+function testDirectRender() {
+    console.log('🧪 긴급 테스트: 직접 테이블에 데이터 추가');
+    
+    const newRow = `
+        <tr>
+            <td>1</td>
+            <td>에이원</td>
+            <td>에이원</td>
+            <td>테스트 상품</td>
+            <td>PRD001</td>
+            <td>타입A</td>
+            <td>2023</td>
+            <td>10000</td>
+            <td>Y</td>
+            <td>2023-10-27</td>
+            <td>
+                <button type="button" class="btn btn-sm btn-outline-info me-1" onclick="editProduct(1)">수정</button>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteProduct(1)">삭제</button>
+            </td>
+        </tr>
+    `;
+    
+    $('#productTableBody').append(newRow);
+    UIHelper.showAlert('테스트 데이터가 테이블에 추가되었습니다.', 'success');
 }
 </script>
 {% endblock %} 
