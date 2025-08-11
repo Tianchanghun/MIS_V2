@@ -272,7 +272,7 @@
                         <i class="fas fa-code text-primary"></i> 
                         코드 관리 (레거시 호환)
                     </h5>
-                </div>
+                        </div>
                 <div class="card-body p-0">
                     <!-- 통계 정보 -->
                     <div class="stats-card m-3">
@@ -280,17 +280,17 @@
                             <div class="col">
                                 <h6 class="mb-0" id="total-codes">{{ codes|length }}</h6>
                                 <small>전체 코드</small>
-                            </div>
+                    </div>
                             <div class="col">
                                 <h6 class="mb-0" id="depth-stats">-</h6>
                                 <small>최대 깊이</small>
-                            </div>
+                </div>
                             <div class="col">
                                 <h6 class="mb-0" id="group-count">-</h6>
                                 <small>그룹 수</small>
-                            </div>
-                        </div>
-                    </div>
+            </div>
+        </div>
+    </div>
     
                     <!-- 코드 테이블 -->
                     <div class="table-responsive">
@@ -491,7 +491,7 @@
                     </form>
                 </div>
             </div>
-        </div>
+                </div>
     </div>
 </div>
 
@@ -514,8 +514,8 @@ $(document).ready(function() {
         bindEvents();
         
         // 3. 통계 업데이트
-        updateStatistics();
-        
+    updateStatistics();
+    
         // 4. HTML5 네이티브 드래그 앤 드롭 초기화
         initializeHTML5DragDrop();
         
@@ -844,7 +844,7 @@ function handleNativeDragDrop(draggedSeq, targetSeq) {
                 console.log('✅ 순서 변경 저장 완료');
                 // 성공 알림
                 showNotification('순서가 성공적으로 변경되었습니다.', 'success');
-            } else {
+    } else {
                 alert("순서 변경 저장에 실패했습니다: " + (data.message || ''));
                 location.reload();
             }

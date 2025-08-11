@@ -315,13 +315,12 @@ class ProductListManager {
             searchTerm: $('#searchInput').val().toLowerCase(),
             brandFilter: $('#brandFilter').val(),
             categoryFilter: $('#categoryFilter').val(),
-            statusFilter: $('#statusFilter').val(),
+            productCodeFilter: $('#productCodeFilter').val(),  // PRD 품목 필터
             typeFilter: $('#typeFilter').val(),
+            colorFilter: $('#colorFilter').val(),               // CR 색상 필터
             yearFilter: $('#yearFilter').val(),
-            colorFilter: $('#colorFilter').val(),
-            divTypeFilter: $('#divTypeFilter').val(),
-            productCodeFilter: $('#productCodeFilter').val(),
-            stdCodeFilter: $('#stdCodeFilter').val().toLowerCase()
+            statusFilter: $('#statusFilter').val(),
+            stdCodeFilter: $('#stdCodeFilter').val().toLowerCase()  // 자사코드 검색
         };
     }
     
@@ -329,35 +328,44 @@ class ProductListManager {
      * 필터 적용
      */
     applyFilters(product, filters) {
-        // 검색어 필터
+        // 통합 검색어 필터 (상품명, 코드, 브랜드명, 설명 등)
         const searchMatch = !filters.searchTerm || 
             (product.product_name && product.product_name.toLowerCase().includes(filters.searchTerm)) ||
             (product.product_code && product.product_code.toLowerCase().includes(filters.searchTerm)) ||
-            (product.brand_name && product.brand_name.toLowerCase().includes(filters.searchTerm));
+            (product.brand_name && product.brand_name.toLowerCase().includes(filters.searchTerm)) ||
+            (product.category_name && product.category_name.toLowerCase().includes(filters.searchTerm)) ||
+            (product.type_name && product.type_name.toLowerCase().includes(filters.searchTerm)) ||
+            (product.description && product.description.toLowerCase().includes(filters.searchTerm));
         
         // 브랜드 필터
         const brandMatch = !filters.brandFilter || product.brand_code_seq == filters.brandFilter;
         
-        // 품목 필터
+        // 품목 (카테고리) 필터
         const categoryMatch = !filters.categoryFilter || product.category_code_seq == filters.categoryFilter;
+        
+        // PRD 품목 필터 (새로 추가)
+        const productCodeMatch = !filters.productCodeFilter || product.category_code_seq == filters.productCodeFilter;
+        
+        // 타입 필터
+        const typeMatch = !filters.typeFilter || product.type_code_seq == filters.typeFilter;
+        
+        // 색상 필터 (CR)
+        const colorMatch = !filters.colorFilter || product.color_code_seq == filters.colorFilter;
+        
+        // 년도 필터
+        const yearMatch = !filters.yearFilter || product.year_code_seq == filters.yearFilter;
         
         // 상태 필터
         const statusMatch = !filters.statusFilter || 
             (filters.statusFilter === 'true' && product.is_active) ||
             (filters.statusFilter === 'false' && !product.is_active);
         
-        // 타입 필터
-        const typeMatch = !filters.typeFilter || product.type_code_seq == filters.typeFilter;
-        
-        // 년도 필터
-        const yearMatch = !filters.yearFilter || product.year_code_seq == filters.yearFilter;
-        
         // 자사코드 필터
         const stdCodeMatch = !filters.stdCodeFilter || 
             (product.std_div_prod_code && product.std_div_prod_code.toLowerCase().includes(filters.stdCodeFilter));
         
-        return searchMatch && brandMatch && categoryMatch && statusMatch && 
-               typeMatch && yearMatch && stdCodeMatch;
+        return searchMatch && brandMatch && (categoryMatch || productCodeMatch) && 
+               typeMatch && colorMatch && yearMatch && statusMatch && stdCodeMatch;
     }
     
     /**
