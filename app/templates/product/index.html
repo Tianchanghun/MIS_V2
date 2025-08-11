@@ -237,6 +237,71 @@ body.modal-open {
         align-items: flex-start;
     }
 }
+
+/* 모달 최적화 - 노트북 화면 대응 */
+.modal-dialog.modal-xl {
+    max-width: 95vw !important;
+    width: 95vw !important;
+    margin: 0.5rem auto !important;
+}
+
+.modal-content {
+    max-height: 95vh !important;
+    overflow: hidden !important;
+}
+
+.modal-body {
+    max-height: 75vh !important;
+    overflow-y: auto !important;
+    padding: 1rem !important;
+}
+
+.modal-header {
+    padding: 0.75rem 1rem !important;
+    border-bottom: 1px solid #dee2e6 !important;
+}
+
+.modal-footer {
+    padding: 0.75rem 1rem !important;
+    border-top: 1px solid #dee2e6 !important;
+}
+
+/* 노트북 화면 대응 */
+@media (max-width: 1366px) {
+    .modal-dialog.modal-xl {
+        max-width: 98vw !important;
+        width: 98vw !important;
+        margin: 0.25rem auto !important;
+    }
+    
+    .modal-content {
+        max-height: 98vh !important;
+    }
+    
+    .modal-body {
+        max-height: 80vh !important;
+        padding: 0.75rem !important;
+    }
+}
+
+/* 작은 화면 대응 */
+@media (max-width: 768px) {
+    .modal-dialog.modal-xl {
+        max-width: 100vw !important;
+        width: 100vw !important;
+        margin: 0 !important;
+    }
+    
+    .modal-content {
+        max-height: 100vh !important;
+        border-radius: 0 !important;
+    }
+    
+    .modal-body {
+        max-height: 85vh !important;
+        padding: 0.5rem !important;
+    }
+}
 </style>
 {% endblock %}
 
@@ -422,7 +487,7 @@ body.modal-open {
 
 <!-- 상품 등록/수정 모달 -->
 <div class="modal fade" id="productModal" tabindex="-1" aria-labelledby="productModalLabel" aria-modal="true" role="dialog">
-    <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="productModalLabel">상품 등록</h5>
@@ -440,7 +505,7 @@ body.modal-open {
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="company_id" class="form-label">회사 <span class="required">*</span></label>
-                                    <select class="form-control" id="company_id" name="company_id" required>
+                                    <select class="form-select" id="company_id" name="company_id" required>
                                         <option value="">선택하세요</option>
                                         <option value="1">에이원</option>
                                         <option value="2">에이원 월드</option>
@@ -505,7 +570,7 @@ body.modal-open {
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="year_code_seq" class="form-label">년식 <span class="required">*</span></label>
-                                    <select class="form-control" id="year_code_seq" name="year_code_seq" required>
+                                    <select class="form-select" id="year_code_seq" name="year_code_seq" required>
                                         <option value="">선택하세요</option>
                                     {% for year in year_codes %}
                                         <option value="{{ year.seq }}" data-code="{{ year.code }}">{{ year.code_name }}</option>
@@ -677,24 +742,29 @@ $(document).ready(function() {
     
     // ProductListManager 강제 초기화 및 즉시 로드
     setTimeout(() => {
+        // ProductListManager 확인
         if (typeof window.productListManager !== 'undefined' && window.productListManager) {
             console.log('✅ ProductListManager 정상 초기화됨 (자동 로드됨)');
-            // ❌ 중복 호출 제거 - ProductListManager 생성자에서 이미 loadProducts() 호출됨
         } else {
-            console.warn('⚠️ ProductListManager 수동 초기화');
+            console.log('🔄 ProductListManager 강제 초기화');
             if (typeof ProductListManager !== 'undefined') {
                 window.productListManager = new ProductListManager();
-                // ❌ 중복 호출 제거 - 생성자에서 이미 loadProducts() 호출됨
+                console.log('✅ ProductListManager 강제 초기화 완료');
+            } else {
+                console.error('❌ ProductListManager 클래스가 로드되지 않았습니다');
             }
         }
         
-        // ProductManager 초기화 확인
+        // ProductManager 확인
         if (typeof window.productManager !== 'undefined' && window.productManager) {
             console.log('✅ ProductManager 정상 초기화됨');
         } else {
-            console.warn('⚠️ ProductManager 수동 초기화');
+            console.log('🔄 ProductManager 강제 초기화');
             if (typeof ProductManager !== 'undefined') {
                 window.productManager = new ProductManager();
+                console.log('✅ ProductManager 강제 초기화 완료');
+            } else {
+                console.error('❌ ProductManager 클래스가 로드되지 않았습니다');
             }
         }
     }, 300);
