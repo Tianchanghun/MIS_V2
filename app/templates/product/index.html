@@ -3,6 +3,20 @@
 {% block title %}상품관리{% endblock %}
 
 {% block extra_css %}
+<!-- 🚨 HTML 로드 확인용 -->
+<style>
+.test-banner {
+    background: red !important;
+    color: white !important;
+    font-size: 24px !important;
+    text-align: center !important;
+    padding: 20px !important;
+    margin: 10px 0 !important;
+    border: 5px solid yellow !important;
+    position: relative !important;
+    z-index: 9999 !important;
+}
+</style>
 <!-- DataTables CSS -->
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
 <!-- Bootstrap Select CSS -->
@@ -227,6 +241,11 @@ body.modal-open {
 {% endblock %}
 
 {% block content %}
+<!-- 🚨 HTML 로드 확인용 테스트 배너 -->
+<div class="test-banner">
+    🚨🚨🚨 HTML 템플릿 로드 확인 - 이 빨간 배너가 보이면 HTML은 정상 로드됨 🚨🚨🚨
+</div>
+
 <div class="container-fluid">
     <!-- 페이지 헤더 -->
     <div class="d-flex justify-content-between align-items-center mb-4">
