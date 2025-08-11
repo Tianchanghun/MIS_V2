@@ -28,13 +28,21 @@
         body {
             font-family: 'Noto Sans KR', sans-serif;
             background-color: #f8f9fa;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow-x: hidden !important;
+            overflow-y: auto !important;
         }
         
         /* 메인 콘텐츠 영역을 사이드바 너비만큼 오른쪽으로 이동 */
         .main-content {
-            margin-left: 0 !important;
+            margin-left: 250px !important;
             min-height: 100vh;
             padding: 20px;
+            width: calc(100% - 250px) !important;
+            position: relative !important;
+            overflow: visible !important;
+            z-index: 1 !important;
         }
         
         /* 반응형: 모바일에서는 사이드바가 숨겨지므로 마진 제거 */
