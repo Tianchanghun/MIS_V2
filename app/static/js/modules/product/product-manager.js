@@ -112,16 +112,35 @@ class ProductManager {
     /**
      * 상품 등록 모달 표시
      */
-    showAddModal() {
-        this.isEditMode = false;
-        this.currentProductId = null;
-        
-        $('#productModalLabel').text('상품 등록');
-        $('#isEditMode').val('false');
-        $('#saveProductBtn').html('<i class="fas fa-save me-1"></i>저장');
-        
-        this.resetForm();
-        $('#productModal').modal('show');
+    async showAddModal() {
+        try {
+            this.isEditMode = false;
+            this.currentProductId = null;
+            
+            $('#productModalLabel').text('상품 등록');
+            $('#isEditMode').val('false');
+            $('#saveProductBtn').html('<i class="fas fa-save me-1"></i>저장');
+            
+            // 폼 초기화
+            this.resetForm();
+            
+            // 코드 데이터 로드
+            console.log('🔄 상품 등록 모달 - 코드 데이터 로드 시작');
+            UIHelper.showLoading('코드 정보를 불러오는 중...');
+            
+            await this.loadInitialCodeData();
+            
+            // 모달 표시
+            $('#productModal').modal('show');
+            
+            console.log('✅ 상품 등록 모달 표시 완료');
+            
+        } catch (error) {
+            console.error('❌ 상품 등록 모달 오류:', error);
+            UIHelper.showAlert('모달을 여는 중 오류가 발생했습니다', 'error');
+        } finally {
+            UIHelper.hideLoading();
+        }
     }
     
     /**
@@ -550,6 +569,44 @@ class ProductManager {
         if (!dateString) return '-';
         const date = new Date(dateString);
         return date.toLocaleDateString('ko-KR');
+    }
+
+    /**
+     * 초기 코드 데이터 로드 (PRD, CR 등)
+     */
+    async loadInitialCodeData() {
+        try {
+            // PRD 품목 코드 로드
+            const prdResponse = await AjaxHelper.get('/admin/api/codes/group/PRD');
+            if (prdResponse.success) {
+                const prdSelect = $('#prod_code_seq');
+                prdSelect.html('<option value="">품목을 선택하세요</option>');
+                
+                prdResponse.data.forEach(code => {
+                    prdSelect.append(`<option value="${code.seq}" data-code="${code.code}">${code.code_name} (${code.code})</option>`);
+                });
+                console.log('✅ PRD 품목 코드 로드 완료:', prdResponse.data.length + '개');
+            }
+            
+            // CR 색상 코드 로드
+            const crResponse = await AjaxHelper.get('/admin/api/codes/group/CR');
+            if (crResponse.success) {
+                const colorSelects = $('.color-code');
+                colorSelects.each(function() {
+                    const $this = $(this);
+                    $this.html('<option value="">색상을 선택하세요</option>');
+                    
+                    crResponse.data.forEach(code => {
+                        $this.append(`<option value="${code.seq}" data-code="${code.code}">${code.code_name} (${code.code})</option>`);
+                    });
+                });
+                console.log('✅ CR 색상 코드 로드 완료:', crResponse.data.length + '개');
+            }
+            
+        } catch (error) {
+            console.error('❌ 초기 코드 데이터 로드 실패:', error);
+            throw error;
+        }
     }
 }
 

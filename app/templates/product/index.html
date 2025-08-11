@@ -429,7 +429,7 @@ th:hover {
 </div>
 
 <!-- 상품 등록/수정 모달 -->
-<div class="modal fade" id="productModal" tabindex="-1" role="dialog" aria-labelledby="productModalLabel" aria-hidden="true">
+<div class="modal fade" id="productModal" tabindex="-1" aria-labelledby="productModalLabel" aria-modal="true">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
@@ -931,6 +931,63 @@ function scrollToBottom() {
             top: container.scrollHeight,
             behavior: 'smooth'
         });
+    }
+}
+
+// 상품 관리를 위한 전역 함수들 (레거시 호환)
+function addProduct() {
+    if (window.productManager) {
+        productManager.showAddModal();
+    } else {
+        console.error('❌ ProductManager가 초기화되지 않았습니다');
+    }
+}
+
+function editProduct(productId) {
+    if (window.productManager) {
+        productManager.showEditModal(productId);
+    } else {
+        console.error('❌ ProductManager가 초기화되지 않았습니다');
+    }
+}
+
+function deleteProduct(productId) {
+    if (window.productManager) {
+        productManager.deleteProduct(productId);
+    } else {
+        console.error('❌ ProductManager가 초기화되지 않았습니다');
+    }
+}
+
+function downloadTemplate() {
+    if (window.productManager) {
+        productManager.downloadTemplate();
+    } else {
+        window.open('/product/api/download-template', '_blank');
+    }
+}
+
+function uploadExcel() {
+    if (window.productManager) {
+        productManager.uploadExcel();
+    } else {
+        console.error('❌ ProductManager가 초기화되지 않았습니다');
+    }
+}
+
+function downloadExcel() {
+    if (window.productManager) {
+        productManager.downloadExcel();
+    } else {
+        window.open('/product/api/download-excel', '_blank');
+    }
+}
+
+function syncERPia() {
+    if (window.productManager) {
+        productManager.syncERPia();
+    } else {
+        console.error('❌ ProductManager가 초기화되지 않았습니다');
     }
 }
 </script>
