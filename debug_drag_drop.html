@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>드래그 앤 드롭 디버그</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/TableDnD/1.0.5/jquery.tablednd.min.js"></script>
+    <style>
+        .drag-handle { cursor: grab; text-align: center; padding: 10px; }
+        .tDnD_whileDrag { background-color: #fff3cd !important; opacity: 0.9 !important; }
+    </style>
+</head>
+<body>
+    <h1>드래그 앤 드롭 테스트</h1>
+    <table id="testTable" border="1">
+        <tr>
+            <td class="drag-handle">≡</td>
+            <td>테스트 1</td>
+        </tr>
+        <tr>
+            <td class="drag-handle">≡</td>
+            <td>테스트 2</td>
+        </tr>
+        <tr>
+            <td class="drag-handle">≡</td>
+            <td>테스트 3</td>
+        </tr>
+    </table>
+
+    <div id="log"></div>
+
+    <script>
+        $(document).ready(function() {
+            console.log('jQuery 버전:', $.fn.jquery);
+            console.log('TableDnD 사용 가능:', typeof $.fn.tableDnD !== 'undefined');
+            
+            $("#testTable").tableDnD({
+                dragHandle: ".drag-handle",
+                onDragClass: "tDnD_whileDrag",
+                onDragStart: function(table, row) {
+                    console.log('드래그 시작');
+                    $('#log').append('<p>드래그 시작!</p>');
+                },
+                onDrop: function(table, row) {
+                    console.log('드롭 완료');
+                    $('#log').append('<p>드롭 완료!</p>');
+                }
+            });
+            
+            $('.drag-handle').on('mousedown', function() {
+                console.log('드래그 핸들 클릭됨');
+                $('#log').append('<p>핸들 클릭됨</p>');
+            });
+        });
+    </script>
+</body>
+</html> 

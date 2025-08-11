@@ -3,7 +3,7 @@
 {% block page_title %}코드 관리{% endblock %}
 
 {% block extra_css %}
-<!-- TableDnD 드래그 앤 드롭 CSS -->
+<!-- HTML5 네이티브 드래그 앤 드롭 사용 -->
 <style>
     /* 레거시 AdminController.cs와 동일한 구조 */
     .child-code {
@@ -59,51 +59,79 @@
         border-color: #32383e !important;
     }
     
-    /* 드래그 앤 드롭 스타일 (레거시 TableDnD와 동일) */
+    /* 드래그 앤 드롭 스타일 강화 */
     .sortable-row {
         cursor: move;
+        transition: all 0.2s ease;
     }
     .sortable-row:hover {
         background-color: #f5f5f5 !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     .drag-handle {
-        cursor: grab;
+        cursor: grab !important;
         text-align: center;
         width: 30px;
         color: #999;
-        transition: color 0.2s ease;
+        transition: all 0.2s ease;
+        padding: 8px !important;
+        font-size: 16px !important;
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
     }
     .drag-handle:hover {
-        color: #007bff;
-        background-color: #f8f9fa;
+        color: #007bff !important;
+        background-color: #e3f2fd !important;
+        cursor: grab !important;
+        transform: scale(1.1);
     }
     .drag-handle:active {
-        cursor: grabbing;
-        color: #0056b3;
+        cursor: grabbing !important;
+        color: #0056b3 !important;
+        background-color: #bbdefb !important;
     }
     
-    /* TableDnD 드래그 시 스타일 강화 */
+    /* TableDnD 드래그 시 스타일 대폭 강화 */
     .tDnD_whileDrag {
         background-color: #fff3cd !important;
-        border: 2px solid #ffc107 !important;
-        opacity: 0.9 !important;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2) !important;
-        transform: scale(1.02) !important;
-        z-index: 1000 !important;
+        border: 3px solid #ffc107 !important;
+        opacity: 0.8 !important;
+        box-shadow: 0 8px 16px rgba(255, 193, 7, 0.4) !important;
+        transform: scale(1.05) !important;
+        z-index: 9999 !important;
+        font-weight: bold !important;
     }
     
-    /* 드래그 대상 위치 표시 */
+    .tDnD_whileDrag td {
+        background-color: #fff3cd !important;
+        border-color: #ffc107 !important;
+    }
+    
+    /* 드래그 대상 위치 표시 강화 */
     .tDnD_insertMarker {
         background-color: #007bff !important;
-        height: 3px !important;
+        height: 4px !important;
         margin: 0 !important;
         border: none !important;
+        box-shadow: 0 2px 4px rgba(0,123,255,0.5) !important;
     }
     
-    /* 드래그 중인 행 스타일 */
+    /* 드래그 중인 행 스타일 강화 */
     .being-dragged {
-        opacity: 0.7 !important;
+        opacity: 0.6 !important;
         background-color: #e3f2fd !important;
+        transform: scale(0.98) !important;
+    }
+    
+    /* 드래그 활성화 상태 */
+    .dragging-active {
+        cursor: grabbing !important;
+    }
+    
+    .dragging-active .drag-handle {
+        cursor: grabbing !important;
     }
     
     /* 우측 패널 강조 효과 */
@@ -194,17 +222,43 @@
         background: linear-gradient(45deg, #764ba2, #667eea);
         color: white;
     }
-</style>
 
-<!-- TableDnD 드래그 앤 드롭 라이브러리 -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/TableDnD/1.0.5/jquery.tablednd.min.js"></script>
-<script>
-// TableDnD 로드 확인
-$(document).ready(function() {
-    console.log('jQuery 버전:', $.fn.jquery);
-    console.log('TableDnD 로드됨:', typeof $.fn.tableDnD !== 'undefined');
-});
-</script>
+    /* HTML5 드래그 앤 드롭 스타일 */
+    .sortable-row[draggable="true"] {
+        cursor: move;
+        transition: all 0.2s ease;
+    }
+    
+    .sortable-row[draggable="true"]:hover {
+        background-color: #f5f5f5 !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    /* 드래그 중인 행 스타일 */
+    .being-dragged {
+        opacity: 0.5 !important;
+        background-color: #fff3cd !important;
+        border: 2px solid #ffc107 !important;
+        transform: scale(0.95) !important;
+        z-index: 1000 !important;
+    }
+    
+    /* 드롭 타겟 스타일 */
+    .drop-target {
+        background-color: #e3f2fd !important;
+        border-top: 4px solid #007bff !important;
+        box-shadow: 0 4px 8px rgba(0,123,255,0.3) !important;
+    }
+    
+    /* 드래그 활성화 상태 */
+    .dragging-active {
+        cursor: grabbing !important;
+    }
+    
+    .dragging-active * {
+        cursor: grabbing !important;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -639,73 +693,153 @@ function hideChildren(parentSeq) {
     });
 }
 
-// TableDnD 드래그 앤 드롭 초기화 (간단한 방식)
+// HTML5 네이티브 드래그 앤 드롭 구현 (TableDnD 대신)
 function initializeTableDnD() {
-    console.log('🔧 TableDnD 초기화 시작...');
+    console.log('🔧 HTML5 드래그 앤 드롭 초기화 시작...');
     
-    // jQuery와 TableDnD 로드 확인
-    if (typeof $ === 'undefined') {
-        console.error('❌ jQuery가 로드되지 않았습니다');
-        return;
-    }
-    
-    if (typeof $.fn.tableDnD === 'undefined') {
-        console.error('❌ TableDnD가 로드되지 않았습니다');
-        return;
-    }
-    
-    try {
-        // 기존 TableDnD 제거
-        $("#codeTable").tableDnDDestroy && $("#codeTable").tableDnDDestroy();
+    // 모든 드래그 가능한 행 설정
+    $('.sortable-row').each(function() {
+        var $row = $(this);
+        $row.attr('draggable', 'true');
         
-        // 새로 초기화
-        $("#codeTable").tableDnD({
-            onDragClass: "tDnD_whileDrag",
-            dragHandle: ".drag-handle",
-            onDragStart: function(table, row) {
-                console.log('🎯 드래그 시작:', $(row).data('seq'));
-                $(row).addClass('being-dragged');
-            },
-            onDrop: function(table, row) {
-                console.log('🎯 드롭 완료:', $(row).data('seq'));
-                $(row).removeClass('being-dragged');
-                
-                // 순서 변경 처리
-                handleDragDrop(row);
+        // 드래그 시작
+        $row.on('dragstart', function(e) {
+            var seq = $(this).data('seq');
+            console.log('🎯 드래그 시작 - SEQ:', seq);
+            
+            // 드래그 데이터 설정
+            e.originalEvent.dataTransfer.setData('text/plain', seq);
+            e.originalEvent.dataTransfer.effectAllowed = 'move';
+            
+            // 시각적 효과
+            $(this).addClass('being-dragged');
+            $('body').addClass('dragging-active');
+            
+            // 드래그 이미지 설정 (선택사항)
+            var dragImage = $(this).clone();
+            dragImage.css({
+                'position': 'absolute',
+                'top': '-1000px',
+                'background-color': '#fff3cd',
+                'border': '2px solid #ffc107',
+                'opacity': '0.8'
+            });
+            $('body').append(dragImage);
+            e.originalEvent.dataTransfer.setDragImage(dragImage[0], 0, 0);
+            
+            setTimeout(function() {
+                dragImage.remove();
+            }, 0);
+        });
+        
+        // 드래그 중
+        $row.on('dragover', function(e) {
+            e.preventDefault();
+            e.originalEvent.dataTransfer.dropEffect = 'move';
+            
+            // 드롭 위치 표시
+            $(this).addClass('drop-target');
+        });
+        
+        // 드래그 벗어남
+        $row.on('dragleave', function(e) {
+            $(this).removeClass('drop-target');
+        });
+        
+        // 드롭
+        $row.on('drop', function(e) {
+            e.preventDefault();
+            var draggedSeq = e.originalEvent.dataTransfer.getData('text/plain');
+            var targetSeq = $(this).data('seq');
+            
+            console.log('🎯 드롭 완료 - 드래그된 SEQ:', draggedSeq, '-> 타겟 SEQ:', targetSeq);
+            
+            // 시각적 효과 제거
+            $('.being-dragged').removeClass('being-dragged');
+            $('.drop-target').removeClass('drop-target');
+            $('body').removeClass('dragging-active');
+            
+            // 순서 변경 처리
+            if (draggedSeq !== targetSeq) {
+                handleNativeDragDrop(draggedSeq, targetSeq);
             }
         });
         
-        console.log('✅ TableDnD 초기화 완료');
-        
-        // 드래그 핸들에 이벤트 추가
-        $('.drag-handle').off('mousedown').on('mousedown', function(e) {
-            console.log('🎯 드래그 핸들 클릭');
-            $(this).closest('tr').trigger('mousedown');
+        // 드래그 끝
+        $row.on('dragend', function(e) {
+            console.log('🏁 드래그 종료');
+            $('.being-dragged').removeClass('being-dragged');
+            $('.drop-target').removeClass('drop-target');
+            $('body').removeClass('dragging-active');
+        });
+    });
+    
+    // 드래그 핸들 설정
+    $('.drag-handle').each(function() {
+        $(this).css({
+            'cursor': 'grab',
+            'user-select': 'none'
         });
         
-    } catch (error) {
-        console.error('❌ TableDnD 초기화 실패:', error);
-    }
+        // 마우스 이벤트
+        $(this).on('mouseenter', function() {
+            console.log('🎯 드래그 핸들에 마우스 진입');
+            $(this).css('background-color', '#e3f2fd');
+        }).on('mouseleave', function() {
+            $(this).css('background-color', '');
+        }).on('mousedown', function() {
+            $(this).css('cursor', 'grabbing');
+        }).on('mouseup', function() {
+            $(this).css('cursor', 'grab');
+        });
+    });
+    
+    console.log('✅ HTML5 드래그 앤 드롭 초기화 완료');
+    console.log('🎮 드래그 가능한 행 개수:', $('.sortable-row').length);
 }
 
-// 드래그 앤 드롭 처리 함수
-function handleDragDrop(row) {
-    var $row = $(row);
-    var curSeq = parseInt($row.data('seq'));
-    var curDepth = parseInt($row.data('depth'));
-    var parentSeq = parseInt($row.data('parent-seq'));
+// 네이티브 드래그 앤 드롭 처리 함수
+function handleNativeDragDrop(draggedSeq, targetSeq) {
+    console.log('🔄 순서 변경 처리:', draggedSeq, '->', targetSeq);
     
-    console.log('🔄 드래그 완료:', curSeq, 'depth:', curDepth, 'parent:', parentSeq);
+    var $draggedRow = $('#row-' + draggedSeq);
+    var $targetRow = $('#row-' + targetSeq);
     
-    // 같은 부모의 형제들 중에서 새로운 정렬 순서 계산
-    var $siblings = $('tr[data-parent-seq="' + parentSeq + '"][data-depth="' + curDepth + '"]:visible');
+    if ($draggedRow.length === 0 || $targetRow.length === 0) {
+        console.error('❌ 드래그된 행 또는 타겟 행을 찾을 수 없습니다');
+        return;
+    }
+    
+    var draggedDepth = parseInt($draggedRow.data('depth'));
+    var draggedParent = parseInt($draggedRow.data('parent-seq'));
+    var targetDepth = parseInt($targetRow.data('depth'));
+    var targetParent = parseInt($targetRow.data('parent-seq'));
+    
+    // 같은 부모의 같은 깊이인지 확인
+    if (draggedDepth !== targetDepth || draggedParent !== targetParent) {
+        alert('같은 그룹 내에서만 순서를 변경할 수 있습니다.');
+        return;
+    }
+    
+    // DOM에서 행 이동
+    $draggedRow.detach();
+    $targetRow.after($draggedRow);
+    
+    // 시각적 효과
+    $draggedRow.css('background-color', '#d4edda');
+    setTimeout(function() {
+        $draggedRow.css('background-color', '');
+    }, 1000);
+    
+    // 새로운 순서 계산
+    var parentSeq = draggedParent;
+    var depth = draggedDepth;
+    var $siblings = $('tr[data-parent-seq="' + parentSeq + '"][data-depth="' + depth + '"]:visible');
     var newOrder = [];
     
     $siblings.each(function(index) {
-        var siblingSeq = parseInt($(this).attr("data-seq"));
+        var siblingSeq = parseInt($(this).data('seq'));
         newOrder.push(siblingSeq);
-        
-        // UI에서 순서 번호 업데이트
         $(this).find('.sort-number').text(index + 1);
     });
     
@@ -717,12 +851,14 @@ function handleDragDrop(row) {
         method: "POST",
         data: {
             parent_seq: parentSeq,
-            depth: curDepth,
+            depth: depth,
             order: JSON.stringify(newOrder)
         },
         success: function(data) {
             if (data.success) {
                 console.log('✅ 순서 변경 저장 완료');
+                // 성공 알림
+                showNotification('순서가 성공적으로 변경되었습니다.', 'success');
             } else {
                 alert("순서 변경 저장에 실패했습니다: " + (data.message || ''));
                 location.reload();
@@ -733,6 +869,20 @@ function handleDragDrop(row) {
             location.reload();
         }
     });
+}
+
+// 알림 표시 함수
+function showNotification(message, type) {
+    var notification = $('<div class="alert alert-' + (type === 'success' ? 'success' : 'danger') + ' alert-dismissible fade show" style="position: fixed; top: 20px; right: 20px; z-index: 10000;">' +
+        '<strong>' + message + '</strong>' +
+        '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
+        '</div>');
+    
+    $('body').append(notification);
+    
+    setTimeout(function() {
+        notification.alert('close');
+    }, 3000);
 }
 
 // 토글 아이콘 업데이트
