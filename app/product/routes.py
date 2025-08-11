@@ -454,7 +454,7 @@ def api_update(product_id):
 
 @bp.route('/api/generate-code', methods=['POST'])
 def api_generate_code():
-    """레거시 방식에 따른 자사코드 자동 생성 (12자리)"""
+    """레거시 방식에 따른 자사코드 자동 생성 (16자리)"""
     # 개발 환경에서는 로그인 체크 우회 (임시)
     if not session.get('member_seq'):
         session['member_seq'] = 1
@@ -485,13 +485,15 @@ def api_generate_code():
         if not all([brand_code, prod_group_code, prod_code, prod_type_code, year_code, color_code]):
             return jsonify({'success': False, 'message': '선택된 코드 중 일부를 찾을 수 없습니다.'}), 400
         
-        # 레거시 자사코드 생성 로직 (12자리)
-        # 브랜드(2) + 제품군(2) + 제품(2) + 타입(2) + 년도(2) + 색상(2)
-        generated_code = generate_legacy_std_code_12digit(
+        # 레거시 자사코드 생성 로직 (16자리) - tbl_Product_DTL 기준
+        # 브랜드(2) + 구분타입(1) + 제품군(2) + 제품타입(2) + 제품(2) + 타입2(2) + 년도(2) + 색상(3)
+        generated_code = generate_legacy_std_code_16digit(
             brand_code.code,
+            '1',  # 구분타입 고정 (일반)
             prod_group_code.code,
-            prod_code.code,
             prod_type_code.code,
+            prod_code.code,
+            '00',  # 타입2 기본값
             year_code.code,
             color_code.code
         )
@@ -502,13 +504,13 @@ def api_generate_code():
             # 중복 시 시퀀스 번호 추가하여 유니크하게 만들기
             sequence = 1
             while True:
-                new_code = generated_code[:-2] + f'{sequence:02d}'
+                new_code = generated_code[:-3] + f'{sequence:03d}'
                 if not ProductDetail.query.filter_by(std_div_prod_code=new_code).first():
                     generated_code = new_code
                     break
                 sequence += 1
-                if sequence > 99:  # 무한루프 방지
-                    generated_code = generated_code[:-4] + f'{int(time.time()) % 10000:04d}'
+                if sequence > 999:  # 무한루프 방지
+                    generated_code = generated_code[:-6] + f'{int(time.time()) % 1000000:06d}'
                     break
         
         current_app.logger.info(f"자사코드 생성 완료: {generated_code}")
@@ -518,32 +520,36 @@ def api_generate_code():
             'generated_code': generated_code,
             'components': {
                 'brand': brand_code.code,
+                'div_type': '1',
                 'prod_group': prod_group_code.code,
-                'prod': prod_code.code,
                 'prod_type': prod_type_code.code,
+                'prod': prod_code.code,
+                'type2': '00',
                 'year': year_code.code,
                 'color': color_code.code
             }
         })
         
     except Exception as e:
-        current_app.logger.error(f"자가코드 생성 실패: {e}")
-        return jsonify({'success': False, 'message': f'자가코드 생성 중 오류가 발생했습니다: {str(e)}'}), 500
+        current_app.logger.error(f"자사코드 생성 실패: {e}")
+        return jsonify({'success': False, 'message': f'자사코드 생성 중 오류가 발생했습니다: {str(e)}'}), 500
 
-def generate_legacy_std_code_12digit(brand, prod_group, prod, prod_type, year, color):
+def generate_legacy_std_code_16digit(brand, div_type, prod_group, prod_type, prod, type2, year, color):
     """
-    레거시 방식 자사코드 생성 (12자리)
-    총 12자리: 브랜드(2) + 제품군(2) + 제품(2) + 타입(2) + 년도(2) + 색상(2)
+    레거시 방식 자사코드 생성 (16자리) - tbl_Product_DTL 기준
+    총 16자리: 브랜드(2) + 구분타입(1) + 제품군(2) + 제품타입(2) + 제품(2) + 타입2(2) + 년도(2) + 색상(3)
     """
     # 각 구성요소를 정해진 길이로 맞추기
     brand_part = (brand or '00')[:2].ljust(2, '0')
+    div_type_part = (div_type or '1')[:1]
     prod_group_part = (prod_group or '00')[:2].ljust(2, '0')
-    prod_part = (prod or '00')[:2].ljust(2, '0')
     prod_type_part = (prod_type or '00')[:2].ljust(2, '0')
+    prod_part = (prod or '00')[:2].ljust(2, '0')
+    type2_part = (type2 or '00')[:2].ljust(2, '0')
     year_part = (year or '00')[-2:].ljust(2, '0')  # 년도는 뒤 2자리
-    color_part = (color or '00')[:2].ljust(2, '0')  # 색상은 2자리로 단축
+    color_part = (color or '000')[:3].ljust(3, '0')  # 색상은 3자리
     
-    std_code = brand_part + prod_group_part + prod_part + prod_type_part + year_part + color_part
+    std_code = brand_part + div_type_part + prod_group_part + prod_type_part + prod_part + type2_part + year_part + color_part
     
     return std_code.upper()
 
@@ -710,18 +716,18 @@ def api_get(product_id):
         if not product:
             return jsonify({'success': False, 'message': '상품을 찾을 수 없습니다.'}), 404
         
-        # tbl_Product_DTL에서 연결된 제품 모델들 조회 (MstSeq 기준)
+        # tbl_Product_DTL에서 연결된 제품 모델들 조회 (product_id 기준)
         product_details = ProductDetail.query.filter_by(
             product_id=product_id
-        ).order_by(ProductDetail.seq).all()
+        ).order_by(ProductDetail.id).all()
         
-        # 기본 상품 정보
+        # 기본 상품 정보 (tbl_Product)
         product_data = product.to_dict()
         
-        # 제품 모델 정보 (색상별)
+        # 제품 모델 정보 (tbl_Product_DTL - 색상별)
         product_models = []
         for detail in product_details:
-            # 색상 코드 정보 조회 (seq 기준)
+            # 색상 코드 정보 조회 (code 기준)
             color_code = None
             if detail.color_code:
                 # 색상 코드 3자리를 기준으로 CR 그룹에서 찾기
@@ -736,20 +742,22 @@ def api_get(product_id):
                         break
             
             product_models.append({
-                'seq': detail.seq,
+                'id': detail.id,  # seq 대신 id 사용
                 'std_div_prod_code': detail.std_div_prod_code,
                 'product_name': detail.product_name,
                 'color_code': detail.color_code,
                 'color_code_info': color_code,
                 'status': detail.status,
-                'use_yn': detail.use_yn,
+                'use_yn': 'Y' if detail.status == 'Active' else 'N',  # status를 use_yn으로 변환
                 'brand_code': detail.brand_code,
                 'div_type_code': detail.div_type_code,
                 'prod_group_code': detail.prod_group_code,
                 'prod_type_code': detail.prod_type_code,
                 'prod_code': detail.prod_code,
                 'prod_type2_code': detail.prod_type2_code,
-                'year_code': detail.year_code
+                'year_code': detail.year_code,
+                'additional_price': detail.additional_price,
+                'stock_quantity': detail.stock_quantity
             })
         
         # 선택된 코드 정보 (셀렉트박스 selected 처리용)

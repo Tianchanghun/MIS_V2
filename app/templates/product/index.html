@@ -273,7 +273,7 @@ th:hover {
                         <i class="fas fa-barcode me-1"></i>자사코드 검색
                     </label>
                     <input type="text" class="form-control" id="stdCodeFilter" 
-                           placeholder="12자리 자사코드 검색..."
+                           placeholder="16자리 자사코드 검색..."
                            autocomplete="off">
                 </div>
                 <div class="col-md-3 d-flex align-items-end">
@@ -561,7 +561,7 @@ th:hover {
                                             
                                             <div class="col-md-4">
                                                 <div class="mb-3">
-                                                    <label class="form-label">12자리 자사코드</label>
+                                                    <label class="form-label">16자리 자사코드</label>
                                                     <div class="input-group">
                                                         <input type="text" class="form-control std-product-code" 
                                                                name="std_product_code[]" 
@@ -570,7 +570,7 @@ th:hover {
                                                             <i class="fas fa-magic"></i> 자동생성
                                                         </button>
                                                     </div>
-                                                    <small class="text-muted">선택된 코드들 기준으로 자동 생성 (12자리)</small>
+                                                    <small class="text-muted">tbl_Product_DTL - 16자리 레거시 형식</small>
                                                 </div>
                                             </div>
                                         </div>
@@ -814,7 +814,7 @@ function addProductModel() {
                 
                 <div class="col-md-4">
                     <div class="mb-3">
-                        <label class="form-label">12자리 자사코드</label>
+                        <label class="form-label">16자리 자사코드</label>
                         <div class="input-group">
                             <input type="text" class="form-control std-product-code" 
                                    name="std_product_code[]" 
@@ -823,6 +823,7 @@ function addProductModel() {
                                 <i class="fas fa-magic"></i> 자동생성
                             </button>
                         </div>
+                        <small class="text-muted">tbl_Product_DTL - 16자리 레거시 형식</small>
                     </div>
                 </div>
             </div>
@@ -906,11 +907,11 @@ async function generateCodeFromServer(codeData) {
     }
 }
 
-// 임시 코드 생성 (12자리)
+// 임시 코드 생성 (16자리)
 function generateTempCode() {
     const timestamp = Date.now().toString();
-    const random = Math.random().toString(36).substring(2, 6);
-    return (timestamp + random).substring(0, 12).toUpperCase();
+    const random = Math.random().toString(36).substring(2, 8);
+    return (timestamp + random).substring(0, 16).toUpperCase();
 }
 
 // 스크롤 네비게이션 함수들
