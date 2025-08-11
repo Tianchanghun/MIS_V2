@@ -516,8 +516,11 @@ def update_code_sort():
             parent_seq = int(parent_seq)
             depth = int(depth)
             
+            # parent_seq가 0이면 NULL로 처리 (최상위 코드)
+            filter_parent_seq = None if parent_seq == 0 else parent_seq
+            
             # 해당 부모의 같은 깊이 코드들 조회
-            codes = Code.query.filter_by(parent_seq=parent_seq, depth=depth).all()
+            codes = Code.query.filter_by(parent_seq=filter_parent_seq, depth=depth).all()
             code_dict = {code.seq: code for code in codes}
             
             # 새로운 순서로 sort 값 업데이트 (1부터 시작)
