@@ -88,6 +88,10 @@ class ProductListManager {
     async loadProducts() {
         try {
             console.log('📥 상품 로드 시작');
+            console.log('📍 현재 페이지:', this.currentPage);
+            console.log('📍 페이지당 개수:', this.currentPerPage);
+            console.log('📍 정렬:', this.currentSort);
+            
             UIHelper.showLoading('상품 목록을 불러오는 중...');
             
             const response = await AjaxHelper.get('/product/api/list', {
@@ -97,21 +101,29 @@ class ProductListManager {
                 sort_direction: this.currentSort.direction
             });
             
-            console.log('📊 API 응답:', response);
+            console.log('📊 API 응답 전체:', response);
+            console.log('📊 응답 성공 여부:', response.success);
+            console.log('📊 응답 데이터:', response.data);
+            console.log('📊 데이터 타입:', typeof response.data);
+            console.log('📊 데이터 길이:', response.data ? response.data.length : 'null');
             
             if (response.success) {
                 this.products = response.data || [];
                 this.filteredProducts = [...this.products];
                 console.log('📦 상품 데이터 로드됨:', this.products.length + '개');
+                console.log('📦 첫 번째 상품:', this.products[0]);
+                
                 this.renderProducts();
                 this.updateCounters();
                 this.updatePagination(response.pagination || {});
                 console.log('✅ 상품 목록 렌더링 완료');
             } else {
+                console.error('❌ API 응답 실패:', response.message);
                 UIHelper.showAlert('상품 목록을 불러오는데 실패했습니다: ' + response.message, 'error');
             }
         } catch (error) {
             console.error('❌ 상품 로드 실패:', error);
+            console.error('❌ 오류 상세:', error.stack);
             UIHelper.showAlert('상품 목록을 불러오는데 실패했습니다', 'error');
         } finally {
             console.log('🔄 로딩 숨김 처리');
@@ -149,10 +161,15 @@ class ProductListManager {
      * 테이블 뷰 렌더링
      */
     renderTableView() {
+        console.log('🎨 테이블 뷰 렌더링 시작');
         const tbody = $('#productTableBody');
+        console.log('📍 테이블 body 요소:', tbody.length);
         tbody.empty();
         
+        console.log('📊 렌더링할 상품 수:', this.filteredProducts ? this.filteredProducts.length : 'null');
+        
         if (!this.filteredProducts || this.filteredProducts.length === 0) {
+            console.log('📭 상품이 없어서 빈 상태 표시');
             tbody.html(`
                 <tr>
                     <td colspan="11" class="text-center py-4">
@@ -164,10 +181,13 @@ class ProductListManager {
             return;
         }
         
+        console.log('📝 상품 행 생성 시작');
         this.filteredProducts.forEach((product, index) => {
+            console.log(`📄 ${index + 1}번째 상품 렌더링:`, product.product_name);
             const row = this.createTableRow(product, index);
             tbody.append(row);
         });
+        console.log('✅ 테이블 뷰 렌더링 완료');
     }
     
     /**

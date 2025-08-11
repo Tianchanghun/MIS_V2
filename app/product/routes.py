@@ -1136,9 +1136,8 @@ def api_get_product_models(product_id):
             color_info = None
             if detail.color_code:
                 color_info = Code.query.filter_by(
-                    code=detail.color_code,
-                    company_id=current_company_id
-                ).first()
+                    code=detail.color_code
+                ).first()  # company_id 필터 제거
             
             models_list.append({
                 'id': detail.id,
