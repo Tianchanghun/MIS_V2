@@ -490,7 +490,7 @@ def delete_code():
         return jsonify({'success': False, 'message': f'코드 삭제 중 오류가 발생했습니다: {str(e)}'}), 500
 
 @admin_bp.route('/api/codes/update-sort', methods=['POST'])
-def update_code_sort():
+def update_codes_order():
     """코드 순서 변경 (드래그 앤 드롭용)"""
     if 'member_seq' not in session:
         return redirect('/auth/login')

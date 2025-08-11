@@ -71,16 +71,47 @@
         text-align: center;
         width: 30px;
         color: #999;
+        transition: color 0.2s ease;
+    }
+    .drag-handle:hover {
+        color: #007bff;
+        background-color: #f8f9fa;
     }
     .drag-handle:active {
         cursor: grabbing;
+        color: #0056b3;
     }
     
-    /* TableDnD 드래그 시 스타일 */
+    /* TableDnD 드래그 시 스타일 강화 */
     .tDnD_whileDrag {
-        background-color: #FFE !important;
-        border: 2px dashed #FFD700 !important;
-        opacity: 0.8;
+        background-color: #fff3cd !important;
+        border: 2px solid #ffc107 !important;
+        opacity: 0.9 !important;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2) !important;
+        transform: scale(1.02) !important;
+        z-index: 1000 !important;
+    }
+    
+    /* 드래그 대상 위치 표시 */
+    .tDnD_insertMarker {
+        background-color: #007bff !important;
+        height: 3px !important;
+        margin: 0 !important;
+        border: none !important;
+    }
+    
+    /* 드래그 중인 행 스타일 */
+    .being-dragged {
+        opacity: 0.7 !important;
+        background-color: #e3f2fd !important;
+    }
+    
+    /* 우측 패널 강조 효과 */
+    .highlight-panel {
+        border: 2px solid #007bff !important;
+        box-shadow: 0 0 10px rgba(0,123,255,0.3) !important;
+        background-color: #f8f9fa !important;
+        transition: all 0.3s ease !important;
     }
     
     /* 드롭 가능한 영역 표시 */
@@ -597,8 +628,15 @@ function initializeTableDnD() {
         $("#codeTable").tableDnD({
             onDragClass: "tDnD_whileDrag",
             dragHandle: ".drag-handle",
+            scrollAmount: 15,
+            onDragStart: function(table, row) {
+                console.log('🎯 드래그 시작:', $(row).data('seq'));
+                $(row).addClass('being-dragged');
+            },
             onDrop: function(table, row) {
                 var $row = $(row);
+                $row.removeClass('being-dragged');
+                
                 var curSeq = parseInt($row.data('seq'));
                 var curDepth = parseInt($row.data('depth'));
                 var parentSeq = parseInt($row.data('parent-seq'));
@@ -697,8 +735,14 @@ function showCodeInfo(seq) {
     $('#code_info').val(code.code_info || '');
     $('#sort').val(code.sort || 1);
     
-    $('#form-title').text('코드 정보: ' + code.code);
+    $('#form-title').text(`코드 정보: ${code.code} - ${code.code_name}`);
     $('#submit-text').text('수정');
+    
+    // 우측 패널 강조 표시
+    $('#codeFormSection').addClass('highlight-panel');
+    setTimeout(function() {
+        $('#codeFormSection').removeClass('highlight-panel');
+    }, 1500);
     
     // 상위 코드 정보 표시
     if (code.parent_seq == 0 || !code.parent_seq) {
