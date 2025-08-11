@@ -57,9 +57,9 @@ class ProductListManager {
             this.searchProducts();
         });
         
-        // 자가코드 실시간 검색
+        // 자사코드 실시간 검색
         $('#stdCodeFilter').on('input keyup', this.debounce(() => {
-            console.log('🏷️ 자가코드 검색:', $('#stdCodeFilter').val());
+            console.log('🏷️ 자사코드 검색:', $('#stdCodeFilter').val());
             this.searchProducts();
         }, 200));
         
@@ -352,7 +352,7 @@ class ProductListManager {
         // 년도 필터
         const yearMatch = !filters.yearFilter || product.year_code_seq == filters.yearFilter;
         
-        // 자가코드 필터
+        // 자사코드 필터
         const stdCodeMatch = !filters.stdCodeFilter || 
             (product.std_div_prod_code && product.std_div_prod_code.toLowerCase().includes(filters.stdCodeFilter));
         

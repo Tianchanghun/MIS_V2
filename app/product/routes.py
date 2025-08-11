@@ -454,7 +454,7 @@ def api_update(product_id):
 
 @bp.route('/api/generate-code', methods=['POST'])
 def api_generate_code():
-    """레거시 방식에 따른 자가코드 자동 생성"""
+    """레거시 방식에 따른 자사코드 자동 생성 (12자리)"""
     # 개발 환경에서는 로그인 체크 우회 (임시)
     if not session.get('member_seq'):
         session['member_seq'] = 1
@@ -462,7 +462,11 @@ def api_generate_code():
         session['current_company_id'] = 1
     
     try:
-        data = request.get_json() or request.form.to_dict()
+        # JSON과 FormData 모두 처리
+        if request.is_json:
+            data = request.get_json()
+        else:
+            data = request.form.to_dict()
         
         # 필수 파라미터 확인
         required_fields = ['brandSeq', 'prodGroupSeq', 'prodCodeSeq', 'prodTypeSeq', 'yearSeq', 'colorSeq']
@@ -481,15 +485,13 @@ def api_generate_code():
         if not all([brand_code, prod_group_code, prod_code, prod_type_code, year_code, color_code]):
             return jsonify({'success': False, 'message': '선택된 코드 중 일부를 찾을 수 없습니다.'}), 400
         
-        # 레거시 자가코드 생성 로직 (16자리)
-        # 브랜드(2) + 구분타입(1) + 제품군(2) + 제품타입(2) + 제품(2) + 타입2(2) + 년도(2) + 색상(3)
-        generated_code = generate_legacy_std_code(
+        # 레거시 자사코드 생성 로직 (12자리)
+        # 브랜드(2) + 제품군(2) + 제품(2) + 타입(2) + 년도(2) + 색상(2)
+        generated_code = generate_legacy_std_code_12digit(
             brand_code.code,
-            '1',  # 구분타입 고정 (일반)
             prod_group_code.code,
-            prod_type_code.code,
             prod_code.code,
-            '00',  # 타입2 기본값
+            prod_type_code.code,
             year_code.code,
             color_code.code
         )
@@ -506,21 +508,19 @@ def api_generate_code():
                     break
                 sequence += 1
                 if sequence > 99:  # 무한루프 방지
-                    generated_code = generated_code[:-6] + f'{int(time.time()) % 1000000:06d}'
+                    generated_code = generated_code[:-4] + f'{int(time.time()) % 10000:04d}'
                     break
         
-        current_app.logger.info(f"자가코드 생성 완료: {generated_code}")
+        current_app.logger.info(f"자사코드 생성 완료: {generated_code}")
         
         return jsonify({
             'success': True,
             'generated_code': generated_code,
             'components': {
                 'brand': brand_code.code,
-                'div_type': '1',
                 'prod_group': prod_group_code.code,
-                'prod_type': prod_type_code.code,
                 'prod': prod_code.code,
-                'type2': '00',
+                'prod_type': prod_type_code.code,
                 'year': year_code.code,
                 'color': color_code.code
             }
@@ -530,22 +530,20 @@ def api_generate_code():
         current_app.logger.error(f"자가코드 생성 실패: {e}")
         return jsonify({'success': False, 'message': f'자가코드 생성 중 오류가 발생했습니다: {str(e)}'}), 500
 
-def generate_legacy_std_code(brand, div_type, prod_group, prod_type, prod, type2, year, color):
+def generate_legacy_std_code_12digit(brand, prod_group, prod, prod_type, year, color):
     """
-    레거시 방식 자가코드 생성
-    총 16자리: 브랜드(2) + 구분타입(1) + 제품군(2) + 제품타입(2) + 제품(2) + 타입2(2) + 년도(2) + 색상(3)
+    레거시 방식 자사코드 생성 (12자리)
+    총 12자리: 브랜드(2) + 제품군(2) + 제품(2) + 타입(2) + 년도(2) + 색상(2)
     """
     # 각 구성요소를 정해진 길이로 맞추기
     brand_part = (brand or '00')[:2].ljust(2, '0')
-    div_type_part = (div_type or '1')[:1]
     prod_group_part = (prod_group or '00')[:2].ljust(2, '0')
-    prod_type_part = (prod_type or '00')[:2].ljust(2, '0')
     prod_part = (prod or '00')[:2].ljust(2, '0')
-    type2_part = (type2 or '00')[:2].ljust(2, '0')
-    year_part = (year or '00')[:2].ljust(2, '0')
-    color_part = (color or '000')[:3].ljust(3, '0')
+    prod_type_part = (prod_type or '00')[:2].ljust(2, '0')
+    year_part = (year or '00')[-2:].ljust(2, '0')  # 년도는 뒤 2자리
+    color_part = (color or '00')[:2].ljust(2, '0')  # 색상은 2자리로 단축
     
-    std_code = brand_part + div_type_part + prod_group_part + prod_type_part + prod_part + type2_part + year_part + color_part
+    std_code = brand_part + prod_group_part + prod_part + prod_type_part + year_part + color_part
     
     return std_code.upper()
 

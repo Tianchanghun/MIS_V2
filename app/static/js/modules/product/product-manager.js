@@ -636,11 +636,86 @@ $(document).ready(function() {
 });
 
 // 레거시 호환을 위한 전역 함수들
-function addProduct() { productManager.showAddModal(); }
-function editProduct(productId) { productManager.showEditModal(productId); }
-function viewProduct(productId) { productManager.viewProduct(productId); }
-function deleteProduct(productId) { productManager.deleteProduct(productId); }
-function downloadTemplate() { productManager.downloadTemplate(); }
-function uploadExcel() { productManager.uploadExcel(); }
-function downloadExcel() { productManager.downloadExcel(); }
-function syncERPia() { productManager.syncERPia(); } 
+function addProduct() { 
+    if (window.productManager) {
+        productManager.showAddModal(); 
+    } else {
+        console.error('❌ ProductManager가 초기화되지 않았습니다');
+        // 긴급 초기화 시도
+        setTimeout(() => {
+            if (window.productManager) {
+                productManager.showAddModal();
+            } else {
+                alert('상품 관리자가 아직 로드 중입니다. 잠시 후 다시 시도해주세요.');
+            }
+        }, 1000);
+    }
+}
+
+function editProduct(productId) { 
+    if (window.productManager) {
+        productManager.showEditModal(productId); 
+    } else {
+        console.error('❌ ProductManager가 초기화되지 않았습니다');
+        // 긴급 초기화 시도
+        setTimeout(() => {
+            if (window.productManager) {
+                productManager.showEditModal(productId);
+            } else {
+                alert('상품 관리자가 아직 로드 중입니다. 잠시 후 다시 시도해주세요.');
+            }
+        }, 1000);
+    }
+}
+
+function viewProduct(productId) { 
+    if (window.productManager) {
+        productManager.viewProduct(productId); 
+    } else {
+        console.error('❌ ProductManager가 초기화되지 않았습니다');
+        editProduct(productId); // fallback
+    }
+}
+
+function deleteProduct(productId) { 
+    if (window.productManager) {
+        productManager.deleteProduct(productId); 
+    } else {
+        console.error('❌ ProductManager가 초기화되지 않았습니다');
+        if (confirm('정말로 이 상품을 삭제하시겠습니까?')) {
+            window.location.reload(); // 임시 fallback
+        }
+    }
+}
+
+function downloadTemplate() { 
+    if (window.productManager) {
+        productManager.downloadTemplate(); 
+    } else {
+        window.open('/product/api/download-template', '_blank');
+    }
+}
+
+function uploadExcel() { 
+    if (window.productManager) {
+        productManager.uploadExcel(); 
+    } else {
+        alert('엑셀 업로드 기능을 준비 중입니다.');
+    }
+}
+
+function downloadExcel() { 
+    if (window.productManager) {
+        productManager.downloadExcel(); 
+    } else {
+        window.open('/product/api/download-excel', '_blank');
+    }
+}
+
+function syncERPia() { 
+    if (window.productManager) {
+        productManager.syncERPia(); 
+    } else {
+        alert('ERPia 동기화 기능을 준비 중입니다.');
+    }
+} 
