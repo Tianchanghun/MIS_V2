@@ -646,72 +646,25 @@ class ProductListManager {
     }
 }
 
-// 전역 변수로 인스턴스 노출
-let productListManager;
-
-// DOM 준비 시 초기화 - jQuery 로드 확인
-$(document).ready(function() {
-    console.log('🚀 Document Ready 이벤트 발생');
-    
-    // jQuery와 UIHelper, AjaxHelper가 정의되어 있는지 확인
-    if (typeof $ === 'undefined') {
-        console.error('❌ jQuery가 로드되지 않았습니다');
-        alert('jQuery가 로드되지 않았습니다. 페이지를 새로고침해주세요.');
-        return;
-    } else {
-        console.log('✅ jQuery 로드 완료');
-    }
-    
-    if (typeof UIHelper === 'undefined') {
-        console.error('❌ UIHelper가 로드되지 않았습니다');
-        alert('UIHelper가 로드되지 않았습니다. 페이지를 새로고침해주세요.');
-        return;
-    } else {
-        console.log('✅ UIHelper 로드 완료');
-    }
-    
-    if (typeof AjaxHelper === 'undefined') {
-        console.error('❌ AjaxHelper가 로드되지 않았습니다');
-        alert('AjaxHelper가 로드되지 않았습니다. 페이지를 새로고침해주세요.');
-        return;
-    } else {
-        console.log('✅ AjaxHelper 로드 완료');
-    }
-    
-    console.log('🚀 상품 목록 관리자 초기화 시작');
-    
-    try {
-        productListManager = new ProductListManager();
-        window.productListManager = productListManager;  // 명시적으로 전역 변수 설정
-        
-        console.log('✅ ProductListManager 인스턴스 생성 완료');
-        
-        // 전역 변수 확인
-        if (window.productListManager) {
-            console.log('✅ 전역 productListManager 설정 완료');
-        } else {
-            console.error('❌ 전역 productListManager 설정 실패');
-        }
-        
-        // 함수 확인
-        if (typeof window.productListManager.loadProducts === 'function') {
-            console.log('✅ loadProducts 함수 확인 완료');
-        } else {
-            console.error('❌ loadProducts 함수 없음');
-        }
-        
-    } catch (error) {
-        console.error('❌ ProductListManager 초기화 실패:', error);
-        console.error('❌ 상세 오류:', error.stack);
-        alert('상품 목록 관리자 초기화에 실패했습니다: ' + error.message);
-    }
-});
-
 // 레거시 호환을 위한 전역 함수들
-function loadProducts() { productListManager.loadProducts(); }
-function searchProducts() { productListManager.searchProducts(); }
-function switchView(viewType) { productListManager.switchView(viewType); }
-function changeSorting() { productListManager.changeSorting(); }
-function changePerPage(perPage) { productListManager.changePerPage(perPage); }
-function resetFilters() { productListManager.resetFilters(); }
-function goToPage(page) { productListManager.goToPage(page); } 
+function loadProducts() { 
+    if (window.productListManager) productListManager.loadProducts(); 
+}
+function searchProducts() { 
+    if (window.productListManager) productListManager.searchProducts(); 
+}
+function switchView(viewType) { 
+    if (window.productListManager) productListManager.switchView(viewType); 
+}
+function changeSorting() { 
+    if (window.productListManager) productListManager.changeSorting(); 
+}
+function changePerPage(perPage) { 
+    if (window.productListManager) productListManager.changePerPage(perPage); 
+}
+function resetFilters() { 
+    if (window.productListManager) productListManager.resetFilters(); 
+}
+function goToPage(page) { 
+    if (window.productListManager) productListManager.goToPage(page); 
+} 

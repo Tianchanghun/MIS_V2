@@ -1144,7 +1144,7 @@ def api_get_product_models(product_id):
                 'product_id': detail.product_id,
                 'color_code': detail.color_code,
                 'color_name': color_info.code_name if color_info else detail.color_code,
-                'product_model_name': detail.product_model_name,
+                'product_model_name': detail.product_name,
                 'std_product_code': detail.std_div_prod_code,
                 'created_at': detail.created_at.isoformat() if detail.created_at else None
             })
