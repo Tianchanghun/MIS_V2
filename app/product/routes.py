@@ -14,7 +14,6 @@ import time # 레거시 자가코드 생성 함수에 사용
 
 from app.product import bp
 from app.common.models import db, Product, ProductHistory, Code, Company, Brand, ProductDetail
-from app.common.models import CodeGroup # 레거시 자가코드 생성 함수에 사용
 
 # 파일 업로드 설정
 ALLOWED_EXTENSIONS = {'pdf'}
