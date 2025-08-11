@@ -197,7 +197,14 @@
 </style>
 
 <!-- TableDnD 드래그 앤 드롭 라이브러리 -->
-<script src="{{ url_for('static', filename='js/vendor/jquery.tablednd.min.js') }}"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/TableDnD/1.0.5/jquery.tablednd.min.js"></script>
+<script>
+// TableDnD 로드 확인
+$(document).ready(function() {
+    console.log('jQuery 버전:', $.fn.jquery);
+    console.log('TableDnD 로드됨:', typeof $.fn.tableDnD !== 'undefined');
+});
+</script>
 {% endblock %}
 
 {% block content %}
@@ -455,13 +462,23 @@ $(document).ready(function() {
         // 3. 통계 업데이트
         updateStatistics();
         
-        // 4. TableDnD 드래그 앤 드롭 초기화 (마지막에)
-        if (typeof $.fn.tableDnD === 'function') {
-            initializeTableDnD();
-            console.log('✅ TableDnD 초기화 완료');
-        } else {
-            console.warn('⚠️ TableDnD 라이브러리가 로드되지 않았습니다');
-        }
+        // 4. TableDnD 드래그 앤 드롭 초기화 (지연 로딩)
+        setTimeout(function() {
+            if (typeof $.fn.tableDnD === 'function') {
+                initializeTableDnD();
+                console.log('✅ TableDnD 초기화 완료');
+            } else {
+                console.warn('⚠️ TableDnD 라이브러리가 로드되지 않았습니다');
+                // 다시 시도
+                setTimeout(function() {
+                    if (typeof $.fn.tableDnD === 'function') {
+                        initializeTableDnD();
+                    } else {
+                        console.error('❌ TableDnD 로드 실패');
+                    }
+                }, 1000);
+            }
+        }, 500);
         
         console.log('✅ 코드 관리 초기화 완료');
         
@@ -622,71 +639,100 @@ function hideChildren(parentSeq) {
     });
 }
 
-// TableDnD 드래그 앤 드롭 초기화 (수정된 API 사용)
+// TableDnD 드래그 앤 드롭 초기화 (간단한 방식)
 function initializeTableDnD() {
+    console.log('🔧 TableDnD 초기화 시작...');
+    
+    // jQuery와 TableDnD 로드 확인
+    if (typeof $ === 'undefined') {
+        console.error('❌ jQuery가 로드되지 않았습니다');
+        return;
+    }
+    
+    if (typeof $.fn.tableDnD === 'undefined') {
+        console.error('❌ TableDnD가 로드되지 않았습니다');
+        return;
+    }
+    
     try {
+        // 기존 TableDnD 제거
+        $("#codeTable").tableDnDDestroy && $("#codeTable").tableDnDDestroy();
+        
+        // 새로 초기화
         $("#codeTable").tableDnD({
             onDragClass: "tDnD_whileDrag",
             dragHandle: ".drag-handle",
-            scrollAmount: 15,
             onDragStart: function(table, row) {
                 console.log('🎯 드래그 시작:', $(row).data('seq'));
                 $(row).addClass('being-dragged');
             },
             onDrop: function(table, row) {
-                var $row = $(row);
-                $row.removeClass('being-dragged');
+                console.log('🎯 드롭 완료:', $(row).data('seq'));
+                $(row).removeClass('being-dragged');
                 
-                var curSeq = parseInt($row.data('seq'));
-                var curDepth = parseInt($row.data('depth'));
-                var parentSeq = parseInt($row.data('parent-seq'));
-                
-                console.log('🔄 드래그 완료:', curSeq, 'depth:', curDepth, 'parent:', parentSeq);
-                
-                // 같은 부모의 형제들 중에서 새로운 정렬 순서 계산
-                var $siblings = $('tr[data-parent-seq="' + parentSeq + '"][data-depth="' + curDepth + '"]:visible');
-                var newOrder = [];
-                
-                $siblings.each(function(index) {
-                    var siblingSeq = parseInt($(this).attr("data-seq"));
-                    newOrder.push(siblingSeq);
-                    
-                    // UI에서 순서 번호 업데이트
-                    $(this).find('.sort-number').text(index + 1);
-                });
-                
-                console.log('새로운 순서:', newOrder);
-                
-                // 서버에 순서 변경 저장 (수정된 API URL)
-                $.ajax({
-                    url: "/admin/api/codes/update-sort",
-                    method: "POST",
-                    data: {
-                        parent_seq: parentSeq,
-                        depth: curDepth,
-                        order: JSON.stringify(newOrder)
-                    },
-                    success: function(data) {
-                        if (data.success) {
-                            console.log('✅ 순서 변경 저장 완료');
-                            // 성공 알림 (선택사항)
-                            // alert('순서가 변경되었습니다.');
-                        } else {
-                            alert("순서 변경 저장에 실패했습니다: " + (data.message || ''));
-                            location.reload();
-                        }
-                    },
-                    error: function() {
-                        alert("서버 오류가 발생했습니다.");
-                        location.reload();
-                    }
-                });
+                // 순서 변경 처리
+                handleDragDrop(row);
             }
         });
-        console.log('✅ TableDnD 드래그 앤 드롭 초기화 완료');
+        
+        console.log('✅ TableDnD 초기화 완료');
+        
+        // 드래그 핸들에 이벤트 추가
+        $('.drag-handle').off('mousedown').on('mousedown', function(e) {
+            console.log('🎯 드래그 핸들 클릭');
+            $(this).closest('tr').trigger('mousedown');
+        });
+        
     } catch (error) {
         console.error('❌ TableDnD 초기화 실패:', error);
     }
+}
+
+// 드래그 앤 드롭 처리 함수
+function handleDragDrop(row) {
+    var $row = $(row);
+    var curSeq = parseInt($row.data('seq'));
+    var curDepth = parseInt($row.data('depth'));
+    var parentSeq = parseInt($row.data('parent-seq'));
+    
+    console.log('🔄 드래그 완료:', curSeq, 'depth:', curDepth, 'parent:', parentSeq);
+    
+    // 같은 부모의 형제들 중에서 새로운 정렬 순서 계산
+    var $siblings = $('tr[data-parent-seq="' + parentSeq + '"][data-depth="' + curDepth + '"]:visible');
+    var newOrder = [];
+    
+    $siblings.each(function(index) {
+        var siblingSeq = parseInt($(this).attr("data-seq"));
+        newOrder.push(siblingSeq);
+        
+        // UI에서 순서 번호 업데이트
+        $(this).find('.sort-number').text(index + 1);
+    });
+    
+    console.log('새로운 순서:', newOrder);
+    
+    // 서버에 순서 변경 저장
+    $.ajax({
+        url: "/admin/api/codes/update-sort",
+        method: "POST",
+        data: {
+            parent_seq: parentSeq,
+            depth: curDepth,
+            order: JSON.stringify(newOrder)
+        },
+        success: function(data) {
+            if (data.success) {
+                console.log('✅ 순서 변경 저장 완료');
+            } else {
+                alert("순서 변경 저장에 실패했습니다: " + (data.message || ''));
+                location.reload();
+            }
+        },
+        error: function() {
+            alert("서버 오류가 발생했습니다.");
+            location.reload();
+        }
+    });
 }
 
 // 토글 아이콘 업데이트
