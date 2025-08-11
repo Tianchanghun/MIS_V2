@@ -369,15 +369,10 @@ body.modal-open {
                 <i class="fas fa-plus me-1"></i>상품 등록
             </button>
             
-            <!-- 긴급 테스트 버튼 추가 -->
-            <button type="button" class="btn btn-warning" onclick="testDirectRender()">
-                <i class="fas fa-bug me-1"></i>테스트 렌더링
-            </button>
-            
             <div class="btn-group" role="group">
                 <button type="button" class="btn btn-excel dropdown-toggle" data-bs-toggle="dropdown">
                     <i class="fas fa-file-excel me-1"></i>엑셀
-            </button>
+                </button>
                 <ul class="dropdown-menu">
                     <li><a class="dropdown-item" href="#" onclick="downloadTemplate()">
                         <i class="fas fa-download me-2"></i>템플릿 다운로드
@@ -391,9 +386,6 @@ body.modal-open {
                     </a></li>
                 </ul>
             </div>
-            <button type="button" class="btn btn-info" onclick="syncERPia()" title="ERPia 동기화">
-                <i class="fas fa-sync me-1"></i>ERPia 동기화
-            </button>
         </div>
         
         <div class="d-flex align-items-center gap-3">
@@ -1132,28 +1124,65 @@ function scrollToBottom() {
     }
 }
 
-// 상품 관리를 위한 전역 함수들 (레거시 호환)
+// 상품 관리를 위한 전역 함수들 (레거시 호환) - 강화 버전
 function addProduct() {
-    console.log('📝 상품 등록 버튼 클릭');
+    console.log('📝 상품 등록 버튼 클릭됨');
     
-    if (window.productManager && typeof window.productManager.showAddModal === 'function') {
-        productManager.showAddModal();
-    } else {
-        console.error('❌ ProductManager가 초기화되지 않았습니다');
-        
-        // 긴급 초기화 시도
-        setTimeout(() => {
-            if (window.productManager && typeof window.productManager.showAddModal === 'function') {
-                console.log('🔄 재시도로 상품 등록 모달 열기');
-                productManager.showAddModal();
-            } else {
-                alert('상품 관리자가 아직 로드 중입니다. 잠시 후 다시 시도해주세요.');
-                // 페이지 새로고침 제안
-                if (confirm('페이지를 새로고침하시겠습니까?')) {
-                    window.location.reload();
+    // 즉시 모달 열기 시도
+    try {
+        if (window.productManager && typeof window.productManager.showAddModal === 'function') {
+            console.log('✅ ProductManager로 모달 열기');
+            window.productManager.showAddModal();
+            return;
+        }
+    } catch (error) {
+        console.error('❌ ProductManager 오류:', error);
+    }
+    
+    // 대안 1: ProductManager 클래스 직접 생성
+    try {
+        console.log('🔄 ProductManager 직접 생성 시도');
+        if (typeof ProductManager !== 'undefined') {
+            window.productManager = new ProductManager();
+            setTimeout(() => {
+                if (window.productManager && typeof window.productManager.showAddModal === 'function') {
+                    window.productManager.showAddModal();
+                } else {
+                    console.error('❌ ProductManager 생성 후에도 showAddModal 없음');
+                    // 대안 2: 직접 모달 열기
+                    openModalDirectly();
                 }
-            }
-        }, 2000);
+            }, 100);
+            return;
+        }
+    } catch (error) {
+        console.error('❌ ProductManager 직접 생성 실패:', error);
+    }
+    
+    // 대안 3: 직접 모달 열기
+    console.log('🚨 직접 모달 열기 시도');
+    openModalDirectly();
+}
+
+// 직접 모달 열기 함수
+function openModalDirectly() {
+    try {
+        console.log('🎯 Bootstrap 모달 직접 열기');
+        
+        // 모달 초기화
+        $('#productModalLabel').text('상품 등록');
+        $('#isEditMode').val('false');
+        $('#productId').val('');
+        $('#productForm')[0].reset();
+        
+        // Bootstrap 모달 열기
+        const modal = new bootstrap.Modal(document.getElementById('productModal'));
+        modal.show();
+        
+        console.log('✅ 모달 직접 열기 성공');
+    } catch (error) {
+        console.error('❌ 직접 모달 열기 실패:', error);
+        alert('상품 등록 모달을 열 수 없습니다. 페이지를 새로고침해주세요.');
     }
 }
 
@@ -1214,41 +1243,6 @@ function downloadExcel() {
     } else {
         window.open('/product/api/download-excel', '_blank');
     }
-}
-
-function syncERPia() {
-    if (window.productManager) {
-        productManager.syncERPia();
-    } else {
-        console.error('❌ ProductManager가 초기화되지 않았습니다');
-    }
-}
-
-// 긴급 테스트 함수
-function testDirectRender() {
-    console.log('🧪 긴급 테스트: 직접 테이블에 데이터 추가');
-    
-    const newRow = `
-        <tr>
-            <td>1</td>
-            <td>에이원</td>
-            <td>에이원</td>
-            <td>테스트 상품</td>
-            <td>PRD001</td>
-            <td>타입A</td>
-            <td>2023</td>
-            <td>10000</td>
-            <td>Y</td>
-            <td>2023-10-27</td>
-            <td>
-                <button type="button" class="btn btn-sm btn-outline-info me-1" onclick="editProduct(1)">수정</button>
-                <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteProduct(1)">삭제</button>
-            </td>
-        </tr>
-    `;
-    
-    $('#productTableBody').append(newRow);
-    UIHelper.showAlert('테스트 데이터가 테이블에 추가되었습니다.', 'success');
 }
 </script>
 {% endblock %} 
