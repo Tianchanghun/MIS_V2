@@ -861,118 +861,35 @@ body.modal-open {
 $(document).ready(function() {
     console.log('✅ 상품관리 페이지 모듈화 완료');
     
-    // 💡 실제 API 데이터로 테이블 즉시 업데이트
-    setTimeout(() => {
-        console.log('🚀 실제 API 데이터 로드 시작');
-        
-        $.get('/product/api/list?page=1&per_page=10')
-            .done(function(response) {
-                console.log('✅ API 응답 성공:', response);
-                
-                if (response.data && response.data.length > 0) {
-                    console.log('📊 상품 데이터:', response.data.length + '개');
-                    
-                    // 기존 하드코딩 테이블 업데이트
-                    let realRows = '';
-                    response.data.forEach((product, index) => {
-                        realRows += `
-                            <tr ${index === 0 ? 'style="background-color: #e8f5e8;"' : ''}>
-                                <td class="text-center">${index + 1}</td>
-                                <td>
-                                    <span class="badge bg-primary text-white">${product.company_name || '에이원'}</span>
-                                </td>
-                                <td><strong>${product.brand_name || '브랜드'}</strong></td>
-                                <td>
-                                    <div>
-                                        <strong>${product.product_name || '상품명 없음'}</strong>
-                                        <br><small class="text-muted">${product.code || 'CODE'}</small>
-                                    </div>
-                                </td>
-                                <td>${product.category_name || '분류'}</td>
-                                <td>${product.type_name || '타입'}</td>
-                                <td>${product.year_code_name || '2025'}</td>
-                                <td class="price-display">${(product.price || 0).toLocaleString()}원</td>
-                                <td>
-                                    <span class="badge bg-success">활성</span>
-                                </td>
-                                <td class="text-center">
-                                    <small class="text-muted">${product.created_at ? product.created_at.split('T')[0] : '2025-01-01'}</small>
-                                </td>
-                                <td class="text-center">
-                                    <div class="btn-group btn-group-sm" role="group">
-                                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="editProduct(${product.id})" title="수정">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        <button type="button" class="btn btn-outline-danger btn-sm" onclick="deleteProduct(${product.id})" title="삭제">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        `;
-                    });
-                    
-                    // 실제 상품 테이블 업데이트
-                    $('#productTableBody').html(realRows);
-                    $('#productCount').text(response.data.length);
-                    $('#recordInfo').text(`1-${response.data.length} / ${response.total || response.data.length}개 표시`);
-                    
-                    console.log('🎯 실제 상품 데이터로 테이블 업데이트 완료');
-                } else {
-                    console.log('⚠️ 상품 데이터가 없습니다');
-                }
-            })
-            .fail(function(xhr, status, error) {
-                console.error('❌ API 호출 실패:', error);
-                console.error('📄 응답 내용:', xhr.responseText);
-            });
-            
-    }, 500); // 0.5초 후 실행
+    // ✅ 모든 중복 API 호출 제거 - productListManager가 알아서 처리
+    console.log('🎯 ProductListManager 초기화 확인');
     
-    // 간단한 API 테스트 추가
+    // ProductListManager 강제 초기화 및 즉시 로드
     setTimeout(() => {
-        console.log('🧪 API 직접 테스트 시작');
-        
-        $.get('/product/api/list?page=1&per_page=10')
-            .done(function(response) {
-                console.log('🧪 API 직접 테스트 성공:', response);
-                console.log('🧪 데이터 개수:', response.data ? response.data.length : 'null');
-                
-                if (response.data && response.data.length > 0) {
-                    console.log('🧪 첫 번째 상품:', response.data[0]);
-                } else {
-                    console.log('🧪 상품 데이터가 없습니다');
-                }
-            })
-            .fail(function(xhr, status, error) {
-                console.error('🧪 API 직접 테스트 실패:', error);
-                console.error('🧪 응답 상태:', status);
-                console.error('🧪 응답 내용:', xhr.responseText);
-            });
-    }, 2000);
-    
-    // 추가 초기화 작업
-    setTimeout(() => {
-        console.log('🔍 모듈 상태 확인:');
-        console.log('- productListManager:', typeof productListManager);
-        console.log('- productManager:', typeof productManager);
-        console.log('- UIHelper:', typeof UIHelper);
-        console.log('- AjaxHelper:', typeof AjaxHelper);
-        
-        // 만약 productListManager가 초기화되지 않았다면 강제 초기화
-        if (typeof productListManager === 'undefined' && typeof ProductListManager !== 'undefined') {
-            console.warn('⚠️ productListManager 수동 초기화');
-            window.productListManager = new ProductListManager();
+        if (typeof window.productListManager !== 'undefined' && window.productListManager) {
+            console.log('✅ ProductListManager 정상 초기화됨');
+            // 기본 50개 로드 (별도 API 호출 없이)
+            window.productListManager.loadProducts();
+        } else {
+            console.warn('⚠️ ProductListManager 수동 초기화');
+            if (typeof ProductListManager !== 'undefined') {
+                window.productListManager = new ProductListManager();
+                window.productListManager.loadProducts();
+            }
         }
         
-        // 만약 productManager가 초기화되지 않았다면 강제 초기화  
-        if (typeof productManager === 'undefined' && typeof ProductManager !== 'undefined') {
-            console.warn('⚠️ productManager 수동 초기화');
-            window.productManager = new ProductManager();
+        // ProductManager 초기화 확인
+        if (typeof window.productManager !== 'undefined' && window.productManager) {
+            console.log('✅ ProductManager 정상 초기화됨');
+        } else {
+            console.warn('⚠️ ProductManager 수동 초기화');
+            if (typeof ProductManager !== 'undefined') {
+                window.productManager = new ProductManager();
+            }
         }
-    }, 1000);
+    }, 300);
     
-    // 모달 이벤트 추가
+    // 모달 이벤트 설정
     setupModalEvents();
 });
 
