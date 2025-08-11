@@ -72,7 +72,7 @@ class ProductListManager {
         });
         
         // 필터 변경 이벤트 (기존 + PRD/타입 추가)
-        $('#brandFilter, #categoryFilter, #statusFilter, #typeFilter, #yearFilter').on('change', () => {
+        $('#companyFilter, #brandFilter, #categoryFilter, #statusFilter, #typeFilter, #yearFilter').on('change', () => {
             console.log('🔧 필터 변경됨');
             this.searchProducts();
         });
@@ -381,6 +381,7 @@ class ProductListManager {
     getFilterValues() {
         return {
             searchTerm: $('#searchInput').val().toLowerCase(),
+            companyFilter: $('#companyFilter').val(),               // 회사 필터 추가
             brandFilter: $('#brandFilter').val(),
             categoryFilter: $('#categoryFilter').val(),
             productCodeFilter: $('#productCodeFilter').val(),  // PRD 품목 필터
@@ -393,46 +394,53 @@ class ProductListManager {
     }
     
     /**
-     * 필터 적용
+     * 필터 적용 (코드 기준 검색 개선)
      */
     applyFilters(product, filters) {
-        // 통합 검색어 필터 (상품명, 코드, 브랜드명, 설명 등)
+        // 통합 검색어 필터 (상품명, 코드, 브랜드명, 설명, 코드명 등)
         const searchMatch = !filters.searchTerm || 
             (product.product_name && product.product_name.toLowerCase().includes(filters.searchTerm)) ||
             (product.product_code && product.product_code.toLowerCase().includes(filters.searchTerm)) ||
             (product.brand_name && product.brand_name.toLowerCase().includes(filters.searchTerm)) ||
             (product.category_name && product.category_name.toLowerCase().includes(filters.searchTerm)) ||
             (product.type_name && product.type_name.toLowerCase().includes(filters.searchTerm)) ||
-            (product.description && product.description.toLowerCase().includes(filters.searchTerm));
+            (product.year_code_name && product.year_code_name.toLowerCase().includes(filters.searchTerm)) ||
+            (product.color_name && product.color_name.toLowerCase().includes(filters.searchTerm)) ||
+            (product.description && product.description.toLowerCase().includes(filters.searchTerm)) ||
+            (product.std_product_code && product.std_product_code.toLowerCase().includes(filters.searchTerm));
         
-        // 브랜드 필터
+        // 회사 필터 (새로 추가)
+        const companyMatch = !filters.companyFilter || product.company_id == filters.companyFilter;
+        
+        // 브랜드 필터 (코드 기준)
         const brandMatch = !filters.brandFilter || product.brand_code_seq == filters.brandFilter;
         
-        // 품목 (카테고리) 필터
+        // 품목 (카테고리) 필터 (코드 기준)
         const categoryMatch = !filters.categoryFilter || product.category_code_seq == filters.categoryFilter;
         
-        // PRD 품목 필터 (새로 추가)
+        // PRD 품목 필터 (코드 기준)
         const productCodeMatch = !filters.productCodeFilter || product.category_code_seq == filters.productCodeFilter;
         
-        // 타입 필터
+        // 타입 필터 (코드 기준)
         const typeMatch = !filters.typeFilter || product.type_code_seq == filters.typeFilter;
         
-        // 색상 필터 (CR)
+        // 색상 필터 (CR 코드 기준)
         const colorMatch = !filters.colorFilter || product.color_code_seq == filters.colorFilter;
         
-        // 년도 필터
+        // 년도 필터 (YR 코드 기준)
         const yearMatch = !filters.yearFilter || product.year_code_seq == filters.yearFilter;
         
-        // 상태 필터
+        // 상태 필터 (코드 기준)
         const statusMatch = !filters.statusFilter || 
             (filters.statusFilter === 'true' && product.is_active) ||
             (filters.statusFilter === 'false' && !product.is_active);
         
-        // 자사코드 필터
+        // 자사코드 필터 (16자리 코드 기준)
         const stdCodeMatch = !filters.stdCodeFilter || 
-            (product.std_div_prod_code && product.std_div_prod_code.toLowerCase().includes(filters.stdCodeFilter));
+            (product.std_div_prod_code && product.std_div_prod_code.toLowerCase().includes(filters.stdCodeFilter)) ||
+            (product.std_product_code && product.std_product_code.toLowerCase().includes(filters.stdCodeFilter));
         
-        return searchMatch && brandMatch && (categoryMatch || productCodeMatch) && 
+        return companyMatch && searchMatch && brandMatch && (categoryMatch || productCodeMatch) && 
                typeMatch && colorMatch && yearMatch && statusMatch && stdCodeMatch;
     }
     

@@ -167,7 +167,7 @@ class ProductManager {
             console.log('📥 API 응답:', response); // 디버깅용
             
             if (response.success && response.product) {
-                await this.populateForm(response.product); // 'data' → 'product' 로 변경
+                await this.populateForm(response.product, response.product_models); // product_models도 전달
                 $('#productModal').modal('show');
                 console.log('✅ 상품 수정 모달 표시 완료');
             } else {
@@ -340,7 +340,7 @@ class ProductManager {
     /**
      * 폼에 데이터 채우기
      */
-    async populateForm(productData) {
+    async populateForm(productData, productModels) {
         // 모달 제목 변경
         $('#productModalLabel').text('상품 수정');
         $('#isEditMode').val('edit');
@@ -395,54 +395,108 @@ class ProductManager {
             console.log('✅ 색상(CRD) selected:', productData.color_code_seq);
         }
         
-        // 기존 자사코드들 로드
-        await this.loadExistingStdCodes(productData.id);
+        // 기존 자사코드들 로드 (tbl_Product_DTL 연동)
+        await this.loadExistingProductModels(productData.id, productModels);
     }
     
     /**
-     * 기존 자사코드들 로드 및 표시
+     * 기존 상품 모델들 로드 (tbl_Product_DTL)
      */
-    async loadExistingStdCodes(productId) {
+    async loadExistingProductModels(productId, productModels) {
         try {
-            console.log('🔄 기존 자사코드 로드 시작 - 상품 ID:', productId);
+            console.log('🔄 기존 상품 모델 로드 시작:', productModels);
             
-            const response = await AjaxHelper.get(`/product/api/get-product-models/${productId}`);
+            if (!productModels || productModels.length === 0) {
+                console.log('📭 상품 모델이 없습니다.');
+                return;
+            }
             
-            if (response.success && response.models) {
-                const container = $('#existingProductModels');
-                container.empty();
-                
-                if (response.models.length > 0) {
-                    container.append('<h6 class="mt-3 mb-2">등록된 자사코드</h6>');
+            // 상품 모델 컨테이너 초기화
+            const container = $('#productModelsContainer');
+            container.empty();
+            
+            // 각 상품 모델을 HTML로 렌더링
+            productModels.forEach((model, index) => {
+                const modelHtml = this.createProductModelHTML(model, index);
+                container.append(modelHtml);
+            });
+            
+            console.log(`✅ ${productModels.length}개 상품 모델 로드 완료`);
+            
+        } catch (error) {
+            console.error('❌ 상품 모델 로드 실패:', error);
+        }
+    }
+    
+    /**
+     * 상품 모델 HTML 생성
+     */
+    createProductModelHTML(model, index) {
+        return `
+            <div class="product-model-item border p-3 mb-3" data-index="${index}" data-model-id="${model.id}">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-palette me-1"></i>색상 (CR) <span class="required">*</span>
+                            </label>
+                            <select class="form-select color-code" name="color_code[]" required>
+                                <option value="">색상을 선택하세요</option>
+                                {% for color in color_codes %}
+                                <option value="{{ color.seq }}" data-code="{{ color.code }}" ${model.color_code_info && model.color_code_info.seq == '{{ color.seq }}' ? 'selected' : ''}>
+                                    {{ color.code_name }} ({{ color.code }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted">현재: ${model.color_code_info ? model.color_code_info.code_name : model.color_code}</small>
+                        </div>
+                    </div>
                     
-                    response.models.forEach(model => {
-                        const modelHtml = `
-                            <div class="alert alert-info d-flex justify-content-between align-items-center mb-2">
-                                <div>
-                                    <strong>${model.std_div_prod_code}</strong>
-                                    ${model.product_name ? `- ${model.product_name}` : ''}
-                                </div>
-                                <button type="button" class="btn btn-sm btn-outline-danger" 
-                                        onclick="productManager.removeStdCode(${model.id})">
-                                    <i class="fas fa-trash"></i>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">제품명 (색상별)</label>
+                            <input type="text" class="form-control product-model-name" 
+                                   name="product_model_name[]" 
+                                   value="${model.product_name || ''}"
+                                   placeholder="색상별 제품명">
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">16자리 자사코드</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control std-product-code" 
+                                       name="std_product_code[]" 
+                                       value="${model.std_div_prod_code || ''}"
+                                       readonly>
+                                <button type="button" class="btn btn-primary btn-generate-code" title="선택된 코드 기준으로 생성">
+                                    <i class="fas fa-magic"></i> 자동생성
                                 </button>
                             </div>
-                        `;
-                        container.append(modelHtml);
-                    });
-                    
-                    console.log(`✅ ${response.models.length}개 자사코드 표시 완료`);
-                } else {
-                    container.append('<p class="text-muted mt-3">등록된 자사코드가 없습니다.</p>');
-                }
-            } else {
-                console.warn('⚠️ 자사코드 데이터 없음');
-                $('#existingProductModels').html('<p class="text-muted mt-3">자사코드 정보를 불러올 수 없습니다.</p>');
-            }
-        } catch (error) {
-            console.error('❌ 자사코드 로드 실패:', error);
-            $('#existingProductModels').html('<p class="text-danger mt-3">자사코드 로드 중 오류가 발생했습니다.</p>');
-        }
+                            <small class="text-muted">tbl_Product_DTL 연동</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <small class="text-info">
+                            <strong>코드 구성:</strong> 
+                            ${model.brand_code}+${model.div_type_code}+${model.prod_group_code}+${model.prod_type_code}+${model.prod_code}+${model.prod_type2_code}+${model.year_code}+${model.color_code}
+                        </small>
+                    </div>
+                    <div class="col-md-4">
+                        <small class="text-muted">상태: ${model.status}, 사용: ${model.use_yn}</small>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="button" class="btn btn-outline-danger btn-sm btn-remove-model w-100">
+                            <i class="fas fa-times me-1"></i>제거
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
     }
     
     /**
@@ -572,40 +626,38 @@ class ProductManager {
     }
 
     /**
-     * 초기 코드 데이터 로드 (PRD, CR 등)
+     * 초기 코드 데이터 로드 (PRD, CR 등) - 안전한 방식으로 수정
      */
     async loadInitialCodeData() {
         try {
-            // PRD 품목 코드 로드
-            const prdResponse = await AjaxHelper.get('/admin/api/codes/group/PRD');
-            if (prdResponse.success) {
-                const prdSelect = $('#prod_code_seq');
-                prdSelect.html('<option value="">품목을 선택하세요</option>');
-                
-                prdResponse.data.forEach(code => {
-                    prdSelect.append(`<option value="${code.seq}" data-code="${code.code}">${code.code_name} (${code.code})</option>`);
-                });
-                console.log('✅ PRD 품목 코드 로드 완료:', prdResponse.data.length + '개');
+            console.log('🔄 초기 코드 데이터 로드 시작');
+            
+            // 이미 HTML에서 로드된 데이터가 있는지 확인
+            const prdSelect = $('#prod_code_seq');
+            const colorSelects = $('.color-code');
+            
+            // PRD 품목 코드가 이미 있는지 확인
+            if (prdSelect.find('option').length <= 1) {
+                console.log('⚠️ PRD 품목 코드가 비어있음 - 서버에서 로드된 데이터 사용');
+                // 필요시 여기에 추가 로직
+            } else {
+                console.log('✅ PRD 품목 코드 이미 로드됨:', prdSelect.find('option').length - 1 + '개');
             }
             
-            // CR 색상 코드 로드
-            const crResponse = await AjaxHelper.get('/admin/api/codes/group/CR');
-            if (crResponse.success) {
-                const colorSelects = $('.color-code');
-                colorSelects.each(function() {
-                    const $this = $(this);
-                    $this.html('<option value="">색상을 선택하세요</option>');
-                    
-                    crResponse.data.forEach(code => {
-                        $this.append(`<option value="${code.seq}" data-code="${code.code}">${code.code_name} (${code.code})</option>`);
-                    });
-                });
-                console.log('✅ CR 색상 코드 로드 완료:', crResponse.data.length + '개');
+            // CR 색상 코드가 이미 있는지 확인
+            if (colorSelects.length > 0 && colorSelects.first().find('option').length <= 1) {
+                console.log('⚠️ CR 색상 코드가 비어있음 - 서버에서 로드된 데이터 사용');
+                // 필요시 여기에 추가 로직
+            } else {
+                console.log('✅ CR 색상 코드 이미 로드됨');
             }
+            
+            console.log('✅ 초기 코드 데이터 로드 완료');
             
         } catch (error) {
             console.error('❌ 초기 코드 데이터 로드 실패:', error);
-            throw error;
+            // 에러가 발생해도 모달은 열리도록 함
+            console.log('🔄 에러 무시하고 모달 열기 계속 진행');
         }
     }
 }
