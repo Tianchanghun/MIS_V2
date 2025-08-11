@@ -22,6 +22,32 @@ class ProductListManager {
      * 초기화
      */
     init() {
+        console.log('🔧 ProductListManager.init() 시작');
+        
+        // 필수 DOM 요소 존재 확인
+        const requiredElements = [
+            '#productTableBody',
+            '#searchInput', 
+            '#productCount',
+            '#loadingSpinner',
+            '#emptyState'
+        ];
+        
+        let missingElements = [];
+        requiredElements.forEach(selector => {
+            if ($(selector).length === 0) {
+                missingElements.push(selector);
+            } else {
+                console.log(`✅ DOM 요소 존재: ${selector}`);
+            }
+        });
+        
+        if (missingElements.length > 0) {
+            console.error('❌ 필수 DOM 요소가 없습니다:', missingElements);
+            alert('페이지 요소가 완전히 로드되지 않았습니다. 새로고침해주세요.');
+            return;
+        }
+        
         this.bindEvents();
         this.loadProducts();
         console.log('✅ 상품 목록 관리자 초기화 완료');
@@ -603,24 +629,51 @@ let productListManager;
 
 // DOM 준비 시 초기화 - jQuery 로드 확인
 $(document).ready(function() {
+    console.log('🚀 Document Ready 이벤트 발생');
+    
     // jQuery와 UIHelper, AjaxHelper가 정의되어 있는지 확인
     if (typeof $ === 'undefined') {
         console.error('❌ jQuery가 로드되지 않았습니다');
+        alert('jQuery가 로드되지 않았습니다. 페이지를 새로고침해주세요.');
         return;
+    } else {
+        console.log('✅ jQuery 로드 완료');
     }
     
     if (typeof UIHelper === 'undefined') {
         console.error('❌ UIHelper가 로드되지 않았습니다');
+        alert('UIHelper가 로드되지 않았습니다. 페이지를 새로고침해주세요.');
         return;
+    } else {
+        console.log('✅ UIHelper 로드 완료');
     }
     
     if (typeof AjaxHelper === 'undefined') {
         console.error('❌ AjaxHelper가 로드되지 않았습니다');
+        alert('AjaxHelper가 로드되지 않았습니다. 페이지를 새로고침해주세요.');
         return;
+    } else {
+        console.log('✅ AjaxHelper 로드 완료');
     }
     
     console.log('🚀 상품 목록 관리자 초기화 시작');
-    productListManager = new ProductListManager();
+    
+    try {
+        productListManager = new ProductListManager();
+        console.log('✅ ProductListManager 인스턴스 생성 완료');
+        
+        // 전역 변수 확인
+        if (window.productListManager) {
+            console.log('✅ 전역 productListManager 설정 완료');
+        } else {
+            console.error('❌ 전역 productListManager 설정 실패');
+        }
+        
+    } catch (error) {
+        console.error('❌ ProductListManager 초기화 실패:', error);
+        console.error('❌ 상세 오류:', error.stack);
+        alert('상품 목록 관리자 초기화에 실패했습니다: ' + error.message);
+    }
 });
 
 // 레거시 호환을 위한 전역 함수들

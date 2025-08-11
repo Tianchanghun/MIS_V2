@@ -728,6 +728,28 @@ body.modal-open {
 $(document).ready(function() {
     console.log('✅ 상품관리 페이지 모듈화 완료');
     
+    // 간단한 API 테스트 추가
+    setTimeout(() => {
+        console.log('🧪 API 직접 테스트 시작');
+        
+        $.get('/product/api/list?page=1&per_page=10')
+            .done(function(response) {
+                console.log('🧪 API 직접 테스트 성공:', response);
+                console.log('🧪 데이터 개수:', response.data ? response.data.length : 'null');
+                
+                if (response.data && response.data.length > 0) {
+                    console.log('🧪 첫 번째 상품:', response.data[0]);
+                } else {
+                    console.log('🧪 상품 데이터가 없습니다');
+                }
+            })
+            .fail(function(xhr, status, error) {
+                console.error('🧪 API 직접 테스트 실패:', error);
+                console.error('🧪 응답 상태:', status);
+                console.error('🧪 응답 내용:', xhr.responseText);
+            });
+    }, 2000);
+    
     // 추가 초기화 작업
     setTimeout(() => {
         console.log('🔍 모듈 상태 확인:');
