@@ -249,11 +249,11 @@ def api_create():
         if existing_product:
             return jsonify({'success': False, 'message': '동일한 상품명이 이미 존재합니다.'}), 400
         
-        # 새 상품 생성 (레거시 방식)
+        # 새 상품 생성 (tbl_Product - 기본 정보)
         product = Product(
             company_id=current_company_id,
             brand_code_seq=int(data['brand_code_seq']),
-            category_code_seq=int(data['prod_group_code_seq']),  # 품목 → category로 매핑
+            category_code_seq=int(data['prod_group_code_seq']),  # 제품구분 → category로 매핑
             type_code_seq=int(data['prod_type_code_seq']),       # 타입 → type으로 매핑
             year_code_seq=int(data['year_code_seq']),
             
@@ -276,7 +276,7 @@ def api_create():
         db.session.add(product)
         db.session.flush()  # ID 생성을 위해
         
-        # 제품모델 정보 처리
+        # tbl_Product_DTL 생성 (16자리 자사코드와 함께)
         product_models_data = data.get('product_models')
         if product_models_data:
             try:
@@ -284,7 +284,7 @@ def api_create():
                 product_models = json.loads(product_models_data)
                 
                 for model_data in product_models:
-                    # 자가코드로 ProductDetail 생성
+                    # 16자리 자사코드로 ProductDetail 생성
                     std_code = model_data['std_code']
                     if len(std_code) == 16:
                         product_detail = ProductDetail(
@@ -301,6 +301,8 @@ def api_create():
                             product_name=model_data['name'],
                             status='Active',
                             use_yn='Y',
+                            additional_price=int(model_data.get('additional_price', 0)),
+                            stock_quantity=int(model_data.get('stock_quantity', 0)),
                             created_by=session.get('member_id', 'admin'),
                             updated_by=session.get('member_id', 'admin')
                         )
@@ -963,7 +965,7 @@ def api_upload_excel():
                     except:
                         price = 0
                 
-                # 상품 생성
+                # 새 상품 생성 (tbl_Product - 기본 정보)
                 product = Product(
                     company_id=current_company_id,
                     brand_code_seq=brand_code_seq,
@@ -981,6 +983,43 @@ def api_upload_excel():
                 
                 db.session.add(product)
                 db.session.flush()  # ID 생성을 위해
+                
+                # tbl_Product_DTL 생성 (16자리 자사코드와 함께)
+                product_models_data = data.get('product_models')
+                if product_models_data:
+                    try:
+                        import json
+                        product_models = json.loads(product_models_data)
+                        
+                        for model_data in product_models:
+                            # 16자리 자사코드로 ProductDetail 생성
+                            std_code = model_data['std_code']
+                            if len(std_code) == 16:
+                                product_detail = ProductDetail(
+                                    product_id=product.id,
+                                    brand_code=std_code[:2],
+                                    div_type_code=std_code[2:3],
+                                    prod_group_code=std_code[3:5],
+                                    prod_type_code=std_code[5:7],
+                                    prod_code=std_code[7:9],
+                                    prod_type2_code=std_code[9:11],
+                                    year_code=std_code[11:13],
+                                    color_code=std_code[13:16],
+                                    std_div_prod_code=std_code,
+                                    product_name=model_data['name'],
+                                    status='Active',
+                                    use_yn='Y',
+                                    additional_price=int(model_data.get('additional_price', 0)),
+                                    stock_quantity=int(model_data.get('stock_quantity', 0)),
+                                    created_by=session.get('member_id', 'admin'),
+                                    updated_by=session.get('member_id', 'admin')
+                                )
+                                db.session.add(product_detail)
+                                
+                    except json.JSONDecodeError:
+                        current_app.logger.warning('제품모델 데이터 파싱 실패')
+                
+                db.session.commit()
                 
                 # 히스토리 기록
                 history = ProductHistory(

@@ -1503,7 +1503,7 @@ class ProductDetail(db.Model):
     prod_type_code = db.Column(db.String(2))       # 제품타입 코드 (2자리)
     prod_code = db.Column(db.String(2))            # 제품코드 (2자리)
     prod_type2_code = db.Column(db.String(2))      # 제품타입2 코드 (2자리)
-    year_code = db.Column(db.String(1))            # 년도 코드 (1자리)
+    year_code = db.Column(db.String(2))            # 년도 코드 (2자리)
     color_code = db.Column(db.String(3))           # 색상 코드 (3자리)
     
     # 완성된 자가코드
@@ -1516,6 +1516,7 @@ class ProductDetail(db.Model):
     
     # 상태 관리
     status = db.Column(db.String(20), default='Active')  # Active, Inactive, Discontinued
+    use_yn = db.Column(db.String(1), default='Y')  # 레거시 호환용 (Y/N)
     
     # 레거시 연결 (새로 추가)
     legacy_seq = db.Column(db.Integer, unique=True, nullable=True)  # 레거시 Seq 연결
@@ -1550,6 +1551,7 @@ class ProductDetail(db.Model):
             'additional_price': self.additional_price,
             'stock_quantity': self.stock_quantity,
             'status': self.status,
+            'use_yn': self.use_yn,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'created_by': self.created_by,
