@@ -271,8 +271,9 @@ body.modal-open {
                     <label for="companyFilter" class="form-label">회사</label>
                     <select class="form-select" id="companyFilter" name="companyFilter">
                         <option value="">전체</option>
-                        <option value="1">에이원</option>
-                        <option value="2">에이원월드</option>
+                        {% for company in company_codes %}
+                        <option value="{{ company.id }}">{{ company.name }}</option>
+                        {% endfor %}
                     </select>
                 </div>
                 <div class="col-md-2">
@@ -335,8 +336,9 @@ body.modal-open {
                     <label for="statusFilter" class="form-label">상태</label>
                     <select class="form-select" id="statusFilter" name="statusFilter">
                         <option value="">전체</option>
-                        <option value="true">활성</option>
-                        <option value="false">비활성</option>
+                        {% for status in status_codes %}
+                        <option value="{{ status.value }}">{{ status.name }}</option>
+                        {% endfor %}
                     </select>
                 </div>
                 <div class="col-md-3">
@@ -746,14 +748,13 @@ $(document).ready(function() {
     // ProductListManager 강제 초기화 및 즉시 로드
     setTimeout(() => {
         if (typeof window.productListManager !== 'undefined' && window.productListManager) {
-            console.log('✅ ProductListManager 정상 초기화됨');
-            // 기본 50개 로드 (별도 API 호출 없이)
-            window.productListManager.loadProducts();
+            console.log('✅ ProductListManager 정상 초기화됨 (자동 로드됨)');
+            // ❌ 중복 호출 제거 - ProductListManager 생성자에서 이미 loadProducts() 호출됨
         } else {
             console.warn('⚠️ ProductListManager 수동 초기화');
             if (typeof ProductListManager !== 'undefined') {
                 window.productListManager = new ProductListManager();
-                window.productListManager.loadProducts();
+                // ❌ 중복 호출 제거 - 생성자에서 이미 loadProducts() 호출됨
             }
         }
         

@@ -61,14 +61,27 @@ def index():
             active_only=not show_inactive
         )
         
-        # 코드 정보 조회 (드롭다운용) - 회사별 필터링 적용
-        brand_codes = Code.get_codes_by_group_name_with_company('브랜드', company_id=current_company_id)
+        # 코드 정보 조회 (드롭다운용) - 요구사항에 맞게 수정
+        # 1. 회사 정보 (하드코딩 - 에이원, 에이원월드만)
+        company_codes = [
+            {'id': 1, 'name': '에이원'},
+            {'id': 2, 'name': '에이원월드'}
+        ]
         
-        # 새로운 코드 체계 적용 - 요구사항에 맞게 수정
-        product_category_codes = Code.get_codes_by_group_name_with_company('제품구분', company_id=current_company_id)  # PRT 그룹
-        product_codes = Code.get_codes_by_group_name_with_company('PRD', company_id=current_company_id)  # PRD 그룹에서 품목 가져오기
-        type_codes = []  # 초기에는 빈 리스트, 품목 선택 시 동적 로드
-        year_codes = Code.get_codes_by_group_name_with_company('년도', company_id=current_company_id)
+        # 2. 브랜드 코드 (브랜드 그룹에서)
+        brand_codes = Code.get_codes_by_group_name('브랜드')
+        
+        # 3. 품목 코드 (PRD 그룹에서 가져오기)
+        product_codes = Code.get_codes_by_group_name('PRD')
+        
+        # 4. 타입 코드 (초기에는 빈 리스트, 품목 선택 시 동적 로드)
+        type_codes = []
+        
+        # 5. 색상 코드 (CR 그룹에서 가져오기)
+        color_codes = Code.get_codes_by_group_name('CR')
+        
+        # 6. 년도 코드 (YR 그룹에서 가져오기)
+        year_codes = Code.get_codes_by_group_name('YR')
         
         # 년도 코드가 없으면 기본 년도 생성
         if not year_codes:
@@ -79,27 +92,32 @@ def index():
                 {'seq': None, 'code': str(current_year+1), 'code_name': f'{current_year+1}년'}
             ]
         
-        # 확장 코드 그룹 조회 (제품모델용) - 회사별 필터링 적용
-        color_codes = Code.get_codes_by_group_name_with_company('CRD', company_id=current_company_id)  # CRD 그룹에서 색상 가져오기
-        div_type_codes = Code.get_codes_by_group_name_with_company('구분타입', company_id=current_company_id)
+        # 7. 상태 코드 (하드코딩)
+        status_codes = [
+            {'value': 'true', 'name': '활성'},
+            {'value': 'false', 'name': '비활성'}
+        ]
         
-        # 레거시 호환 (기존 변수명 유지)
-        category_codes = product_category_codes  # 제품구분 (PRT)
-        prod_group_codes = Code.get_codes_by_group_name('품목그룹')  # 제품구분 (PRT) - 레거시 호환
-        prod_type_codes = Code.get_codes_by_group_name('제품타입')  # 타입 - 레거시 호환
+        # 레거시 호환 코드들 (기존 기능 유지)
+        category_codes = Code.get_codes_by_group_name('제품구분')  # 제품구분 (PRT)
+        div_type_codes = Code.get_codes_by_group_name('구분타입')
+        prod_group_codes = Code.get_codes_by_group_name('품목그룹')  # 레거시 호환
+        prod_type_codes = Code.get_codes_by_group_name('제품타입')  # 레거시 호환
         type2_codes = Code.get_codes_by_group_name('타입2')
         
         return render_template('product/index.html',
                              products=products,
-                             brand_codes=brand_codes,
-                             category_codes=category_codes,  # 제품구분 (PRT)
-                             product_codes=product_codes,    # 품목 (PRD) - 새로 추가
-                             type_codes=type_codes,
-                             year_codes=year_codes,
-                             # 확장 코드 그룹 추가
-                             color_codes=color_codes,
+                             # 새로운 코드 체계 (요구사항)
+                             company_codes=company_codes,        # 회사 (에이원, 에이원월드)
+                             brand_codes=brand_codes,            # 브랜드 그룹
+                             product_codes=product_codes,        # PRD 그룹 (품목)
+                             type_codes=type_codes,              # 동적 로드 (품목 선택 시)
+                             color_codes=color_codes,            # CR 그룹 (색상)
+                             year_codes=year_codes,              # YR 그룹 (년도)
+                             status_codes=status_codes,          # 상태 (활성/비활성)
+                             # 레거시 호환 코드들
+                             category_codes=category_codes,
                              div_type_codes=div_type_codes,
-                             # 레거시 호환 코드 그룹 추가
                              prod_group_codes=prod_group_codes,
                              prod_type_codes=prod_type_codes,
                              type2_codes=type2_codes,
@@ -1144,7 +1162,7 @@ def api_get_product_models(product_id):
                 'product_id': detail.product_id,
                 'color_code': detail.color_code,
                 'color_name': color_info.code_name if color_info else detail.color_code,
-                'product_model_name': detail.product_name,
+                'product_model_name': detail.product_name,  # ProductDetail.product_name 사용
                 'std_product_code': detail.std_div_prod_code,
                 'created_at': detail.created_at.isoformat() if detail.created_at else None
             })
