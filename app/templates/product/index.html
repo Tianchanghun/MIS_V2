@@ -240,18 +240,18 @@ body.modal-open {
 
 /* 모달 최적화 - 노트북 화면 대응 */
 .modal-dialog.modal-xl {
-    max-width: 95vw !important;
-    width: 95vw !important;
-    margin: 0.5rem auto !important;
+    max-width: 85vw !important;
+    width: 85vw !important;
+    margin: 1rem auto !important;
 }
 
 .modal-content {
-    max-height: 95vh !important;
+    max-height: 90vh !important;
     overflow: hidden !important;
 }
 
 .modal-body {
-    max-height: 75vh !important;
+    max-height: 70vh !important;
     overflow-y: auto !important;
     padding: 1rem !important;
 }
@@ -266,8 +266,26 @@ body.modal-open {
     border-top: 1px solid #dee2e6 !important;
 }
 
-/* 노트북 화면 대응 */
+/* 노트북 화면 대응 (1366px 이하) */
 @media (max-width: 1366px) {
+    .modal-dialog.modal-xl {
+        max-width: 90vw !important;
+        width: 90vw !important;
+        margin: 0.5rem auto !important;
+    }
+    
+    .modal-content {
+        max-height: 95vh !important;
+    }
+    
+    .modal-body {
+        max-height: 75vh !important;
+        padding: 0.75rem !important;
+    }
+}
+
+/* 작은 화면 대응 */
+@media (max-width: 768px) {
     .modal-dialog.modal-xl {
         max-width: 98vw !important;
         width: 98vw !important;
@@ -276,31 +294,27 @@ body.modal-open {
     
     .modal-content {
         max-height: 98vh !important;
-    }
-    
-    .modal-body {
-        max-height: 80vh !important;
-        padding: 0.75rem !important;
-    }
-}
-
-/* 작은 화면 대응 */
-@media (max-width: 768px) {
-    .modal-dialog.modal-xl {
-        max-width: 100vw !important;
-        width: 100vw !important;
-        margin: 0 !important;
-    }
-    
-    .modal-content {
-        max-height: 100vh !important;
         border-radius: 0 !important;
     }
     
     .modal-body {
-        max-height: 85vh !important;
+        max-height: 80vh !important;
         padding: 0.5rem !important;
     }
+}
+
+/* 모달 z-index 보장 */
+.modal {
+    z-index: 1060 !important;
+}
+
+.modal-backdrop {
+    z-index: 1050 !important;
+}
+
+/* 모달 표시 강제 */
+.modal.show {
+    display: block !important;
 }
 </style>
 {% endblock %}
@@ -1030,7 +1044,7 @@ function scrollToBottom() {
 function addProduct() {
     console.log('📝 상품 등록 버튼 클릭됨');
     
-    // 즉시 모달 열기 시도
+    // 🔥 1단계: ProductManager 시도
     try {
         if (window.productManager && typeof window.productManager.showAddModal === 'function') {
             console.log('✅ ProductManager로 모달 열기');
@@ -1038,53 +1052,84 @@ function addProduct() {
             return;
         }
     } catch (error) {
-        console.error('❌ ProductManager 오류:', error);
+        console.error('❌ ProductManager 1단계 실패:', error);
     }
     
-    // 대안 1: ProductManager 클래스 직접 생성
+    // 🔥 2단계: ProductManager 강제 생성 및 재시도
     try {
-        console.log('🔄 ProductManager 직접 생성 시도');
+        console.log('🔄 ProductManager 강제 생성 시도');
         if (typeof ProductManager !== 'undefined') {
             window.productManager = new ProductManager();
-            setTimeout(() => {
-                if (window.productManager && typeof window.productManager.showAddModal === 'function') {
-                    window.productManager.showAddModal();
-                } else {
-                    console.error('❌ ProductManager 생성 후에도 showAddModal 없음');
-                    // 대안 2: 직접 모달 열기
-                    openModalDirectly();
-                }
-            }, 100);
-            return;
+            
+            // 즉시 시도
+            if (window.productManager.showAddModal) {
+                console.log('✅ 강제 생성 후 모달 열기');
+                window.productManager.showAddModal();
+                return;
+            }
         }
     } catch (error) {
-        console.error('❌ ProductManager 직접 생성 실패:', error);
+        console.error('❌ ProductManager 2단계 실패:', error);
     }
     
-    // 대안 3: 직접 모달 열기
-    console.log('🚨 직접 모달 열기 시도');
-    openModalDirectly();
-}
-
-// 직접 모달 열기 함수
-function openModalDirectly() {
+    // 🔥 3단계: 직접 Bootstrap 모달 열기
+    console.log('🚨 Bootstrap 모달 직접 열기');
     try {
-        console.log('🎯 Bootstrap 모달 직접 열기');
+        // 모달 요소 확인
+        const modalElement = document.getElementById('productModal');
+        if (!modalElement) {
+            console.error('❌ productModal 요소를 찾을 수 없습니다');
+            alert('모달 요소가 존재하지 않습니다. 페이지를 새로고침해주세요.');
+            return;
+        }
         
-        // 모달 초기화
+        // 모달 상태 초기화
         $('#productModalLabel').text('상품 등록');
         $('#isEditMode').val('false');
         $('#productId').val('');
         $('#productForm')[0].reset();
         
-        // Bootstrap 모달 열기
-        const modal = new bootstrap.Modal(document.getElementById('productModal'));
+        // Bootstrap 5 모달 인스턴스 생성 및 표시
+        const modal = new bootstrap.Modal(modalElement, {
+            backdrop: 'static',
+            keyboard: false
+        });
+        
+        // 모달 표시
         modal.show();
         
-        console.log('✅ 모달 직접 열기 성공');
+        // 강제 표시 확인
+        setTimeout(() => {
+            if (!modalElement.classList.contains('show')) {
+                console.warn('⚠️ 모달이 show 클래스가 없음 - 강제 추가');
+                modalElement.classList.add('show');
+                modalElement.style.display = 'block';
+                modalElement.setAttribute('aria-modal', 'true');
+                modalElement.removeAttribute('aria-hidden');
+                
+                // 백드롭 추가
+                if (!document.querySelector('.modal-backdrop')) {
+                    const backdrop = document.createElement('div');
+                    backdrop.className = 'modal-backdrop fade show';
+                    document.body.appendChild(backdrop);
+                }
+            }
+        }, 100);
+        
+        console.log('✅ Bootstrap 모달 직접 열기 성공');
+        
     } catch (error) {
-        console.error('❌ 직접 모달 열기 실패:', error);
-        alert('상품 등록 모달을 열 수 없습니다. 페이지를 새로고침해주세요.');
+        console.error('❌ Bootstrap 모달 열기 실패:', error);
+        
+        // 🔥 4단계: 최후의 수단 - jQuery 모달
+        try {
+            console.log('🆘 jQuery 모달 시도');
+            $('#productModal').modal('show');
+            console.log('✅ jQuery 모달 성공');
+        } catch (jqueryError) {
+            console.error('❌ jQuery 모달도 실패:', jqueryError);
+            alert('모달을 열 수 없습니다. 페이지를 새로고침 후 다시 시도해주세요.');
+        }
     }
 }
 

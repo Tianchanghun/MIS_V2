@@ -372,29 +372,40 @@ class ProductManager {
                 console.log('🔧 브랜드 설정 시도:', brandValue, typeof brandValue);
                 
                 // 옵션 존재 확인
-                const brandOptions = $('#brand_code_seq option');
-                console.log('📋 브랜드 옵션들:', brandOptions.map(function() { return $(this).val(); }).get());
+                const brandSelect = $('#brand_code_seq');
+                const brandOptions = brandSelect.find('option');
+                console.log('📋 브랜드 셀렉트박스:', brandSelect.length > 0 ? '존재' : '없음');
+                console.log('📋 브랜드 옵션 개수:', brandOptions.length);
+                console.log('📋 브랜드 옵션들:', brandOptions.map(function() { return $(this).val() + ':' + $(this).text(); }).get());
                 
-                $('#brand_code_seq').val(brandValue).trigger('change');
+                if (brandOptions.length <= 1) {
+                    console.error('❌ 브랜드 옵션이 로드되지 않았습니다! 기본 옵션만 존재');
+                    return;
+                }
+                
+                // 해당 값이 옵션에 있는지 확인
+                const targetOption = brandSelect.find(`option[value="${brandValue}"]`);
+                console.log('🎯 찾는 브랜드 옵션:', targetOption.length > 0 ? targetOption.text() : '없음');
+                
+                if (targetOption.length === 0) {
+                    console.error('❌ 브랜드 옵션에서 값을 찾을 수 없습니다:', brandValue);
+                    return;
+                }
+                
+                brandSelect.val(brandValue).trigger('change');
                 console.log('🔥 브랜드 코드 강제 적용:', brandValue);
                 
                 // 강제 확인
-                const currentVal = $('#brand_code_seq').val();
+                const currentVal = brandSelect.val();
                 if (currentVal != brandValue) {
                     console.warn('⚠️ 브랜드 재시도. 기대값:', brandValue, '현재값:', currentVal);
-                    $('#brand_code_seq option').each(function() {
-                        const optionVal = String($(this).val());
-                        if (optionVal === brandValue) {
-                            $(this).prop('selected', true);
-                            console.log('✅ 브랜드 옵션 강제 선택:', $(this).text());
-                        } else {
-                            $(this).prop('selected', false);
-                        }
-                    });
+                    targetOption.prop('selected', true);
+                    brandSelect.trigger('change');
+                    console.log('✅ 브랜드 옵션 강제 선택:', targetOption.text());
                 } else {
                     console.log('✅ 브랜드 선택 성공:', currentVal);
                 }
-            }, 100);
+            }, 300); // 시간을 늘려서 DOM 로딩 완료 대기
         }
         
         // 🔥 제품구분 코드 강제 selected
