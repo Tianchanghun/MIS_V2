@@ -660,6 +660,8 @@ $(document).ready(function() {
     
     try {
         productListManager = new ProductListManager();
+        window.productListManager = productListManager;  // 명시적으로 전역 변수 설정
+        
         console.log('✅ ProductListManager 인스턴스 생성 완료');
         
         // 전역 변수 확인
@@ -667,6 +669,13 @@ $(document).ready(function() {
             console.log('✅ 전역 productListManager 설정 완료');
         } else {
             console.error('❌ 전역 productListManager 설정 실패');
+        }
+        
+        // 함수 확인
+        if (typeof window.productListManager.loadProducts === 'function') {
+            console.log('✅ loadProducts 함수 확인 완료');
+        } else {
+            console.error('❌ loadProducts 함수 없음');
         }
         
     } catch (error) {

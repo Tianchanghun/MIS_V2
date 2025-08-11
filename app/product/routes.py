@@ -85,9 +85,9 @@ def index():
         
         # 레거시 호환 (기존 변수명 유지)
         category_codes = product_category_codes  # 제품구분 (PRT)
-        prod_group_codes = product_category_codes  # 제품구분 (PRT) - 레거시 호환
-        prod_type_codes = type_codes  # 타입 - 레거시 호환
-        type2_codes = Code.get_codes_by_group_name('타입2', company_id=current_company_id)
+        prod_group_codes = Code.get_codes_by_group_name('품목그룹')  # 제품구분 (PRT) - 레거시 호환
+        prod_type_codes = Code.get_codes_by_group_name('제품타입')  # 타입 - 레거시 호환
+        type2_codes = Code.get_codes_by_group_name('타입2')
         
         return render_template('product/index.html',
                              products=products,
@@ -930,7 +930,7 @@ def debug_mapping_status():
         ]
         
         for group_name, key in code_groups:
-            codes = Code.get_codes_by_group_name(group_name, current_company_id)
+            codes = Code.get_codes_by_group_name(group_name)
             available_codes[key] = [{'seq': c.seq, 'code': c.code, 'name': c.code_name} for c in codes[:5]]
         
         return jsonify({
@@ -971,10 +971,10 @@ def api_get_all_codes():
         #     current_company_id = session.get('current_company_id', 1)
         
         # 모든 코드 그룹 조회
-        brands = Code.get_codes_by_group_name('브랜드', company_id=current_company_id)
-        categories = Code.get_codes_by_group_name('품목', company_id=current_company_id)
-        colors = Code.get_codes_by_group_name('색상', company_id=current_company_id)
-        div_types = Code.get_codes_by_group_name('구분타입', company_id=current_company_id)
+        brands = Code.get_codes_by_group_name('브랜드')
+        categories = Code.get_codes_by_group_name('품목')
+        colors = Code.get_codes_by_group_name('색상')
+        div_types = Code.get_codes_by_group_name('구분타입')
         
         # JSON 형태로 변환
         result = {
@@ -1195,8 +1195,8 @@ def api_get(product_id):
             # 색상 코드 정보 조회 (code 기준)
             color_code = None
             if detail.color_code:
-                # 색상 코드 3자리를 기준으로 CR 그룹에서 찾기
-                color_codes = Code.get_codes_by_group_name('CR', company_id=current_company_id)
+                # 색상 코드 3자리를 기준으로 CR 그룹에서 찾기 (company_id 제거)
+                color_codes = Code.get_codes_by_group_name('CR')
                 for code in color_codes:
                     if code.code == detail.color_code:
                         color_code = {
