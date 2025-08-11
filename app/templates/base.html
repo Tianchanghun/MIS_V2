@@ -34,21 +34,21 @@
             overflow-y: auto !important;
         }
         
-        /* 메인 콘텐츠 영역을 사이드바 너비만큼 오른쪽으로 이동 */
+        /* 메인 콘텐츠 영역 - 반응형 레이아웃 */
         .main-content {
-            margin-left: 250px !important;
             min-height: 100vh;
             padding: 20px;
-            width: calc(100% - 250px) !important;
             position: relative !important;
             overflow: visible !important;
             z-index: 1 !important;
+            background: white !important;
         }
         
-        /* 반응형: 모바일에서는 사이드바가 숨겨지므로 마진 제거 */
-        @media (max-width: 768px) {
+        /* 데스크톱: 사이드바 옆에 메인 콘텐츠 배치 */
+        @media (min-width: 769px) {
             .main-content {
-                margin-left: 0;
+                margin-left: 250px !important;
+                width: calc(100% - 250px) !important;
             }
         }
         

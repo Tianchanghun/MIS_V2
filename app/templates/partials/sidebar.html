@@ -265,20 +265,25 @@ document.getElementById('sidebar-toggle')?.addEventListener('click', function() 
 <style>
 @media (max-width: 768px) {
     #sidebar {
-        transform: translateX(-100%);
+        transform: translateX(-100%) !important;
         transition: transform 0.3s ease;
     }
     #sidebar.show {
-        transform: translateX(0);
+        transform: translateX(0) !important;
     }
     .main-content {
         margin-left: 0 !important;
+        width: 100% !important;
     }
 }
 
 @media (min-width: 769px) {
+    #sidebar {
+        transform: translateX(0) !important;
+    }
     .main-content {
-        margin-left: 250px;
+        margin-left: 250px !important;
+        width: calc(100% - 250px) !important;
     }
 }
 </style> 

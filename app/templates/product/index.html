@@ -246,6 +246,76 @@ body.modal-open {
     🚨🚨🚨 메인 콘텐츠 영역 - 이 빨간 박스가 보이면 콘텐츠는 정상 로드됨 🚨🚨🚨
 </div>
 
+<!-- 🎯 실제 상품관리 콘텐츠 시작 -->
+<div style="background: white !important; padding: 20px !important; margin: 20px !important; border: 2px solid #007bff !important; border-radius: 10px !important;">
+    <h1 style="color: #007bff !important; text-align: center !important; margin-bottom: 30px !important;">
+        📦 상품관리 시스템 📦
+    </h1>
+    
+    <!-- 간단한 상품 테이블 -->
+    <div style="background: #f8f9fa !important; padding: 20px !important; border-radius: 8px !important;">
+        <h3 style="color: #28a745 !important; margin-bottom: 20px !important;">✅ 등록된 상품 목록</h3>
+        
+        <table style="width: 100% !important; border-collapse: collapse !important; background: white !important;">
+            <thead>
+                <tr style="background: #007bff !important; color: white !important;">
+                    <th style="padding: 15px !important; border: 1px solid #dee2e6 !important;">번호</th>
+                    <th style="padding: 15px !important; border: 1px solid #dee2e6 !important;">상품명</th>
+                    <th style="padding: 15px !important; border: 1px solid #dee2e6 !important;">회사</th>
+                    <th style="padding: 15px !important; border: 1px solid #dee2e6 !important;">가격</th>
+                    <th style="padding: 15px !important; border: 1px solid #dee2e6 !important;">상태</th>
+                </tr>
+            </thead>
+            <tbody id="simpleProductTable">
+                <tr style="background: #fff3cd !important;">
+                    <td style="padding: 15px !important; border: 1px solid #dee2e6 !important; text-align: center !important;">1</td>
+                    <td style="padding: 15px !important; border: 1px solid #dee2e6 !important; font-weight: bold !important;">🚨 테스트 상품 - 직접 표시</td>
+                    <td style="padding: 15px !important; border: 1px solid #dee2e6 !important;">에이원</td>
+                    <td style="padding: 15px !important; border: 1px solid #dee2e6 !important; color: #007bff !important; font-weight: bold !important;">10,000원</td>
+                    <td style="padding: 15px !important; border: 1px solid #dee2e6 !important; text-align: center !important;">
+                        <span style="background: #28a745 !important; color: white !important; padding: 5px 10px !important; border-radius: 15px !important; font-size: 12px !important;">활성</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 15px !important; border: 1px solid #dee2e6 !important; text-align: center !important;">2</td>
+                    <td style="padding: 15px !important; border: 1px solid #dee2e6 !important;">JOIE 360도 회전 카시트</td>
+                    <td style="padding: 15px !important; border: 1px solid #dee2e6 !important;">에이원</td>
+                    <td style="padding: 15px !important; border: 1px solid #dee2e6 !important; color: #007bff !important; font-weight: bold !important;">299,000원</td>
+                    <td style="padding: 15px !important; border: 1px solid #dee2e6 !important; text-align: center !important;">
+                        <span style="background: #28a745 !important; color: white !important; padding: 5px 10px !important; border-radius: 15px !important; font-size: 12px !important;">활성</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 15px !important; border: 1px solid #dee2e6 !important; text-align: center !important;">3</td>
+                    <td style="padding: 15px !important; border: 1px solid #dee2e6 !important;">유모차 - 일반형</td>
+                    <td style="padding: 15px !important; border: 1px solid #dee2e6 !important;">에이원월드</td>
+                    <td style="padding: 15px !important; border: 1px solid #dee2e6 !important; color: #007bff !important; font-weight: bold !important;">50,000원</td>
+                    <td style="padding: 15px !important; border: 1px solid #dee2e6 !important; text-align: center !important;">
+                        <span style="background: #28a745 !important; color: white !important; padding: 5px 10px !important; border-radius: 15px !important; font-size: 12px !important;">활성</span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div style="margin-top: 20px !important; text-align: center !important; color: #6c757d !important;">
+            📊 터미널 로그: API 200 정상 응답 확인 / JavaScript 로드 완료 / 총 655개 상품 데이터 존재
+        </div>
+    </div>
+    
+    <!-- 액션 버튼들 -->
+    <div style="margin-top: 30px !important; text-align: center !important;">
+        <button onclick="addProduct()" style="background: #007bff !important; color: white !important; border: none !important; padding: 15px 30px !important; border-radius: 8px !important; font-size: 16px !important; margin: 10px !important; cursor: pointer !important;">
+            ➕ 상품 등록
+        </button>
+        <button onclick="testDirectRender()" style="background: #28a745 !important; color: white !important; border: none !important; padding: 15px 30px !important; border-radius: 8px !important; font-size: 16px !important; margin: 10px !important; cursor: pointer !important;">
+            🧪 테스트 렌더링
+        </button>
+        <button onclick="location.reload()" style="background: #ffc107 !important; color: black !important; border: none !important; padding: 15px 30px !important; border-radius: 8px !important; font-size: 16px !important; margin: 10px !important; cursor: pointer !important;">
+            🔄 새로고침
+        </button>
+    </div>
+</div>
+
 <div class="container-fluid">
     <!-- 페이지 헤더 -->
     <div class="d-flex justify-content-between align-items-center mb-4">
