@@ -54,40 +54,22 @@ class ProductListManager {
     }
     
     /**
-     * 이벤트 바인딩
+     * 이벤트 바인딩 (통합검색만)
      */
     bindEvents() {
-        // 실시간 검색 입력 이벤트 (debounce 시간 단축)
+        // 실시간 통합 검색 입력 이벤트 (debounce 시간 단축)
         $('#searchInput').on('input keyup', this.debounce(() => {
-            console.log('🔍 실시간 검색 시작:', $('#searchInput').val());
+            console.log('🔍 통합 검색 시작:', $('#searchInput').val());
             this.searchProducts();
         }, 200)); // 300ms에서 200ms로 단축
         
-        // PRD 품목 필터 변경 시 타입 코드 동적 로드
-        $('#productCodeFilter').on('change', () => {
-            const selectedPrdSeq = $('#productCodeFilter').val();
-            console.log('📦 PRD 품목 선택:', selectedPrdSeq);
-            this.loadTypeCodesByProduct(selectedPrdSeq);
-            this.searchProducts();
+        // Enter 키 즉시 검색
+        $('#searchInput').on('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.searchProducts();
+            }
         });
-        
-        // 필터 변경 이벤트 (기존 + PRD/타입 추가)
-        $('#companyFilter, #brandFilter, #categoryFilter, #statusFilter, #typeFilter, #yearFilter').on('change', () => {
-            console.log('🔧 필터 변경됨');
-            this.searchProducts();
-        });
-        
-        // 고급 필터 이벤트 (색상 코드 CR 연동)
-        $('#colorFilter, #divTypeFilter').on('change', () => {
-            console.log('🎨 고급 필터 변경됨');
-            this.searchProducts();
-        });
-        
-        // 자사코드 실시간 검색
-        $('#stdCodeFilter').on('input keyup', this.debounce(() => {
-            console.log('🏷️ 자사코드 검색:', $('#stdCodeFilter').val());
-            this.searchProducts();
-        }, 200));
         
         // 정렬 변경
         $('#sortSelect').on('change', () => {
@@ -97,14 +79,6 @@ class ProductListManager {
         // 페이지당 표시 개수 변경
         $('[onchange="changePerPage(this.value)"]').on('change', (e) => {
             this.changePerPage($(e.target).val());
-        });
-        
-        // Enter 키 즉시 검색
-        $('#searchInput').on('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                this.searchProducts();
-            }
         });
     }
     
@@ -376,28 +350,19 @@ class ProductListManager {
     }
     
     /**
-     * 필터 값 가져오기
+     * 필터 값 가져오기 (통합검색만)
      */
     getFilterValues() {
         return {
-            searchTerm: $('#searchInput').val().toLowerCase(),
-            companyFilter: $('#companyFilter').val(),               // 회사 필터 추가
-            brandFilter: $('#brandFilter').val(),
-            categoryFilter: $('#categoryFilter').val(),
-            productCodeFilter: $('#productCodeFilter').val(),  // PRD 품목 필터
-            typeFilter: $('#typeFilter').val(),
-            colorFilter: $('#colorFilter').val(),               // CR 색상 필터
-            yearFilter: $('#yearFilter').val(),
-            statusFilter: $('#statusFilter').val(),
-            stdCodeFilter: $('#stdCodeFilter').val().toLowerCase()  // 자사코드 검색
+            searchTerm: $('#searchInput').val().toLowerCase()
         };
     }
     
     /**
-     * 필터 적용 (코드 기준 검색 개선)
+     * 필터 적용 (통합검색 전용)
      */
     applyFilters(product, filters) {
-        // 통합 검색어 필터 (상품명, 코드, 브랜드명, 설명, 코드명 등)
+        // 통합 검색어 필터 (상품명, 코드, 브랜드명, 설명, 코드명, 자사코드 등 모든 정보)
         const searchMatch = !filters.searchTerm || 
             (product.product_name && product.product_name.toLowerCase().includes(filters.searchTerm)) ||
             (product.product_code && product.product_code.toLowerCase().includes(filters.searchTerm)) ||
@@ -407,41 +372,10 @@ class ProductListManager {
             (product.year_code_name && product.year_code_name.toLowerCase().includes(filters.searchTerm)) ||
             (product.color_name && product.color_name.toLowerCase().includes(filters.searchTerm)) ||
             (product.description && product.description.toLowerCase().includes(filters.searchTerm)) ||
-            (product.std_product_code && product.std_product_code.toLowerCase().includes(filters.searchTerm));
+            (product.std_product_code && product.std_product_code.toLowerCase().includes(filters.searchTerm)) ||
+            (product.std_div_prod_code && product.std_div_prod_code.toLowerCase().includes(filters.searchTerm));
         
-        // 회사 필터 (새로 추가)
-        const companyMatch = !filters.companyFilter || product.company_id == filters.companyFilter;
-        
-        // 브랜드 필터 (코드 기준)
-        const brandMatch = !filters.brandFilter || product.brand_code_seq == filters.brandFilter;
-        
-        // 품목 (카테고리) 필터 (코드 기준)
-        const categoryMatch = !filters.categoryFilter || product.category_code_seq == filters.categoryFilter;
-        
-        // PRD 품목 필터 (코드 기준)
-        const productCodeMatch = !filters.productCodeFilter || product.category_code_seq == filters.productCodeFilter;
-        
-        // 타입 필터 (코드 기준)
-        const typeMatch = !filters.typeFilter || product.type_code_seq == filters.typeFilter;
-        
-        // 색상 필터 (CR 코드 기준)
-        const colorMatch = !filters.colorFilter || product.color_code_seq == filters.colorFilter;
-        
-        // 년도 필터 (YR 코드 기준)
-        const yearMatch = !filters.yearFilter || product.year_code_seq == filters.yearFilter;
-        
-        // 상태 필터 (코드 기준)
-        const statusMatch = !filters.statusFilter || 
-            (filters.statusFilter === 'true' && product.is_active) ||
-            (filters.statusFilter === 'false' && !product.is_active);
-        
-        // 자사코드 필터 (16자리 코드 기준)
-        const stdCodeMatch = !filters.stdCodeFilter || 
-            (product.std_div_prod_code && product.std_div_prod_code.toLowerCase().includes(filters.stdCodeFilter)) ||
-            (product.std_product_code && product.std_product_code.toLowerCase().includes(filters.stdCodeFilter));
-        
-        return companyMatch && searchMatch && brandMatch && (categoryMatch || productCodeMatch) && 
-               typeMatch && colorMatch && yearMatch && statusMatch && stdCodeMatch;
+        return searchMatch;
     }
     
     /**
@@ -488,18 +422,17 @@ class ProductListManager {
     }
     
     /**
-     * 필터 초기화
+     * 필터 초기화 (통합검색만)
      */
     resetFilters() {
-        // 모든 필터 초기화
-        $('#searchInput, #brandFilter, #categoryFilter, #statusFilter, #typeFilter, #yearFilter, #colorFilter, #divTypeFilter, #productCodeFilter, #stdCodeFilter').val('');
-        
-        // 고급 필터 접기
-        $('#advancedFilters').collapse('hide');
+        // 통합검색 초기화
+        $('#searchInput').val('');
         
         // 필터링 재실행
         this.filteredProducts = [...this.products];
         this.renderProducts();
+        
+        console.log('🔄 검색 필터 초기화 완료');
     }
     
     /**

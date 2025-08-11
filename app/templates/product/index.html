@@ -259,101 +259,22 @@ body.modal-open {
     <div class="card mb-3 search-card">
         <div class="card-body">
             <div class="row g-2 search-row">
-                <div class="col-md-3">
+                <div class="col-md-10">
                     <label for="searchInput" class="form-label">
                         <i class="fas fa-search me-1"></i>통합검색
                     </label>
                     <input type="text" class="form-control" id="searchInput" name="searchInput"
-                           placeholder="상품명, 코드, 브랜드명... (실시간 검색)"
+                           placeholder="상품명, 코드, 브랜드명, 자사코드... (실시간 검색)"
                            autocomplete="off">
-                </div>
-                <div class="col-md-2">
-                    <label for="companyFilter" class="form-label">회사</label>
-                    <select class="form-select" id="companyFilter" name="companyFilter">
-                        <option value="">전체</option>
-                        {% for company in company_codes %}
-                        <option value="{{ company.id }}">{{ company.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label for="brandFilter" class="form-label">브랜드</label>
-                    <select class="form-select" id="brandFilter" name="brandFilter">
-                        <option value="">전체</option>
-                        {% for brand in brand_codes %}
-                        <option value="{{ brand.seq }}">{{ brand.code_name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label for="productCodeFilter" class="form-label">
-                        <i class="fas fa-cube me-1"></i>품목 (PRD)
-                    </label>
-                    <select class="form-select" id="productCodeFilter" name="productCodeFilter">
-                        <option value="">전체</option>
-                        {% for product in product_codes %}
-                        <option value="{{ product.seq }}">{{ product.code_name }} ({{ product.code }})</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label for="typeFilter" class="form-label">타입</label>
-                    <select class="form-select" id="typeFilter" name="typeFilter">
-                        <option value="">전체</option>
-                        <!-- 품목 선택 시 동적으로 로드됨 -->
-                    </select>
-                </div>
-                <div class="col-md-1 d-flex align-items-end">
-                    <button type="button" class="btn btn-outline-light btn-sm w-100" onclick="resetFilters()" title="필터 초기화">
-                        <i class="fas fa-refresh"></i>
-                    </button>
-                </div>
-            </div>
-            
-            <!-- 확장 필터 (2행) -->
-            <div class="row g-2 mt-1">
-                <div class="col-md-2">
-                    <label for="colorFilter" class="form-label">
-                        <i class="fas fa-palette me-1"></i>색상 (CR)
-                    </label>
-                    <select class="form-select" id="colorFilter" name="colorFilter">
-                        <option value="">전체</option>
-                        {% for color in color_codes %}
-                        <option value="{{ color.seq }}">{{ color.code_name }} ({{ color.code }})</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label for="yearFilter" class="form-label">년도</label>
-                    <select class="form-select" id="yearFilter" name="yearFilter">
-                        <option value="">전체</option>
-                        {% for year in year_codes %}
-                        <option value="{{ year.seq }}">{{ year.code_name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label for="statusFilter" class="form-label">상태</label>
-                    <select class="form-select" id="statusFilter" name="statusFilter">
-                        <option value="">전체</option>
-                        {% for status in status_codes %}
-                        <option value="{{ status.value }}">{{ status.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label for="stdCodeFilter" class="form-label">
-                        <i class="fas fa-barcode me-1"></i>자사코드 검색
-                    </label>
-                    <input type="text" class="form-control" id="stdCodeFilter" name="stdCodeFilter"
-                           placeholder="16자리 자사코드 검색..."
-                           autocomplete="off">
-                </div>
-                <div class="col-md-3 d-flex align-items-end">
                     <small class="text-light">
                         <i class="fas fa-info-circle me-1"></i>
-                        PRD 품목 선택 시 타입이 자동으로 로드됩니다 (ERPia 연동 없음)
+                        모든 상품 정보를 통합 검색합니다 (코드명, 브랜드, 자사코드 포함)
                     </small>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="button" class="btn btn-outline-light btn-sm w-100" onclick="resetFilters()" title="검색 초기화">
+                        <i class="fas fa-refresh me-1"></i>초기화
+                    </button>
                 </div>
             </div>
         </div>
@@ -742,6 +663,15 @@ body.modal-open {
 $(document).ready(function() {
     console.log('✅ 상품관리 페이지 모듈화 완료');
     
+    // 🔧 색상 코드 데이터를 전역 변수로 설정
+    try {
+        window.colorCodesData = JSON.parse('{{ color_codes | tojson | safe }}');
+        console.log('✅ 색상 코드 데이터 로드:', window.colorCodesData.length + '개');
+    } catch (e) {
+        console.error('❌ 색상 코드 데이터 로드 실패:', e);
+        window.colorCodesData = [];
+    }
+    
     // ✅ 모든 중복 API 호출 제거 - productListManager가 알아서 처리
     console.log('🎯 ProductListManager 초기화 확인');
     
@@ -872,9 +802,7 @@ function addProductModel() {
                         </label>
                         <select class="form-select color-code" name="color_code[]" required>
                             <option value="">색상을 선택하세요</option>
-                            {% for color in color_codes %}
-                            <option value="{{ color.seq }}" data-code="{{ color.code }}">{{ color.code_name }} ({{ color.code }})</option>
-                            {% endfor %}
+                            <!-- 동적으로 로드됨 -->
                         </select>
                         <small class="text-muted">CR 코드 그룹에서 관리</small>
                     </div>
@@ -917,6 +845,22 @@ function addProductModel() {
     `;
     
     container.append(newModelHtml);
+    
+    // 새로 추가된 색상 셀렉트박스에 옵션 로드
+    loadColorOptionsForNewModel(container.find('.product-model-item:last .color-code'));
+}
+
+// 색상 옵션 동적 로드
+function loadColorOptionsForNewModel(selectElement) {
+    // 기존 색상 옵션을 복사
+    const firstColorSelect = $('.color-code').first();
+    if (firstColorSelect.length > 0) {
+        const existingOptions = firstColorSelect.html();
+        selectElement.html(existingOptions);
+    } else {
+        // 기본 옵션
+        selectElement.html('<option value="">색상을 선택하세요</option>');
+    }
 }
 
 // 모델 인덱스 업데이트

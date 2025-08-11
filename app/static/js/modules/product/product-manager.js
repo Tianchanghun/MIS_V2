@@ -338,7 +338,7 @@ class ProductManager {
     }
     
     /**
-     * 폼에 데이터 채우기
+     * 폼에 데이터 채우기 (코드 기준 selected 적용)
      */
     async populateForm(productData, productModels) {
         // 모달 제목 변경
@@ -352,47 +352,51 @@ class ProductManager {
         $('#price').val(productData.price);
         $('#description').val(productData.description);
         
-        // 회사 정보
-        if (productData.company_id) $('#company_id').val(productData.company_id);
+        // 회사 정보 selected
+        if (productData.company_id) {
+            $('#company_id').val(productData.company_id);
+            console.log('✅ 회사 selected:', productData.company_id);
+        }
         
         // 사용여부 (is_active -> use_yn 변환)
         $('#use_yn').val(productData.is_active ? 'Y' : 'N');
+        console.log('✅ 사용여부 selected:', productData.is_active ? 'Y' : 'N');
         
-        // 브랜드 선택 (정렬 순서대로 로드 후 selected)
+        // ⭐ 브랜드 코드 기준 selected
         if (productData.brand_code_seq) {
             $('#brand_code_seq').val(productData.brand_code_seq);
-            console.log('✅ 브랜드 selected:', productData.brand_code_seq);
+            console.log('✅ 브랜드 코드 selected:', productData.brand_code_seq);
         }
         
-        // 품목 선택 (PRD 그룹에서 로드 후 selected)
+        // ⭐ 제품구분 코드 기준 selected
         if (productData.category_code_seq) {
             $('#prod_group_code_seq').val(productData.category_code_seq);
-            console.log('✅ 품목(PRD) selected:', productData.category_code_seq);
+            console.log('✅ 제품구분 코드 selected:', productData.category_code_seq);
+        }
+        
+        // ⭐ 품목(PRD) 코드 기준 selected
+        if (productData.category_code_seq) {
+            $('#prod_code_seq').val(productData.category_code_seq);
+            console.log('✅ 품목(PRD) 코드 selected:', productData.category_code_seq);
             
             // 품목 선택 후 하위 타입 로드
             try {
                 await this.loadTypesByProductSeq(productData.category_code_seq);
                 
-                // 타입 선택
+                // ⭐ 타입 코드 기준 selected
                 if (productData.type_code_seq) {
                     $('#prod_type_code_seq').val(productData.type_code_seq);
-                    console.log('✅ 타입 selected:', productData.type_code_seq);
+                    console.log('✅ 타입 코드 selected:', productData.type_code_seq);
                 }
             } catch (error) {
                 console.error('❌ 타입 로드 실패:', error);
             }
         }
         
-        // 년도 선택
+        // ⭐ 년식 코드 기준 selected
         if (productData.year_code_seq) {
             $('#year_code_seq').val(productData.year_code_seq);
-            console.log('✅ 년도 selected:', productData.year_code_seq);
-        }
-        
-        // 색상 선택 (CRD 그룹에서 로드 후 selected)
-        if (productData.color_code_seq) {
-            $('#color_code_seq').val(productData.color_code_seq);
-            console.log('✅ 색상(CRD) selected:', productData.color_code_seq);
+            console.log('✅ 년식 코드 selected:', productData.year_code_seq);
         }
         
         // 기존 자사코드들 로드 (tbl_Product_DTL 연동)
@@ -429,9 +433,20 @@ class ProductManager {
     }
     
     /**
-     * 상품 모델 HTML 생성
+     * 상품 모델 HTML 생성 (색상 selected 상태 적용)
      */
     createProductModelHTML(model, index) {
+        // 색상 옵션 HTML 생성 (selected 상태 포함)
+        let colorOptionsHtml = '<option value="">색상을 선택하세요</option>';
+        
+        // HTML에서 color_codes를 가져와서 사용
+        if (window.colorCodesData) {
+            window.colorCodesData.forEach(color => {
+                const isSelected = model.color_code_info && model.color_code_info.seq == color.seq ? 'selected' : '';
+                colorOptionsHtml += `<option value="${color.seq}" data-code="${color.code}" ${isSelected}>${color.code_name} (${color.code})</option>`;
+            });
+        }
+        
         return `
             <div class="product-model-item border p-3 mb-3" data-index="${index}" data-model-id="${model.id}">
                 <div class="row">
@@ -441,12 +456,7 @@ class ProductManager {
                                 <i class="fas fa-palette me-1"></i>색상 (CR) <span class="required">*</span>
                             </label>
                             <select class="form-select color-code" name="color_code[]" required>
-                                <option value="">색상을 선택하세요</option>
-                                {% for color in color_codes %}
-                                <option value="{{ color.seq }}" data-code="{{ color.code }}" ${model.color_code_info && model.color_code_info.seq == '{{ color.seq }}' ? 'selected' : ''}>
-                                    {{ color.code_name }} ({{ color.code }})
-                                </option>
-                                {% endfor %}
+                                ${colorOptionsHtml}
                             </select>
                             <small class="text-muted">현재: ${model.color_code_info ? model.color_code_info.code_name : model.color_code}</small>
                         </div>
