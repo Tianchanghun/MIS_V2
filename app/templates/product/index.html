@@ -486,12 +486,12 @@ body.modal-open {
 </div>
 
 <!-- 상품 등록/수정 모달 -->
-<div class="modal fade" id="productModal" tabindex="-1" aria-labelledby="productModalLabel" aria-modal="true" role="dialog">
+<div class="modal fade" id="productModal" tabindex="-1" aria-labelledby="productModalLabel" aria-modal="true" role="dialog" aria-hidden="false">
     <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="productModalLabel">상품 등록</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
             </div>
             <form id="productForm" enctype="multipart/form-data">
                 <input type="hidden" id="productId" name="productId">

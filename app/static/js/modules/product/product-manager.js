@@ -368,17 +368,31 @@ class ProductManager {
         // 🔥 브랜드 코드 강제 selected
         if (productData.brand_code_seq) {
             setTimeout(() => {
-                $('#brand_code_seq').val(productData.brand_code_seq).trigger('change');
-                console.log('🔥 브랜드 코드 강제 적용:', productData.brand_code_seq);
+                const brandValue = String(productData.brand_code_seq); // 문자열로 변환
+                console.log('🔧 브랜드 설정 시도:', brandValue, typeof brandValue);
+                
+                // 옵션 존재 확인
+                const brandOptions = $('#brand_code_seq option');
+                console.log('📋 브랜드 옵션들:', brandOptions.map(function() { return $(this).val(); }).get());
+                
+                $('#brand_code_seq').val(brandValue).trigger('change');
+                console.log('🔥 브랜드 코드 강제 적용:', brandValue);
                 
                 // 강제 확인
-                if ($('#brand_code_seq').val() != productData.brand_code_seq) {
-                    console.warn('⚠️ 브랜드 재시도');
+                const currentVal = $('#brand_code_seq').val();
+                if (currentVal != brandValue) {
+                    console.warn('⚠️ 브랜드 재시도. 기대값:', brandValue, '현재값:', currentVal);
                     $('#brand_code_seq option').each(function() {
-                        if ($(this).val() == productData.brand_code_seq) {
+                        const optionVal = String($(this).val());
+                        if (optionVal === brandValue) {
                             $(this).prop('selected', true);
+                            console.log('✅ 브랜드 옵션 강제 선택:', $(this).text());
+                        } else {
+                            $(this).prop('selected', false);
                         }
                     });
+                } else {
+                    console.log('✅ 브랜드 선택 성공:', currentVal);
                 }
             }, 100);
         }
@@ -386,17 +400,27 @@ class ProductManager {
         // 🔥 제품구분 코드 강제 selected
         if (productData.category_code_seq) {
             setTimeout(() => {
-                $('#prod_group_code_seq').val(productData.category_code_seq).trigger('change');
-                console.log('🔥 제품구분 코드 강제 적용:', productData.category_code_seq);
+                const categoryValue = String(productData.category_code_seq);
+                console.log('🔧 제품구분 설정 시도:', categoryValue, typeof categoryValue);
+                
+                $('#prod_group_code_seq').val(categoryValue).trigger('change');
+                console.log('🔥 제품구분 코드 강제 적용:', categoryValue);
                 
                 // 강제 확인
-                if ($('#prod_group_code_seq').val() != productData.category_code_seq) {
-                    console.warn('⚠️ 제품구분 재시도');
+                const currentVal = $('#prod_group_code_seq').val();
+                if (currentVal != categoryValue) {
+                    console.warn('⚠️ 제품구분 재시도. 기대값:', categoryValue, '현재값:', currentVal);
                     $('#prod_group_code_seq option').each(function() {
-                        if ($(this).val() == productData.category_code_seq) {
+                        const optionVal = String($(this).val());
+                        if (optionVal === categoryValue) {
                             $(this).prop('selected', true);
+                            console.log('✅ 제품구분 옵션 강제 선택:', $(this).text());
+                        } else {
+                            $(this).prop('selected', false);
                         }
                     });
+                } else {
+                    console.log('✅ 제품구분 선택 성공:', currentVal);
                 }
             }, 200);
         }
@@ -404,17 +428,27 @@ class ProductManager {
         // 🔥 품목(PRD) 코드 강제 selected
         if (productData.category_code_seq) {
             setTimeout(() => {
-                $('#prod_code_seq').val(productData.category_code_seq).trigger('change');
-                console.log('🔥 품목(PRD) 코드 강제 적용:', productData.category_code_seq);
+                const prdValue = String(productData.category_code_seq);
+                console.log('🔧 품목(PRD) 설정 시도:', prdValue, typeof prdValue);
+                
+                $('#prod_code_seq').val(prdValue).trigger('change');
+                console.log('🔥 품목(PRD) 코드 강제 적용:', prdValue);
                 
                 // 강제 확인
-                if ($('#prod_code_seq').val() != productData.category_code_seq) {
-                    console.warn('⚠️ 품목 재시도');
+                const currentVal = $('#prod_code_seq').val();
+                if (currentVal != prdValue) {
+                    console.warn('⚠️ 품목 재시도. 기대값:', prdValue, '현재값:', currentVal);
                     $('#prod_code_seq option').each(function() {
-                        if ($(this).val() == productData.category_code_seq) {
+                        const optionVal = String($(this).val());
+                        if (optionVal === prdValue) {
                             $(this).prop('selected', true);
+                            console.log('✅ 품목 옵션 강제 선택:', $(this).text());
+                        } else {
+                            $(this).prop('selected', false);
                         }
                     });
+                } else {
+                    console.log('✅ 품목 선택 성공:', currentVal);
                 }
             }, 300);
             
@@ -425,17 +459,27 @@ class ProductManager {
                 // 🔥 타입 코드 강제 selected (타입 로드 완료 후)
                 if (productData.type_code_seq) {
                     setTimeout(() => {
-                        $('#prod_type_code_seq').val(productData.type_code_seq).trigger('change');
-                        console.log('🔥 타입 코드 강제 적용:', productData.type_code_seq);
+                        const typeValue = String(productData.type_code_seq);
+                        console.log('🔧 타입 설정 시도:', typeValue, typeof typeValue);
+                        
+                        $('#prod_type_code_seq').val(typeValue).trigger('change');
+                        console.log('🔥 타입 코드 강제 적용:', typeValue);
                         
                         // 강제 확인
-                        if ($('#prod_type_code_seq').val() != productData.type_code_seq) {
-                            console.warn('⚠️ 타입 재시도');
+                        const currentVal = $('#prod_type_code_seq').val();
+                        if (currentVal != typeValue) {
+                            console.warn('⚠️ 타입 재시도. 기대값:', typeValue, '현재값:', currentVal);
                             $('#prod_type_code_seq option').each(function() {
-                                if ($(this).val() == productData.type_code_seq) {
+                                const optionVal = String($(this).val());
+                                if (optionVal === typeValue) {
                                     $(this).prop('selected', true);
+                                    console.log('✅ 타입 옵션 강제 선택:', $(this).text());
+                                } else {
+                                    $(this).prop('selected', false);
                                 }
                             });
+                        } else {
+                            console.log('✅ 타입 선택 성공:', currentVal);
                         }
                     }, 500);
                 }
@@ -447,17 +491,27 @@ class ProductManager {
         // 🔥 년식 코드 강제 selected
         if (productData.year_code_seq) {
             setTimeout(() => {
-                $('#year_code_seq').val(productData.year_code_seq).trigger('change');
-                console.log('🔥 년식 코드 강제 적용:', productData.year_code_seq);
+                const yearValue = String(productData.year_code_seq);
+                console.log('🔧 년식 설정 시도:', yearValue, typeof yearValue);
+                
+                $('#year_code_seq').val(yearValue).trigger('change');
+                console.log('🔥 년식 코드 강제 적용:', yearValue);
                 
                 // 강제 확인
-                if ($('#year_code_seq').val() != productData.year_code_seq) {
-                    console.warn('⚠️ 년식 재시도');
+                const currentVal = $('#year_code_seq').val();
+                if (currentVal != yearValue) {
+                    console.warn('⚠️ 년식 재시도. 기대값:', yearValue, '현재값:', currentVal);
                     $('#year_code_seq option').each(function() {
-                        if ($(this).val() == productData.year_code_seq) {
+                        const optionVal = String($(this).val());
+                        if (optionVal === yearValue) {
                             $(this).prop('selected', true);
+                            console.log('✅ 년식 옵션 강제 선택:', $(this).text());
+                        } else {
+                            $(this).prop('selected', false);
                         }
                     });
+                } else {
+                    console.log('✅ 년식 선택 성공:', currentVal);
                 }
             }, 400);
         }
