@@ -652,66 +652,6 @@ def get_codes_paginated():
         current_app.logger.error(f"페이징된 코드 조회 실패: {e}")
         return jsonify({'success': False, 'message': f'코드 조회 중 오류가 발생했습니다: {str(e)}'}), 500
 
-@admin_bp.route('/api/codes/update-order', methods=['POST'])
-def update_code_order():
-    """코드 정렬 순서 업데이트 (드래그 앤 드롭용)"""
-    if 'member_seq' not in session:
-        return redirect('/auth/login')
-    
-    try:
-        # POST 데이터 처리 (form과 JSON 모두 지원)
-        if request.is_json:
-            data = request.get_json()
-            parent_seq = data.get('parent_seq')
-            depth = data.get('depth')
-            order_json = data.get('order')
-        else:
-            parent_seq = request.form.get('parent_seq')
-            depth = request.form.get('depth')
-            order_json = request.form.get('order')
-        
-        if not parent_seq or not depth or not order_json:
-            return jsonify({'success': False, 'message': '필수 데이터가 누락되었습니다.'})
-        
-        # JSON 파싱
-        import json
-        try:
-            order_list = json.loads(order_json)
-        except:
-            return jsonify({'success': False, 'message': '순서 데이터 형식이 잘못되었습니다.'})
-        
-        parent_seq = int(parent_seq)
-        depth = int(depth)
-        
-        # 해당 부모의 같은 깊이 코드들 조회
-        codes = Code.query.filter_by(parent_seq=parent_seq, depth=depth).all()
-        code_dict = {code.seq: code for code in codes}
-        
-        # 새로운 순서로 sort 값 업데이트
-        for index, seq in enumerate(order_list):
-            if seq in code_dict:
-                code_dict[seq].sort = index + 1
-                code_dict[seq].upt_user = session.get('member_seq')
-                code_dict[seq].upt_date = datetime.now()
-        
-        db.session.commit()
-        
-        current_app.logger.info(f"드래그 앤 드롭 순서 변경 완료: parent={parent_seq}, depth={depth}, order={order_list}")
-        
-        return jsonify({
-            'success': True,
-            'message': '정렬 순서가 성공적으로 업데이트되었습니다.',
-            'data': {
-                'parent_seq': parent_seq,
-                'depth': depth,
-                'updated_count': len(order_list)
-            }
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        current_app.logger.error(f"드래그 앤 드롭 순서 변경 실패: {e}")
-        return jsonify({'success': False, 'message': f'순서 변경 중 오류가 발생했습니다: {str(e)}'}), 500
 
 # ==================== 부서 관리 API ====================
 
