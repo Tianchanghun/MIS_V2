@@ -68,64 +68,33 @@ def index():
             {'id': 2, 'name': '에이원월드'}
         ]
         
-        # 2. 브랜드 코드 (브랜드 그룹에서) - 모든 브랜드 코드 포함
-        brand_codes = Code.get_codes_by_group_name('브랜드')
+        # 2. 브랜드 코드 (브랜드 그룹에서)
+        brand_codes_raw = Code.get_codes_by_group_name('브랜드')
+        brand_codes = [{'seq': code.seq, 'code': code.code, 'code_name': code.code_name} for code in brand_codes_raw]
         
-        # 브랜드 코드가 부족하면 추가로 실제 사용되는 브랜드 SEQ도 포함
-        used_brand_seqs = db.session.query(Product.brand_code_seq).distinct().filter(
-            Product.brand_code_seq.isnot(None)
-        ).all()
-        for seq_tuple in used_brand_seqs:
-            seq = seq_tuple[0]
-            if seq:
-                existing_brand = Code.query.get(seq)
-                if existing_brand and existing_brand not in brand_codes:
-                    brand_codes.append(existing_brand)
-        
-        # 3. 품목 코드 (PRD 그룹에서 가져오기) - 실제 사용되는 코드 포함
-        product_codes = Code.get_codes_by_group_name('PRD')
-        
-        # 실제 사용되는 품목 SEQ도 포함
-        used_product_seqs = db.session.query(Product.category_code_seq).distinct().filter(
-            Product.category_code_seq.isnot(None)
-        ).all()
-        for seq_tuple in used_product_seqs:
-            seq = seq_tuple[0]
-            if seq:
-                existing_product = Code.query.get(seq)
-                if existing_product and existing_product not in product_codes:
-                    product_codes.append(existing_product)
+        # 3. 품목 코드 (PRD 그룹에서 가져오기)
+        product_codes_raw = Code.get_codes_by_group_name('PRD')
+        product_codes = [{'seq': code.seq, 'code': code.code, 'code_name': code.code_name} for code in product_codes_raw]
         
         # 4. 타입 코드 (초기에는 빈 리스트, 품목 선택 시 동적 로드)
         type_codes = []
         
-        # 5. 색상 코드 (CR 그룹에서 가져오기) - 실제 사용되는 코드 포함
-        color_codes = Code.get_codes_by_group_name('CR')
+        # 5. 색상 코드 (CR 그룹에서 가져오기)
+        color_codes_raw = Code.get_codes_by_group_name('CR')
+        color_codes = [{'seq': code.seq, 'code': code.code, 'code_name': code.code_name} for code in color_codes_raw]
         
-        # 실제 사용되는 색상 SEQ도 포함 (ProductDetail에서)
-        used_color_codes = db.session.query(ProductDetail.color_code).distinct().filter(
-            ProductDetail.color_code.isnot(None)
-        ).all()
-        for code_tuple in used_color_codes:
-            color_code = code_tuple[0]
-            if color_code:
-                existing_color = Code.query.filter_by(code=color_code).first()
-                if existing_color and existing_color not in color_codes:
-                    color_codes.append(existing_color)
+        # 6. 년도 코드 (YR 그룹에서 가져오기)
+        year_codes_raw = Code.get_codes_by_group_name('YR')
+        year_codes = [{'seq': code.seq, 'code': code.code, 'code_name': code.code_name} for code in year_codes_raw]
         
-        # 6. 년도 코드 (YR 그룹에서 가져오기) - 실제 사용되는 코드 포함
-        year_codes = Code.get_codes_by_group_name('YR')
-        
-        # 실제 사용되는 년도 SEQ도 포함
-        used_year_seqs = db.session.query(Product.year_code_seq).distinct().filter(
-            Product.year_code_seq.isnot(None)
-        ).all()
-        for seq_tuple in used_year_seqs:
-            seq = seq_tuple[0]
-            if seq:
-                existing_year = Code.query.get(seq)
-                if existing_year and existing_year not in year_codes:
-                    year_codes.append(existing_year)
+        # 년도 코드가 없으면 기본 년도 생성
+        if not year_codes:
+            current_year = datetime.now().year
+            year_codes = [
+                {'seq': None, 'code': str(current_year), 'code_name': f'{current_year}년'},
+                {'seq': None, 'code': str(current_year-1), 'code_name': f'{current_year-1}년'},
+                {'seq': None, 'code': str(current_year+1), 'code_name': f'{current_year+1}년'}
+            ]
         
         # 7. 상태 코드 (하드코딩)
         status_codes = [
@@ -133,79 +102,46 @@ def index():
             {'value': 'false', 'name': '비활성'}
         ]
         
-        # 레거시 호환 코드들 (기존 기능 유지) - 실제 사용되는 코드 포함
-        category_codes = Code.get_codes_by_group_name('제품구분')  # 제품구분 (PRT)
+        # 레거시 호환 코드들 (기존 기능 유지)
+        category_codes_raw = Code.get_codes_by_group_name('제품구분')  # 제품구분 (PRT)
+        category_codes = [{'seq': code.seq, 'code': code.code, 'code_name': code.code_name} for code in category_codes_raw]
         
-        # 실제 사용되는 제품구분 SEQ도 포함
-        used_category_seqs = db.session.query(Product.category_code_seq).distinct().filter(
-            Product.category_code_seq.isnot(None)
-        ).all()
-        for seq_tuple in used_category_seqs:
-            seq = seq_tuple[0]
-            if seq:
-                existing_category = Code.query.get(seq)
-                if existing_category and existing_category not in category_codes:
-                    category_codes.append(existing_category)
+        div_type_codes_raw = Code.get_codes_by_group_name('구분타입')
+        div_type_codes = [{'seq': code.seq, 'code': code.code, 'code_name': code.code_name} for code in div_type_codes_raw]
         
-        div_type_codes = Code.get_codes_by_group_name('구분타입')
-        prod_group_codes = Code.get_codes_by_group_name('품목그룹')  # 레거시 호환
-        prod_type_codes = Code.get_codes_by_group_name('제품타입')  # 레거시 호환
-        type2_codes = Code.get_codes_by_group_name('타입2')
+        prod_group_codes_raw = Code.get_codes_by_group_name('품목그룹')  # 레거시 호환
+        prod_group_codes = [{'seq': code.seq, 'code': code.code, 'code_name': code.code_name} for code in prod_group_codes_raw]
         
-        # 🔧 디버깅: 로드된 코드 개수 확인
-        current_app.logger.info(f"🔧 코드 로딩 완료:")
-        current_app.logger.info(f"  - 브랜드: {len(brand_codes)}개")
-        current_app.logger.info(f"  - 품목(PRD): {len(product_codes)}개") 
-        current_app.logger.info(f"  - 색상(CR): {len(color_codes)}개")
-        current_app.logger.info(f"  - 년도(YR): {len(year_codes)}개")
-        current_app.logger.info(f"  - 제품구분: {len(category_codes)}개")
+        prod_type_codes_raw = Code.get_codes_by_group_name('제품타입')  # 레거시 호환
+        prod_type_codes = [{'seq': code.seq, 'code': code.code, 'code_name': code.code_name} for code in prod_type_codes_raw]
         
-        # 특정 SEQ 존재 여부 확인
-        problem_seqs = [583, 50, 3605, 72]
-        for seq in problem_seqs:
-            code = Code.query.get(seq)
-            if code:
-                current_app.logger.info(f"  - SEQ {seq}: {code.code_name} ({code.code}) - Parent: {code.parent_seq}, Depth: {code.depth}")
-            else:
-                current_app.logger.warning(f"  - SEQ {seq}: 존재하지 않음")
-                
-        # 각 코드 리스트에서 문제 SEQ 찾기
-        for seq in problem_seqs:
-            found_in = []
-            for name, codes in [('브랜드', brand_codes), ('제품구분', category_codes), ('품목', product_codes), ('색상', color_codes), ('년도', year_codes)]:
-                if any(code.seq == seq for code in codes):
-                    found_in.append(name)
-            if found_in:
-                current_app.logger.info(f"  - SEQ {seq} 포함된 리스트: {', '.join(found_in)}")
-            else:
-                current_app.logger.warning(f"  - SEQ {seq} 어느 리스트에도 없음!")
+        type2_codes_raw = Code.get_codes_by_group_name('타입2')
+        type2_codes = [{'seq': code.seq, 'code': code.code, 'code_name': code.code_name} for code in type2_codes_raw]
         
-        # 🚨 문제 SEQ들을 강제로 추가
-        problem_seq_mapping = {
-            583: 'brand_codes',    # 브랜드
-            50: 'category_codes',   # 제품구분
-            3605: 'year_codes',    # 년도  
-            72: 'type_codes'       # 타입 (동적 로드되므로 여기서는 스킵)
-        }
-        
-        for seq, list_name in problem_seq_mapping.items():
-            code = Code.query.get(seq)
-            if code:
-                if list_name == 'brand_codes' and code not in brand_codes:
-                    brand_codes.append(code)
-                    current_app.logger.info(f"🔧 SEQ {seq} 브랜드 리스트에 강제 추가: {code.code_name}")
-                elif list_name == 'category_codes' and code not in category_codes:
-                    category_codes.append(code)
-                    current_app.logger.info(f"🔧 SEQ {seq} 제품구분 리스트에 강제 추가: {code.code_name}")
-                elif list_name == 'year_codes' and code not in year_codes:
-                    year_codes.append(code)
-                    current_app.logger.info(f"🔧 SEQ {seq} 년도 리스트에 강제 추가: {code.code_name}")
-                # PRD 그룹에도 추가 (품목으로 사용될 수 있음)
-                if seq == 50 and code not in product_codes:
-                    product_codes.append(code)
-                    current_app.logger.info(f"🔧 SEQ {seq} 품목(PRD) 리스트에도 추가: {code.code_name}")
-            else:
-                current_app.logger.error(f"❌ SEQ {seq} 코드를 찾을 수 없음")
+        # 🔥 새로운 분류 체계들 로드 (Excel에서 가져온 실제 분류)
+        try:
+            product_group_codes_raw = Code.get_codes_by_group_name('제품군')
+            product_group_codes = [{'seq': code.seq, 'code': code.code, 'code_name': code.code_name} for code in product_group_codes_raw]
+            
+            item_codes_raw = Code.get_codes_by_group_name('아이템별')
+            item_codes = [{'seq': code.seq, 'code': code.code, 'code_name': code.code_name} for code in item_codes_raw]
+            
+            item_detail_codes_raw = Code.get_codes_by_group_name('아이템상세')
+            item_detail_codes = [{'seq': code.seq, 'code': code.code, 'code_name': code.code_name} for code in item_detail_codes_raw]
+            
+            color_by_product_codes_raw = Code.get_codes_by_group_name('색상별')
+            color_by_product_codes = [{'seq': code.seq, 'code': code.code, 'code_name': code.code_name} for code in color_by_product_codes_raw]
+            
+            product_type_category_codes_raw = Code.get_codes_by_group_name('제품타입')
+            product_type_category_codes = [{'seq': code.seq, 'code': code.code, 'code_name': code.code_name} for code in product_type_category_codes_raw]
+            
+        except Exception as e:
+            current_app.logger.error(f"❌ 새로운 분류 체계 로딩 실패: {e}")
+            product_group_codes = []
+            item_codes = []
+            item_detail_codes = []
+            color_by_product_codes = []
+            product_type_category_codes = []
         
         return render_template('product/index.html',
                              products=products,
@@ -223,6 +159,12 @@ def index():
                              prod_group_codes=prod_group_codes,
                              prod_type_codes=prod_type_codes,
                              type2_codes=type2_codes,
+                             # 🔥 새로운 분류 체계들 추가
+                             product_group_codes=product_group_codes,
+                             item_codes=item_codes,
+                             item_detail_codes=item_detail_codes,
+                             color_by_product_codes=color_by_product_codes,
+                             product_type_category_codes=product_type_category_codes,
                              search_term=search_term,
                              brand_code_seq=brand_code_seq,
                              category_code_seq=category_code_seq,
@@ -815,7 +757,7 @@ def api_delete(product_id):
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"❌ 상품 삭제 실패: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': str(e)}), 500 
 
 @bp.route('/api/create-product-model', methods=['POST'])
 @login_required

@@ -93,7 +93,7 @@ class ProductManager {
                 typeSelect.append('<option value="">타입 선택</option>');
                 
                 response.types.forEach(type => {
-                    typeSelect.append(`<option value="${type.seq}">${type.code_name}</option>`);
+                    typeSelect.append(`<option value="${type.seq}" data-code="${type.code}">${type.code_name} (${type.code})</option>`);
                 });
                 
                 console.log(`✅ ${response.types.length}개 타입 로드 완료`);
@@ -114,15 +114,18 @@ class ProductManager {
      */
     async showAddModal() {
         try {
-            this.isEditMode = false;
-            this.currentProductId = null;
+        this.isEditMode = false;
+        this.currentProductId = null;
+        
+            console.log('📝 상품 등록 모달 열기');
             
-            $('#productModalLabel').text('상품 등록');
-            $('#isEditMode').val('false');
-            $('#saveProductBtn').html('<i class="fas fa-save me-1"></i>저장');
-            
+            // 🔧 모달 제목을 등록 모드로 변경
+        $('#productModalLabel').text('상품 등록');
+        $('#isEditMode').val('false');
+        $('#saveProductBtn').html('<i class="fas fa-save me-1"></i>저장');
+        
             // 폼 초기화
-            this.resetForm();
+        this.resetForm();
             
             // 코드 데이터 로드
             console.log('🔄 상품 등록 모달 - 코드 데이터 로드 시작');
@@ -131,7 +134,7 @@ class ProductManager {
             await this.loadInitialCodeData();
             
             // 모달 표시
-            $('#productModal').modal('show');
+        $('#productModal').modal('show');
             
             console.log('✅ 상품 등록 모달 표시 완료');
             
@@ -159,15 +162,22 @@ class ProductManager {
             this.isEditMode = true;
             this.currentProductId = productId;
             
+            console.log('📝 상품 수정 모달 열기 - ID:', productId);
+            
+            // 🔧 모달 제목을 수정 모드로 변경
+            $('#productModalLabel').text('상품 수정');
+            $('#isEditMode').val('true');
+            $('#saveProductBtn').html('<i class="fas fa-save me-1"></i>수정');
+            
             // 상품 정보 로드
             UIHelper.showLoading('상품 정보를 불러오는 중...');
             
             const response = await AjaxHelper.get(`/product/api/get/${productId}`);
             
-            console.log('📥 API 응답:', response); // 디버깅용
+            console.log('📥 API 응답:', response);
             
             if (response.success && response.product) {
-                await this.populateForm(response.product, response.product_models); // product_models도 전달
+                await this.populateForm(response.product, response.product_models);
                 $('#productModal').modal('show');
                 console.log('✅ 상품 수정 모달 표시 완료');
             } else {
@@ -263,49 +273,83 @@ class ProductManager {
     getFormData() {
         const formData = new FormData();
         
-        // 기본 필드들 (실제 API 필드명에 맞춤)
-        const fields = [
-            'product_name',
-            'price', 
-            'description',
-            'company_id'
-        ];
+        // 🔥 백엔드가 요구하는 필수 필드들
+        formData.append('product_name', $('#product_name').val() || '');
+        formData.append('price', $('#price').val() || '0');
+        formData.append('description', $('#description').val() || '');
         
-        // 기본 필드 추가
-        fields.forEach(field => {
-            const value = $(`#${field}`).val();
-            if (value !== null && value !== '') {
-                formData.append(field, value);
-            }
-        });
+        // 🔥 백엔드가 기대하는 코드 필드들 (실제 DB 필드명 사용)
+        formData.append('brand_code_seq', $('#brand_code_seq').val() || '');
+        formData.append('prod_group_code_seq', $('#prod_group_code_seq').val() || '');  // 제품구분
+        formData.append('prod_type_code_seq', $('#prod_type_code_seq').val() || '');    // 타입
+        formData.append('year_code_seq', $('#year_code_seq').val() || '');
         
-        // 사용여부 (use_yn -> is_active 변환)
+        // 사용여부 (use_yn)
         const useYn = $('#use_yn').val();
-        formData.append('is_active', useYn === 'Y');
+        formData.append('use_yn', useYn || 'Y');
         
-        // 코드 관련 필드들 (실제 DB 필드명 사용)
-        const codeFields = {
-            'brand_code_seq': $('#brand_code_seq').val(),
-            'category_code_seq': $('#prod_group_code_seq').val(),  // 제품구분
-            'product_code_seq': $('#prod_code_seq').val(),         // 품목
-            'type_code_seq': $('#prod_type_code_seq').val(),       // 타입
-            'year_code_seq': $('#year_code_seq').val()             // 년식
-        };
+        // 회사 정보
+        formData.append('company_id', '1');
         
-        // 코드 필드 추가
-        Object.keys(codeFields).forEach(field => {
-            const value = codeFields[field];
-            if (value && value !== '') {
-                formData.append(field, value);
+        // 🔥 제품 모델 데이터 수집 (새로운 필드들 포함)
+        const productModels = [];
+        $('.product-model-item').each(function(index) {
+            const modelData = {
+                // 기본 필드들
+                color_code: $(this).find('.color-code').val(),
+                name: $(this).find('.product-model-name').val() || $('#product_name').val(),
+                std_code: $(this).find('.std-product-code').val(),
+                
+                // 🔥 코드 관리 필드들
+                douzone_code: $(this).find('.douzone-code').val(),
+                erpia_code: $(this).find('.erpia-code').val(),
+                
+                // 🔥 가격 관리 필드들
+                official_cost: $(this).find('.official-cost').val(),
+                consumer_price: $(this).find('.consumer-price').val(),
+                operation_price: $(this).find('.operation-price').val(),
+                
+                // 🔥 추가 관리 필드들
+                ans_value: $(this).find('.ans-value').val(),
+                detail_brand_code_seq: $(this).find('.detail-brand-code').val(),
+                color_by_product_code_seq: $(this).find('.color-by-product-code').val(),
+                
+                // 🔥 새로운 분류 체계 필드들
+                product_group_code_seq: $(this).find('.product-group-code').val(),
+                item_code_seq: $(this).find('.item-code').val(),
+                item_detail_code_seq: $(this).find('.item-detail-code').val(),
+                product_type_category_code_seq: $(this).find('.product-type-category-code').val(),
+                
+                // 기본값들
+                additional_price: 0,
+                stock_quantity: 0
+            };
+            
+            // 필수 필드가 있는 경우만 추가
+            if (modelData.color_code || modelData.std_code) {
+                productModels.push(modelData);
             }
         });
         
-        // 회사 정보 (현재 세션 기반)
-        if (!formData.has('company_id')) {
-            formData.append('company_id', '1'); // 기본값, 실제로는 세션에서 가져와야 함
+        // 제품 모델 데이터를 JSON으로 변환하여 추가
+        if (productModels.length > 0) {
+            formData.append('product_models', JSON.stringify(productModels));
+            console.log('📦 제품 모델 데이터:', productModels);
+        } else {
+            console.warn('⚠️ 제품 모델 데이터가 없습니다');
         }
         
         console.log('📦 폼 데이터 준비 완료');
+        console.log('📋 전송 데이터:', {
+            product_name: formData.get('product_name'),
+            brand_code_seq: formData.get('brand_code_seq'),
+            prod_group_code_seq: formData.get('prod_group_code_seq'),
+            prod_type_code_seq: formData.get('prod_type_code_seq'),
+            year_code_seq: formData.get('year_code_seq'),
+            price: formData.get('price'),
+            product_models_count: productModels.length
+        });
+        
         return formData;
     }
     
@@ -338,15 +382,11 @@ class ProductManager {
     }
     
     /**
-     * 폼에 데이터 채우기 (강제 selected 적용)
+     * 폼에 데이터 채우기 (강제 selected 적용 + 자사코드 파싱)
      */
     async populateForm(productData, productModels) {
-        console.log('🔧 상품 수정 폼 데이터 채우기 시작:', productData);
-        
-        // 모달 제목 변경
-        $('#productModalLabel').text('상품 수정');
-        $('#isEditMode').val('edit');
-        $('#saveProductBtn').html('<i class="fas fa-edit me-1"></i>수정');
+        console.log('📝 상품 수정 폼 채우기:', productData);
+        console.log('📦 상품 모델 데이터:', productModels);
         
         // 기본 필드들
         $('#productId').val(productData.id);
@@ -354,308 +394,212 @@ class ProductManager {
         $('#price').val(productData.price);
         $('#description').val(productData.description);
         
-        // 회사 정보 강제 selected
-        if (productData.company_id) {
-            $('#company_id').val(productData.company_id).trigger('change');
-            console.log('✅ 회사 강제 selected:', productData.company_id);
-        }
-        
-        // 사용여부 (is_active -> use_yn 변환)
-        const useYnValue = productData.is_active ? 'Y' : 'N';
-        $('#use_yn').val(useYnValue).trigger('change');
-        console.log('✅ 사용여부 강제 selected:', useYnValue);
-        
-        // 🔥 브랜드 코드 강제 selected
-        if (productData.brand_code_seq) {
-            setTimeout(() => {
-                const brandValue = String(productData.brand_code_seq); // 문자열로 변환
-                console.log('🔧 브랜드 설정 시도:', brandValue, typeof brandValue);
-                
-                // 옵션 존재 확인
-                const brandSelect = $('#brand_code_seq');
-                const brandOptions = brandSelect.find('option');
-                console.log('📋 브랜드 셀렉트박스:', brandSelect.length > 0 ? '존재' : '없음');
-                console.log('📋 브랜드 옵션 개수:', brandOptions.length);
-                console.log('📋 브랜드 옵션들:', brandOptions.map(function() { return $(this).val() + ':' + $(this).text(); }).get());
-                
-                if (brandOptions.length <= 1) {
-                    console.error('❌ 브랜드 옵션이 로드되지 않았습니다! 기본 옵션만 존재');
-                    return;
-                }
-                
-                // 해당 값이 옵션에 있는지 확인
-                const targetOption = brandSelect.find(`option[value="${brandValue}"]`);
-                console.log('🎯 찾는 브랜드 옵션:', targetOption.length > 0 ? targetOption.text() : '없음');
-                
-                if (targetOption.length === 0) {
-                    console.error('❌ 브랜드 옵션에서 값을 찾을 수 없습니다:', brandValue);
-                    return;
-                }
-                
-                brandSelect.val(brandValue).trigger('change');
-                console.log('🔥 브랜드 코드 강제 적용:', brandValue);
-                
-                // 강제 확인
-                const currentVal = brandSelect.val();
-                if (currentVal != brandValue) {
-                    console.warn('⚠️ 브랜드 재시도. 기대값:', brandValue, '현재값:', currentVal);
-                    targetOption.prop('selected', true);
-                    brandSelect.trigger('change');
-                    console.log('✅ 브랜드 옵션 강제 선택:', targetOption.text());
-                } else {
-                    console.log('✅ 브랜드 선택 성공:', currentVal);
-                }
-            }, 300); // 시간을 늘려서 DOM 로딩 완료 대기
-        }
-        
-        // 🔥 제품구분 코드 강제 selected
-        if (productData.category_code_seq) {
-            setTimeout(() => {
-                const categoryValue = String(productData.category_code_seq);
-                console.log('🔧 제품구분 설정 시도:', categoryValue, typeof categoryValue);
-                
-                // 옵션 존재 확인
-                const categorySelect = $('#prod_group_code_seq');
-                const categoryOptions = categorySelect.find('option');
-                console.log('📋 제품구분 셀렉트박스:', categorySelect.length > 0 ? '존재' : '없음');
-                console.log('📋 제품구분 옵션 개수:', categoryOptions.length);
-                console.log('📋 제품구분 옵션들:', categoryOptions.map(function() { return $(this).val() + ':' + $(this).text(); }).get());
-                
-                if (categoryOptions.length <= 1) {
-                    console.error('❌ 제품구분 옵션이 로드되지 않았습니다! 기본 옵션만 존재');
-                    return;
-                }
-                
-                // 해당 값이 옵션에 있는지 확인
-                const targetOption = categorySelect.find(`option[value="${categoryValue}"]`);
-                console.log('🎯 찾는 제품구분 옵션:', targetOption.length > 0 ? targetOption.text() : '없음');
-                
-                if (targetOption.length === 0) {
-                    console.error('❌ 제품구분 옵션에서 값을 찾을 수 없습니다:', categoryValue);
-                    return;
-                }
-                
-                categorySelect.val(categoryValue).trigger('change');
-                console.log('🔥 제품구분 코드 강제 적용:', categoryValue);
-                
-                // 강제 확인
-                const currentVal = categorySelect.val();
-                if (currentVal != categoryValue) {
-                    console.warn('⚠️ 제품구분 재시도. 기대값:', categoryValue, '현재값:', currentVal);
-                    targetOption.prop('selected', true);
-                    categorySelect.trigger('change');
-                    console.log('✅ 제품구분 옵션 강제 선택:', targetOption.text());
-                } else {
-                    console.log('✅ 제품구분 선택 성공:', currentVal);
-                }
-            }, 350);
-        }
-        
-        // 🔥 품목(PRD) 코드 강제 selected
-        if (productData.category_code_seq) {
-            setTimeout(() => {
-                const prdValue = String(productData.category_code_seq);
-                console.log('🔧 품목(PRD) 설정 시도:', prdValue, typeof prdValue);
-                
-                // 옵션 존재 확인
-                const prdSelect = $('#prod_code_seq');
-                const prdOptions = prdSelect.find('option');
-                console.log('📋 품목 셀렉트박스:', prdSelect.length > 0 ? '존재' : '없음');
-                console.log('📋 품목 옵션 개수:', prdOptions.length);
-                console.log('📋 품목 옵션들:', prdOptions.map(function() { return $(this).val() + ':' + $(this).text(); }).get());
-                
-                if (prdOptions.length <= 1) {
-                    console.error('❌ 품목 옵션이 로드되지 않았습니다! 기본 옵션만 존재');
-                    return;
-                }
-                
-                // 해당 값이 옵션에 있는지 확인
-                const targetOption = prdSelect.find(`option[value="${prdValue}"]`);
-                console.log('🎯 찾는 품목 옵션:', targetOption.length > 0 ? targetOption.text() : '없음');
-                
-                if (targetOption.length === 0) {
-                    console.error('❌ 품목 옵션에서 값을 찾을 수 없습니다:', prdValue);
-                    return;
-                }
-                
-                prdSelect.val(prdValue).trigger('change');
-                console.log('🔥 품목(PRD) 코드 강제 적용:', prdValue);
-                
-                // 강제 확인
-                const currentVal = prdSelect.val();
-                if (currentVal != prdValue) {
-                    console.warn('⚠️ 품목 재시도. 기대값:', prdValue, '현재값:', currentVal);
-                    targetOption.prop('selected', true);
-                    prdSelect.trigger('change');
-                    console.log('✅ 품목 옵션 강제 선택:', targetOption.text());
-                } else {
-                    console.log('✅ 품목 선택 성공:', currentVal);
-                }
-            }, 400);
-            
-            // 품목 선택 후 하위 타입 로드 및 강제 선택
-            try {
-                await this.loadTypesByProductSeq(productData.category_code_seq);
-                
-                // 🔥 타입 코드 강제 selected (타입 로드 완료 후)
-                if (productData.type_code_seq) {
-                    setTimeout(() => {
-                        const typeValue = String(productData.type_code_seq);
-                        console.log('🔧 타입 설정 시도:', typeValue, typeof typeValue);
-                        
-                        // 옵션 존재 확인
-                        const typeSelect = $('#prod_type_code_seq');
-                        const typeOptions = typeSelect.find('option');
-                        console.log('📋 타입 셀렉트박스:', typeSelect.length > 0 ? '존재' : '없음');
-                        console.log('📋 타입 옵션 개수:', typeOptions.length);
-                        console.log('📋 타입 옵션들:', typeOptions.map(function() { return $(this).val() + ':' + $(this).text(); }).get());
-                        
-                        if (typeOptions.length <= 1) {
-                            console.error('❌ 타입 옵션이 로드되지 않았습니다! 기본 옵션만 존재');
-                            return;
-                        }
-                        
-                        // 해당 값이 옵션에 있는지 확인
-                        const targetOption = typeSelect.find(`option[value="${typeValue}"]`);
-                        console.log('🎯 찾는 타입 옵션:', targetOption.length > 0 ? targetOption.text() : '없음');
-                        
-                        if (targetOption.length === 0) {
-                            console.error('❌ 타입 옵션에서 값을 찾을 수 없습니다:', typeValue);
-                            return;
-                        }
-                        
-                        typeSelect.val(typeValue).trigger('change');
-                        console.log('🔥 타입 코드 강제 적용:', typeValue);
-                        
-                        // 강제 확인
-                        const currentVal = typeSelect.val();
-                        if (currentVal != typeValue) {
-                            console.warn('⚠️ 타입 재시도. 기대값:', typeValue, '현재값:', currentVal);
-                            targetOption.prop('selected', true);
-                            typeSelect.trigger('change');
-                            console.log('✅ 타입 옵션 강제 선택:', targetOption.text());
-                        } else {
-                            console.log('✅ 타입 선택 성공:', currentVal);
-                        }
-                    }, 600);
-                }
-            } catch (error) {
-                console.error('❌ 타입 로드 실패:', error);
+        // 🔥 자사코드 파싱을 통한 코드 정보 추출
+        let parsedCodes = {};
+        if (productModels && productModels.length > 0) {
+            const firstModel = productModels[0];
+            if (firstModel.std_div_prod_code && firstModel.std_div_prod_code.length >= 16) {
+                const stdCode = firstModel.std_div_prod_code;
+                parsedCodes = {
+                    brand: stdCode.substring(0, 2),      // RY
+                    divType: stdCode.substring(2, 3),    // 3
+                    prodGroup: stdCode.substring(3, 5),  // GT (수정됨)
+                    prodType: stdCode.substring(5, 7),   // TR
+                    prod: stdCode.substring(7, 9),       // TJ
+                    type2: stdCode.substring(9, 11),     // 00
+                    year: stdCode.substring(11, 13),     // 25
+                    color: stdCode.substring(13, 16)     // BLK
+                };
+                console.log('🔧 자사코드 파싱 결과:', stdCode, '→', parsedCodes);
             }
         }
         
-        // 🔥 년식 코드 강제 selected
-        if (productData.year_code_seq) {
-            setTimeout(() => {
-                const yearValue = String(productData.year_code_seq);
-                console.log('🔧 년식 설정 시도:', yearValue, typeof yearValue);
-                
-                // 옵션 존재 확인
-                const yearSelect = $('#year_code_seq');
-                const yearOptions = yearSelect.find('option');
-                console.log('📋 년식 셀렉트박스:', yearSelect.length > 0 ? '존재' : '없음');
-                console.log('📋 년식 옵션 개수:', yearOptions.length);
-                console.log('📋 년식 옵션들:', yearOptions.map(function() { return $(this).val() + ':' + $(this).text(); }).get());
-                
-                if (yearOptions.length <= 1) {
-                    console.error('❌ 년식 옵션이 로드되지 않았습니다! 기본 옵션만 존재');
-                    return;
-                }
-                
-                // 해당 값이 옵션에 있는지 확인
-                const targetOption = yearSelect.find(`option[value="${yearValue}"]`);
-                console.log('🎯 찾는 년식 옵션:', targetOption.length > 0 ? targetOption.text() : '없음');
-                
-                if (targetOption.length === 0) {
-                    console.error('❌ 년식 옵션에서 값을 찾을 수 없습니다:', yearValue);
-                    return;
-                }
-                
-                yearSelect.val(yearValue).trigger('change');
-                console.log('🔥 년식 코드 강제 적용:', yearValue);
-                
-                // 강제 확인
-                const currentVal = yearSelect.val();
-                if (currentVal != yearValue) {
-                    console.warn('⚠️ 년식 재시도. 기대값:', yearValue, '현재값:', currentVal);
-                    targetOption.prop('selected', true);
-                    yearSelect.trigger('change');
-                    console.log('✅ 년식 옵션 강제 선택:', targetOption.text());
-                } else {
-                    console.log('✅ 년식 선택 성공:', currentVal);
-                }
-            }, 500);
+        // 🔥 1단계: 회사 설정 (즉시)
+        if (productData.company_id) {
+            $('#company_id').val(productData.company_id).trigger('change');
+            console.log('✅ 회사 설정:', productData.company_id);
         }
         
-        // 기존 자사코드들 로드 (tbl_Product_DTL 연동)
-        await this.loadExistingProductModels(productData.id, productModels);
+        // 🔥 2단계: 사용여부 설정 (즉시)
+        const useYnValue = productData.is_active ? 'Y' : 'N';
+        $('#use_yn').val(useYnValue).trigger('change');
+        console.log('✅ 사용여부 설정:', useYnValue);
         
-        console.log('✅ 상품 수정 폼 데이터 채우기 완료');
+        // 🔥 3단계: 브랜드 코드 설정 (100ms 지연) - 파싱된 코드값 활용
+        setTimeout(() => {
+        if (productData.brand_code_seq) {
+                this.setSelectValue('brand_code_seq', productData.brand_code_seq, '브랜드', parsedCodes.brand);
+        }
+        }, 100);
+        
+        // 🔥 4단계: 제품구분 설정 (200ms 지연) - 파싱된 코드값 활용
+        setTimeout(() => {
+        if (productData.category_code_seq) {
+                this.setSelectValue('prod_group_code_seq', productData.category_code_seq, '제품구분', parsedCodes.prodGroup);
+            }
+        }, 200);
+        
+        // 🔥 5단계: 품목 설정 (300ms 지연) - 파싱된 코드값 활용
+        setTimeout(() => {
+            if (productData.category_code_seq) {
+                this.setSelectValue('prod_code_seq', productData.category_code_seq, '품목', parsedCodes.prod);
+            }
+        }, 300);
+        
+        // 🔥 6단계: 타입 설정 (500ms 지연) - 품목 로드 후 파싱된 코드값 활용
+        setTimeout(() => {
+                if (productData.type_code_seq) {
+                // 타입 옵션이 로드되었는지 확인
+                const typeOptions = $('#prod_type_code_seq option');
+                if (typeOptions.length <= 1) {
+                    console.log('⚠️ 타입 옵션이 로드되지 않았음. 품목 기준으로 다시 로드 시도');
+                    
+                    if (productData.category_code_seq) {
+                        // 품목 기준으로 타입 옵션 다시 로드
+                        $.get(`/product/api/get-types-by-product-seq/${productData.category_code_seq}`)
+                            .done((response) => {
+                                if (response.success && response.types) {
+                                    const typeSelect = $('#prod_type_code_seq');
+                                    typeSelect.empty().append('<option value="">타입을 선택하세요</option>');
+                                    
+                                    response.types.forEach(type => {
+                                        typeSelect.append(`<option value="${type.seq}" data-code="${type.code}">${type.code_name} (${type.code})</option>`);
+                                    });
+                                    
+                                    console.log('✅ 타입 옵션 로드 완료:', response.types.length + '개');
+                                }
+                                
+                                // 로드 후 다시 시도 (파싱된 코드값 활용)
+                                setTimeout(() => {
+                                    this.setSelectValue('prod_type_code_seq', productData.type_code_seq, '타입', parsedCodes.prodType);
+                                }, 200);
+                            });
+                    }
+                } else {
+                    this.setSelectValue('prod_type_code_seq', productData.type_code_seq, '타입', parsedCodes.prodType);
+                }
+            }
+        }, 500);
+        
+        // 🔥 7단계: 년식 설정 (400ms 지연) - 파싱된 코드값 활용
+        setTimeout(() => {
+        if (productData.year_code_seq) {
+                this.setSelectValue('year_code_seq', productData.year_code_seq, '년식', parsedCodes.year);
+            }
+        }, 400);
+        
+        // 🔥 8단계: 상품 모델 정보 로드
+        if (productModels) {
+            setTimeout(() => {
+                this.loadExistingProductModels(productData.id, productModels);
+            }, 600);
+        }
+        
+        console.log('✅ 폼 채우기 완료 (단계별 지연 적용)');
     }
     
     /**
-     * 기존 상품 모델들 로드 (tbl_Product_DTL) - 강제 selected 적용
+     * Select 박스 값 설정 헬퍼 함수 (강화 버전 - 코드 기반 매칭 추가)
      */
-    async loadExistingProductModels(productId, productModels) {
-        try {
-            console.log('🔧 기존 상품 모델 로드 시작:', productModels);
-            
-            if (!productModels || productModels.length === 0) {
-                console.log('📭 상품 모델이 없습니다.');
-                return;
+    setSelectValue(selectId, value, label, codeValue = null) {
+        const selectElement = $(`#${selectId}`);
+        const stringValue = String(value);
+        
+        console.log(`🔧 ${label} 설정 시도:`, stringValue, codeValue ? `(코드: ${codeValue})` : '');
+        
+        // 옵션 존재 확인
+        const options = selectElement.find('option');
+        let targetOption = selectElement.find(`option[value="${stringValue}"]`);
+        
+        // 🔥 코드값으로도 매칭 시도
+        if (targetOption.length === 0 && codeValue) {
+            targetOption = selectElement.find(`option[data-code="${codeValue}"]`);
+            if (targetOption.length > 0) {
+                console.log(`✅ ${label} 코드값으로 매칭 성공:`, codeValue, '→', targetOption.val());
+                stringValue = targetOption.val();
             }
-            
-            // 상품 모델 컨테이너 초기화
-            const container = $('#productModelsContainer');
-            container.empty();
-            
-            // 각 상품 모델을 HTML로 렌더링
-            productModels.forEach((model, index) => {
-                const modelHtml = this.createProductModelHTML(model, index);
-                container.append(modelHtml);
-                
-                // 🔥 각 모델의 색상 강제 선택 (DOM 추가 후)
-                setTimeout(() => {
-                    const modelContainer = container.find(`.product-model-item[data-index="${index}"]`);
-                    const colorSelect = modelContainer.find('.color-code');
-                    
-                    if (model.color_code_info && model.color_code_info.seq) {
-                        console.log(`🎨 모델 ${index} 색상 강제 적용:`, model.color_code_info.seq, model.color_code_info.code_name);
-                        
-                        // 방법 1: 직접 값 설정
-                        colorSelect.val(model.color_code_info.seq);
-                        
-                        // 방법 2: 옵션 강제 선택
-                        colorSelect.find('option').each(function() {
-                            if ($(this).val() == model.color_code_info.seq) {
-                                $(this).prop('selected', true);
-                                console.log('✅ 색상 옵션 강제 선택됨:', $(this).text());
-                            } else {
-                                $(this).prop('selected', false);
-                            }
-                        });
-                        
-                        // 방법 3: change 이벤트 트리거
-                        colorSelect.trigger('change');
-                        
-                        // 확인
-                        setTimeout(() => {
-                            const selectedValue = colorSelect.val();
-                            if (selectedValue == model.color_code_info.seq) {
-                                console.log('🎯 색상 선택 성공:', selectedValue);
-                            } else {
-                                console.error('❌ 색상 선택 실패. 기대값:', model.color_code_info.seq, '실제값:', selectedValue);
-                            }
-                        }, 100);
-                    }
-                }, 200 * (index + 1)); // 각 모델마다 시간차 적용
-            });
-            
-            console.log(`✅ ${productModels.length}개 상품 모델 로드 완료`);
-            
-        } catch (error) {
-            console.error('❌ 상품 모델 로드 실패:', error);
         }
+        
+        console.log(`📋 ${label} 옵션 개수:`, options.length);
+        console.log(`🎯 ${label} 대상 옵션:`, targetOption.length > 0 ? targetOption.text() : '없음');
+        
+        if (targetOption.length === 0) {
+            console.error(`❌ ${label} 옵션에서 값을 찾을 수 없습니다:`, stringValue, codeValue ? `(코드: ${codeValue})` : '');
+            return false;
+        }
+        
+        // 값 설정 및 트리거
+        selectElement.val(stringValue).trigger('change');
+        
+        // 재시도 메커니즘 (100ms 후)
+        setTimeout(() => {
+            if (selectElement.val() !== stringValue) {
+                console.log(`⚠️ ${label} 재시도`);
+                selectElement.val(stringValue);
+                selectElement.find(`option[value="${stringValue}"]`).prop('selected', true);
+                selectElement.trigger('change');
+                } else {
+                console.log(`✅ ${label} 설정 완료:`, stringValue);
+            }
+        }, 100);
+        
+        return true;
+    }
+    
+    /**
+     * 기존 상품 모델들 로딩 (색상 선택 포함)
+     */
+    loadExistingProductModels(productId, productModels) {
+        console.log('📦 기존 상품 모델 로딩:', productModels.length + '개');
+        
+        const container = $('#productModelsContainer');
+        container.empty();
+        
+        productModels.forEach((model, index) => {
+            const modelHtml = this.createProductModelHTML(model, index);
+            container.append(modelHtml);
+            
+            // 🔥 색상 선택 설정 (자사코드 기반)
+            setTimeout(() => {
+                const colorSelect = container.find(`.product-model-item:eq(${index}) .color-code`);
+                
+                // 자사코드에서 색상 코드 파싱
+                if (model.std_div_prod_code && model.std_div_prod_code.length >= 16) {
+                    const colorCode = model.std_div_prod_code.substring(13, 16); // 마지막 3자리
+                    console.log(`🎨 모델 ${index} 색상 설정:`, model.color_code, `(자사코드: ${colorCode})`);
+                    
+                    // 1. color_code 값으로 직접 매칭
+                    if (model.color_code) {
+                        // data-code 속성으로 찾기
+                        let colorOption = colorSelect.find(`option[data-code="${model.color_code}"]`);
+                        if (colorOption.length === 0) {
+                            // 파싱된 색상 코드로 찾기
+                            colorOption = colorSelect.find(`option[data-code="${colorCode}"]`);
+                        }
+                        
+                        if (colorOption.length > 0) {
+                            colorSelect.val(colorOption.val()).trigger('change');
+                            console.log(`✅ 모델 ${index} 색상 설정 완료:`, colorOption.text());
+            } else {
+                            console.warn(`⚠️ 모델 ${index} 색상 코드를 찾을 수 없음:`, model.color_code, colorCode);
+                        }
+                    }
+                }
+                
+                // 2. 제품명 설정
+                if (model.product_name) {
+                    container.find(`.product-model-item:eq(${index}) .product-model-name`).val(model.product_name);
+                }
+                
+                // 3. 자사코드 설정
+                if (model.std_div_prod_code) {
+                    container.find(`.product-model-item:eq(${index}) .std-product-code`).val(model.std_div_prod_code);
+                }
+                
+            }, 200 + (index * 100)); // 순차적으로 100ms씩 지연
+        });
+        
+        console.log('✅ 상품 모델 로딩 완료');
     }
     
     /**
@@ -673,8 +617,63 @@ class ProductManager {
             });
         }
         
+        // 🔥 브랜드 옵션 HTML 생성 (세부브랜드용)
+        let brandOptionsHtml = '<option value="">브랜드를 선택하세요</option>';
+        if (window.brandCodesData) {
+            window.brandCodesData.forEach(brand => {
+                const isSelected = model.detail_brand_code_seq && model.detail_brand_code_seq == brand.seq ? 'selected' : '';
+                brandOptionsHtml += `<option value="${brand.seq}" ${isSelected}>${brand.code_name} (${brand.code})</option>`;
+            });
+        }
+        
+        // 🔥 새로운 분류 체계 옵션들 생성
+        let productGroupOptionsHtml = '<option value="">제품군을 선택하세요</option>';
+        if (window.productGroupCodesData) {
+            window.productGroupCodesData.forEach(group => {
+                const isSelected = model.category1_code_seq && model.category1_code_seq == group.seq ? 'selected' : '';
+                productGroupOptionsHtml += `<option value="${group.seq}" ${isSelected}>${group.code_name}</option>`;
+            });
+        }
+        
+        let itemOptionsHtml = '<option value="">아이템을 선택하세요</option>';
+        if (window.itemCodesData) {
+            window.itemCodesData.forEach(item => {
+                const isSelected = model.category3_code_seq && model.category3_code_seq == item.seq ? 'selected' : '';
+                itemOptionsHtml += `<option value="${item.seq}" ${isSelected}>${item.code_name}</option>`;
+            });
+        }
+        
+        let itemDetailOptionsHtml = '<option value="">아이템상세를 선택하세요</option>';
+        if (window.itemDetailCodesData) {
+            window.itemDetailCodesData.forEach(detail => {
+                const isSelected = model.category4_code_seq && model.category4_code_seq == detail.seq ? 'selected' : '';
+                itemDetailOptionsHtml += `<option value="${detail.seq}" ${isSelected}>${detail.code_name}</option>`;
+            });
+        }
+        
+        let productTypeOptionsHtml = '<option value="">제품타입을 선택하세요</option>';
+        if (window.productTypeCategoryCodesData) {
+            window.productTypeCategoryCodesData.forEach(type => {
+                const isSelected = model.category5_code_seq && model.category5_code_seq == type.seq ? 'selected' : '';
+                productTypeOptionsHtml += `<option value="${type.seq}" ${isSelected}>${type.code_name}</option>`;
+            });
+        }
+        
+        // 🔥 ANS 옵션 생성 (1~30)
+        let ansOptionsHtml = '<option value="">ANS를 선택하세요</option>';
+        for (let i = 1; i <= 30; i++) {
+            const isSelected = model.ans_value && model.ans_value == i ? 'selected' : '';
+            ansOptionsHtml += `<option value="${i}" ${isSelected}>${i}</option>`;
+        }
+        
         return `
             <div class="product-model-item border p-3 mb-3" data-index="${index}" data-model-id="${model.id}">
+                <h6 class="text-primary mb-3">
+                    <i class="fas fa-box me-1"></i>제품 모델 #${index + 1}
+                    <small class="text-muted">(tbl_Product_DTL)</small>
+                </h6>
+
+                <!-- 기본 정보 -->
                 <div class="row">
                     <div class="col-md-4">
                         <div class="mb-3">
@@ -684,20 +683,18 @@ class ProductManager {
                             <select class="form-select color-code" name="color_code[]" required>
                                 ${colorOptionsHtml}
                             </select>
-                            <small class="text-muted">현재: ${model.color_code_info ? model.color_code_info.code_name : model.color_code}</small>
+                            <small class="text-muted">CR 코드 그룹에서 관리</small>
                         </div>
                     </div>
-                    
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label class="form-label">제품명 (색상별)</label>
                             <input type="text" class="form-control product-model-name" 
                                    name="product_model_name[]" 
                                    value="${model.product_name || ''}"
-                                   placeholder="색상별 제품명">
+                                   placeholder="색상별 제품명 (선택사항)">
                         </div>
                     </div>
-                    
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label class="form-label">16자리 자사코드</label>
@@ -705,30 +702,202 @@ class ProductManager {
                                 <input type="text" class="form-control std-product-code" 
                                        name="std_product_code[]" 
                                        value="${model.std_div_prod_code || ''}"
-                                       readonly>
+                                       placeholder="자동생성됨" readonly>
                                 <button type="button" class="btn btn-primary btn-generate-code" title="선택된 코드 기준으로 생성">
                                     <i class="fas fa-magic"></i> 자동생성
                                 </button>
                             </div>
-                            <small class="text-muted">tbl_Product_DTL 연동</small>
+                            <small class="text-muted">tbl_Product_DTL - 16자리 레거시 형식</small>
                         </div>
                     </div>
                 </div>
-                
-                <div class="row">
+
+                <!-- 🔥 코드 관리 필드 -->
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6 class="text-secondary">
+                            <i class="fas fa-code me-1"></i>코드 관리
+                        </h6>
+                    </div>
                     <div class="col-md-6">
-                        <small class="text-info">
-                            <strong>코드 구성:</strong> 
-                            ${model.brand_code}+${model.div_type_code}+${model.prod_group_code}+${model.prod_type_code}+${model.prod_code}+${model.prod_type2_code}+${model.year_code}+${model.color_code}
-                        </small>
+                        <div class="mb-3">
+                            <label class="form-label">더존코드 (20자)</label>
+                            <input type="text" class="form-control douzone-code"
+                                   name="douzone_code[]" maxlength="20"
+                                   value="${model.douzone_code || ''}"
+                                   placeholder="더존 연동 코드">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">ERPIA코드 (13자)</label>
+                            <input type="text" class="form-control erpia-code"
+                                   name="erpia_code[]" maxlength="13"
+                                   value="${model.erpia_code || ''}"
+                                   placeholder="ERPIA 연동 코드">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 🔥 가격 관리 필드 -->
+                <div class="row">
+                    <div class="col-12">
+                        <h6 class="text-secondary">
+                            <i class="fas fa-won-sign me-1"></i>가격 관리
+                        </h6>
                     </div>
                     <div class="col-md-4">
-                        <small class="text-muted">상태: ${model.status}, 사용: ${model.use_yn}</small>
+                        <div class="mb-3">
+                            <label class="form-label">공식원가</label>
+                            <div class="input-group">
+                                <span class="input-group-text">₩</span>
+                                <input type="number" class="form-control official-cost"
+                                       name="official_cost[]" min="0"
+                                       value="${model.official_cost || ''}"
+                                       placeholder="0">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">소비자가</label>
+                            <div class="input-group">
+                                <span class="input-group-text">₩</span>
+                                <input type="number" class="form-control consumer-price"
+                                       name="consumer_price[]" min="0"
+                                       value="${model.consumer_price || ''}"
+                                       placeholder="0">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">운영가</label>
+                            <div class="input-group">
+                                <span class="input-group-text">₩</span>
+                                <input type="number" class="form-control operation-price"
+                                       name="operation_price[]" min="0"
+                                       value="${model.operation_price || ''}"
+                                       placeholder="0">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 🔥 추가 관리 필드들 (ANS, 세부브랜드) -->
+                <div class="row">
+                    <div class="col-12">
+                        <h6 class="text-secondary">
+                            <i class="fas fa-cogs me-1"></i>추가 관리
+                        </h6>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">ANS</label>
+                            <select class="form-select ans-value" name="ans_value[]">
+                                ${ansOptionsHtml}
+                            </select>
+                            <small class="text-muted">1~30 값 선택</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">세부브랜드</label>
+                            <select class="form-select detail-brand-code" name="detail_brand_code_seq[]">
+                                ${brandOptionsHtml}
+                            </select>
+                            <small class="text-muted">브랜드 코드 참조</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">색상별(추가)</label>
+                            <select class="form-select color-by-product-code" name="color_by_product_code_seq[]">
+                                <option value="">선택하세요</option>
+                            </select>
+                            <small class="text-muted">추가 색상 분류</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 🔥 새로운 분류 체계 -->
+                <div class="row">
+                    <div class="col-12">
+                        <h6 class="text-secondary">
+                            <i class="fas fa-sitemap me-1"></i>분류 관리 (Excel 기반)
+                        </h6>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">제품군</label>
+                            <select class="form-select product-group-code" name="product_group_code_seq[]">
+                                ${productGroupOptionsHtml}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">아이템별</label>
+                            <select class="form-select item-code" name="item_code_seq[]">
+                                ${itemOptionsHtml}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">아이템상세</label>
+                            <select class="form-select item-detail-code" name="item_detail_code_seq[]">
+                                ${itemDetailOptionsHtml}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">제품타입</label>
+                            <select class="form-select product-type-category-code" name="product_type_category_code_seq[]">
+                                ${productTypeOptionsHtml}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-info">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Excel에서 가져온 분류 체계입니다.
+                        </small>
                     </div>
                     <div class="col-md-2">
                         <button type="button" class="btn btn-outline-danger btn-sm btn-remove-model w-100">
                             <i class="fas fa-times me-1"></i>제거
                         </button>
+                    </div>
+                </div>
+
+                <!-- 제거 버튼 영역 -->
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <hr class="my-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                이 색상 모델을 삭제하려면 제거 버튼을 클릭하세요
+                            </small>
+                            <button type="button" class="btn btn-outline-danger btn-sm btn-remove-model">
+                                <i class="fas fa-times me-1"></i>이 색상 모델 제거
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 🔥 디버깅 정보 (개발용) -->
+                <div class="row mt-2">
+                    <div class="col-12">
+                        <small class="text-info">
+                            <strong>코드 구성:</strong> 
+                            ${model.brand_code || '?'}+${model.div_type_code || '?'}+${model.prod_group_code || '?'}+${model.prod_type_code || '?'}+${model.prod_code || '?'}+${model.prod_type2_code || '?'}+${model.year_code || '?'}+${model.color_code || '?'}
+                        </small>
                     </div>
                 </div>
             </div>

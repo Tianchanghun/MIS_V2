@@ -230,6 +230,16 @@ const AjaxHelper = {
     handleError: function(xhr, textStatus, errorThrown, reject) {
         let errorMessage = '요청 처리 중 오류가 발생했습니다';
         
+        // 🔥 상세한 오류 정보 로깅
+        console.group('❌ AJAX 오류 상세 정보');
+        console.log('HTTP Status:', xhr.status);
+        console.log('Status Text:', xhr.statusText);
+        console.log('Text Status:', textStatus);
+        console.log('Error Thrown:', errorThrown);
+        console.log('Response Text:', xhr.responseText);
+        console.log('Ready State:', xhr.readyState);
+        console.groupEnd();
+        
         // HTTP 상태 코드별 메시지
         switch (xhr.status) {
             case 400:
