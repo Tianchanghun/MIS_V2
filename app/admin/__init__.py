@@ -491,55 +491,99 @@ def delete_code():
 
 @admin_bp.route('/api/codes/update-sort', methods=['POST'])
 def update_code_sort():
-    """코드 순서 변경 (레거시 AdminController.cs CodeSeqChange와 동일)"""
+    """코드 순서 변경 (드래그 앤 드롭용)"""
     if 'member_seq' not in session:
         return redirect('/auth/login')
     
     try:
+        # 드래그 앤 드롭 데이터 처리
+        parent_seq = request.form.get('parent_seq')
+        depth = request.form.get('depth')
+        order_json = request.form.get('order')
+        
+        # 기존 개별 순서 변경도 지원
         seq = request.form.get('seq')
         new_sort = request.form.get('sort')
         
-        if not seq or not new_sort:
-            return jsonify({'success': False, 'message': 'seq와 sort가 필요합니다.'})
-        
-        # 코드 조회
-        target_code = Code.query.filter_by(seq=int(seq)).first()
-        if not target_code:
-            return jsonify({'success': False, 'message': '해당 코드를 찾을 수 없습니다.'})
-        
-        # 같은 부모의 형제 코드들 조회
-        siblings = Code.query.filter_by(
-            parent_seq=target_code.parent_seq,
-            depth=target_code.depth
-        ).filter(Code.seq != target_code.seq).all()
-        
-        # 새로운 정렬 순서 적용
-        new_sort_value = int(new_sort)
-        
-        # 같은 순서나 그 이후의 코드들을 한 칸씩 밀어내기
-        for sibling in siblings:
-            if (sibling.sort or 999) >= new_sort_value:
-                sibling.sort = (sibling.sort or 0) + 1
-                sibling.upt_user = session.get('member_seq')
-                sibling.upt_date = datetime.now()
-        
-        # 대상 코드의 순서 변경
-        target_code.sort = new_sort_value
-        target_code.upt_user = session.get('member_seq')
-        target_code.upt_date = datetime.now()
-        
-        db.session.commit()
-        
-        current_app.logger.info(f"코드 순서 변경 성공: {target_code.code} → Sort {new_sort_value} (사용자: {session.get('member_seq')})")
-        
-        return jsonify({
-            'success': True,
-            'message': '순서가 성공적으로 변경되었습니다.',
-            'data': {
-                'seq': target_code.seq,
-                'new_sort': new_sort_value
-            }
-        })
+        if order_json and parent_seq and depth:
+            # 드래그 앤 드롭 일괄 순서 변경
+            import json
+            try:
+                order_list = json.loads(order_json)
+            except:
+                return jsonify({'success': False, 'message': '순서 데이터 형식이 잘못되었습니다.'})
+            
+            parent_seq = int(parent_seq)
+            depth = int(depth)
+            
+            # 해당 부모의 같은 깊이 코드들 조회
+            codes = Code.query.filter_by(parent_seq=parent_seq, depth=depth).all()
+            code_dict = {code.seq: code for code in codes}
+            
+            # 새로운 순서로 sort 값 업데이트 (1부터 시작)
+            updated_count = 0
+            for index, seq_val in enumerate(order_list):
+                if seq_val in code_dict:
+                    code_dict[seq_val].sort = index + 1
+                    code_dict[seq_val].upt_user = session.get('member_seq')
+                    code_dict[seq_val].upt_date = datetime.now()
+                    updated_count += 1
+            
+            db.session.commit()
+            
+            current_app.logger.info(f"드래그 앤 드롭 순서 변경 완료: parent={parent_seq}, depth={depth}, 업데이트={updated_count}개")
+            
+            return jsonify({
+                'success': True,
+                'message': f'정렬 순서가 성공적으로 업데이트되었습니다. ({updated_count}개 코드)',
+                'data': {
+                    'parent_seq': parent_seq,
+                    'depth': depth,
+                    'updated_count': updated_count
+                }
+            })
+            
+        elif seq and new_sort:
+            # 기존 개별 순서 변경 (레거시 호환)
+            target_code = Code.query.filter_by(seq=int(seq)).first()
+            if not target_code:
+                return jsonify({'success': False, 'message': '해당 코드를 찾을 수 없습니다.'})
+            
+            # 같은 부모의 형제 코드들 조회
+            siblings = Code.query.filter_by(
+                parent_seq=target_code.parent_seq,
+                depth=target_code.depth
+            ).filter(Code.seq != target_code.seq).all()
+            
+            # 새로운 정렬 순서 적용
+            new_sort_value = int(new_sort)
+            
+            # 같은 순서나 그 이후의 코드들을 한 칸씩 밀어내기
+            for sibling in siblings:
+                if (sibling.sort or 999) >= new_sort_value:
+                    sibling.sort = (sibling.sort or 0) + 1
+                    sibling.upt_user = session.get('member_seq')
+                    sibling.upt_date = datetime.now()
+            
+            # 대상 코드의 순서 변경
+            target_code.sort = new_sort_value
+            target_code.upt_user = session.get('member_seq')
+            target_code.upt_date = datetime.now()
+            
+            db.session.commit()
+            
+            current_app.logger.info(f"코드 순서 변경 성공: {target_code.code} → Sort {new_sort_value}")
+            
+            return jsonify({
+                'success': True,
+                'message': '순서가 성공적으로 변경되었습니다.',
+                'data': {
+                    'seq': target_code.seq,
+                    'new_sort': new_sort_value
+                }
+            })
+        else:
+            return jsonify({'success': False, 'message': '필수 데이터가 누락되었습니다.'})
         
     except Exception as e:
         db.session.rollback()
