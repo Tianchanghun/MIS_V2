@@ -440,13 +440,12 @@ def update_code():
 
 @admin_bp.route('/api/codes/delete', methods=['POST'])
 def delete_code():
-    """코드 삭제 (하위 코드도 함께 삭제)"""
+    """코드 삭제 (하위 코드 포함)"""
     if 'member_seq' not in session:
         return redirect('/auth/login')
     
     try:
         seq = request.form.get('seq')
-        
         if not seq:
             return jsonify({'success': False, 'message': 'seq가 필요합니다.'})
         
@@ -489,6 +488,63 @@ def delete_code():
         db.session.rollback()
         current_app.logger.error(f"코드 삭제 실패: {e}")
         return jsonify({'success': False, 'message': f'코드 삭제 중 오류가 발생했습니다: {str(e)}'}), 500
+
+@admin_bp.route('/api/codes/update-sort', methods=['POST'])
+def update_code_sort():
+    """코드 순서 변경 (레거시 AdminController.cs CodeSeqChange와 동일)"""
+    if 'member_seq' not in session:
+        return redirect('/auth/login')
+    
+    try:
+        seq = request.form.get('seq')
+        new_sort = request.form.get('sort')
+        
+        if not seq or not new_sort:
+            return jsonify({'success': False, 'message': 'seq와 sort가 필요합니다.'})
+        
+        # 코드 조회
+        target_code = Code.query.filter_by(seq=int(seq)).first()
+        if not target_code:
+            return jsonify({'success': False, 'message': '해당 코드를 찾을 수 없습니다.'})
+        
+        # 같은 부모의 형제 코드들 조회
+        siblings = Code.query.filter_by(
+            parent_seq=target_code.parent_seq,
+            depth=target_code.depth
+        ).filter(Code.seq != target_code.seq).all()
+        
+        # 새로운 정렬 순서 적용
+        new_sort_value = int(new_sort)
+        
+        # 같은 순서나 그 이후의 코드들을 한 칸씩 밀어내기
+        for sibling in siblings:
+            if (sibling.sort or 999) >= new_sort_value:
+                sibling.sort = (sibling.sort or 0) + 1
+                sibling.upt_user = session.get('member_seq')
+                sibling.upt_date = datetime.now()
+        
+        # 대상 코드의 순서 변경
+        target_code.sort = new_sort_value
+        target_code.upt_user = session.get('member_seq')
+        target_code.upt_date = datetime.now()
+        
+        db.session.commit()
+        
+        current_app.logger.info(f"코드 순서 변경 성공: {target_code.code} → Sort {new_sort_value} (사용자: {session.get('member_seq')})")
+        
+        return jsonify({
+            'success': True,
+            'message': '순서가 성공적으로 변경되었습니다.',
+            'data': {
+                'seq': target_code.seq,
+                'new_sort': new_sort_value
+            }
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"코드 순서 변경 실패: {e}")
+        return jsonify({'success': False, 'message': f'순서 변경 중 오류가 발생했습니다: {str(e)}'}), 500
 
 @admin_bp.route('/api/codes/paginated', methods=['GET'])
 def get_codes_paginated():
@@ -552,41 +608,66 @@ def get_codes_paginated():
         current_app.logger.error(f"페이징된 코드 조회 실패: {e}")
         return jsonify({'success': False, 'message': f'코드 조회 중 오류가 발생했습니다: {str(e)}'}), 500
 
-@admin_bp.route('/api/codes/update-sort-order', methods=['POST'])
-def update_codes_sort_order():
-    """코드 정렬 순서 업데이트"""
+@admin_bp.route('/api/codes/update-order', methods=['POST'])
+def update_code_order():
+    """코드 정렬 순서 업데이트 (드래그 앤 드롭용)"""
     if 'member_seq' not in session:
         return redirect('/auth/login')
     
     try:
-        data = request.get_json()
-        orders = data.get('orders', [])
+        # POST 데이터 처리 (form과 JSON 모두 지원)
+        if request.is_json:
+            data = request.get_json()
+            parent_seq = data.get('parent_seq')
+            depth = data.get('depth')
+            order_json = data.get('order')
+        else:
+            parent_seq = request.form.get('parent_seq')
+            depth = request.form.get('depth')
+            order_json = request.form.get('order')
         
-        if not orders:
-            return jsonify({'success': False, 'message': '정렬 순서 데이터가 필요합니다.'})
+        if not parent_seq or not depth or not order_json:
+            return jsonify({'success': False, 'message': '필수 데이터가 누락되었습니다.'})
         
-        # 트랜잭션 시작
-        for order in orders:
-            seq = order.get('seq')
-            sort = order.get('sort')
-            
-            if seq and sort:
-                code = Code.query.filter_by(seq=seq).first()
-                if code:
-                    code.sort = sort
-                    code.upt_user = session.get('member_id', 'admin')
-                    code.upt_date = db.func.now()
+        # JSON 파싱
+        import json
+        try:
+            order_list = json.loads(order_json)
+        except:
+            return jsonify({'success': False, 'message': '순서 데이터 형식이 잘못되었습니다.'})
+        
+        parent_seq = int(parent_seq)
+        depth = int(depth)
+        
+        # 해당 부모의 같은 깊이 코드들 조회
+        codes = Code.query.filter_by(parent_seq=parent_seq, depth=depth).all()
+        code_dict = {code.seq: code for code in codes}
+        
+        # 새로운 순서로 sort 값 업데이트
+        for index, seq in enumerate(order_list):
+            if seq in code_dict:
+                code_dict[seq].sort = index + 1
+                code_dict[seq].upt_user = session.get('member_seq')
+                code_dict[seq].upt_date = datetime.now()
         
         db.session.commit()
         
+        current_app.logger.info(f"드래그 앤 드롭 순서 변경 완료: parent={parent_seq}, depth={depth}, order={order_list}")
+        
         return jsonify({
             'success': True,
-            'message': '정렬 순서가 성공적으로 업데이트되었습니다.'
+            'message': '정렬 순서가 성공적으로 업데이트되었습니다.',
+            'data': {
+                'parent_seq': parent_seq,
+                'depth': depth,
+                'updated_count': len(order_list)
+            }
         })
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'message': str(e)})
+        current_app.logger.error(f"드래그 앤 드롭 순서 변경 실패: {e}")
+        return jsonify({'success': False, 'message': f'순서 변경 중 오류가 발생했습니다: {str(e)}'}), 500
 
 # ==================== 부서 관리 API ====================
 
