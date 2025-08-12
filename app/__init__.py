@@ -52,6 +52,15 @@ def create_app(config_name='development'):
     # 🔧 개발 환경에서 정적 파일 캐시 비활성화
     if config_name == 'development':
         app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
+        
+    # 🚨 모든 응답에 캐시 비활성화 헤더 추가 (개발용)
+    @app.after_request
+    def add_no_cache_headers(response):
+        if config_name == 'development':
+            response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
+        return response
     
     # 확장 모듈 초기화
     init_db(app)  # 데이터베이스 초기화
