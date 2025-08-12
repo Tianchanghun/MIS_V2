@@ -66,57 +66,46 @@
 </div>
 
 <!-- 부서 추가/수정 모달 -->
-<div class="modal fade" id="deptModal" tabindex="-1" aria-labelledby="deptModalTitle" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="deptModalTitle">부서 추가</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+{% include 'components/modal_base.html' with context %}
+
+<!-- 모달 내용은 JavaScript에서 동적으로 설정 -->
+<div id="deptFormTemplate" style="display: none;">
+    <form id="deptForm">
+        <input type="hidden" id="dept_seq" name="dept_seq">
+        
+        <div class="mb-3">
+            <label for="dept_name" class="form-label">부서명 <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="dept_name" name="dept_name" required>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="sort" class="form-label">순서</label>
+                    <input type="number" class="form-control" id="sort" name="sort" value="1" min="1">
+                </div>
             </div>
-            <div class="modal-body">
-                <form id="deptForm">
-                    <input type="hidden" id="dept_seq" name="dept_seq">
-                    
-                    <div class="mb-3">
-                        <label for="dept_name" class="form-label">부서명 <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="dept_name" name="dept_name" required>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="sort" class="form-label">순서</label>
-                                <input type="number" class="form-control" id="sort" name="sort" value="1" min="1">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="use_yn" class="form-label">사용 여부</label>
-                                <select class="form-control" id="use_yn" name="use_yn">
-                                    <option value="Y">사용</option>
-                                    <option value="N">미사용</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="company_usage" class="form-label">사용 회사 <span class="text-danger">*</span></label>
-                        <select class="form-control" id="company_usage" name="company_usage" required>
-                            <option value="1">에이원</option>
-                            <option value="2">에이원 월드</option>
-                            <option value="0">모두 사용</option>
-                        </select>
-                        <div class="form-text">부서가 어느 회사에서 사용될지 선택하세요.</div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                <button type="button" class="btn btn-primary" onclick="saveDepartment()">저장</button>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="use_yn" class="form-label">사용 여부</label>
+                    <select class="form-control" id="use_yn" name="use_yn">
+                        <option value="Y">사용</option>
+                        <option value="N">미사용</option>
+                    </select>
+                </div>
             </div>
         </div>
-    </div>
+        
+        <div class="mb-3">
+            <label for="company_usage" class="form-label">사용 회사 <span class="text-danger">*</span></label>
+            <select class="form-control" id="company_usage" name="company_usage" required>
+                <option value="1">에이원</option>
+                <option value="2">에이원 월드</option>
+                <option value="0">모두 사용</option>
+            </select>
+            <div class="form-text">부서가 어느 회사에서 사용될지 선택하세요.</div>
+        </div>
+    </form>
 </div>
 
 <script>
@@ -126,6 +115,11 @@ let currentSort = { column: 0, direction: 'asc' };
 $(document).ready(function() {
     loadDepartments();
 });
+
+// ModalHelper 모듈 로드
+const modalHelperScript = document.createElement('script');
+modalHelperScript.src = "{{ url_for('static', filename='js/common/modal-helper.js') }}?v={{ moment().timestamp }}";
+document.head.appendChild(modalHelperScript);
 
 // 부서 목록 로드
 function loadDepartments() {
@@ -236,15 +230,21 @@ function sortTable(columnIndex) {
     renderDepartmentsTable(sorted);
 }
 
-// 부서 추가 모달
+// 부서 추가
 function showAddDeptModal() {
-    $('#deptModalTitle').text('부서 추가');
-    $('#deptForm')[0].reset();
+    // 폼 리셋
     $('#dept_seq').val('');
+    $('#dept_name').val('');
+    $('#sort').val('1');
+    $('#use_yn').val('Y');
+    $('#company_usage').val('1');
     
-    // Bootstrap 5 방식으로 모달 표시
-    const modal = new bootstrap.Modal(document.getElementById('deptModal'));
-    modal.show();
+    // ModalHelper로 모달 표시
+    ModalHelper.setTitle('<i class="bi bi-plus-circle"></i> 부서 추가');
+    ModalHelper.setBody($('#deptFormTemplate').html());
+    ModalHelper.addButton('취소', 'btn-secondary', () => ModalHelper.hide());
+    ModalHelper.addButton('저장', 'btn-primary', saveDepartment);
+    ModalHelper.show('modal-lg');
 }
 
 // 부서 수정
@@ -252,16 +252,21 @@ function editDepartment(deptSeq) {
     const dept = departmentsData.find(d => d.seq === deptSeq);
     if (!dept) return;
 
-    $('#deptModalTitle').text('부서 수정');
-    $('#dept_seq').val(dept.seq);
-    $('#dept_name').val(dept.dept_name);
-    $('#sort').val(dept.sort);
-    $('#use_yn').val(dept.use_yn);
-    $('#company_usage').val(dept.company_id || 1);
-
-    // Bootstrap 5 방식으로 모달 표시
-    const modal = new bootstrap.Modal(document.getElementById('deptModal'));
-    modal.show();
+    // ModalHelper로 모달 표시
+    ModalHelper.setTitle('<i class="bi bi-pencil-square"></i> 부서 수정');
+    ModalHelper.setBody($('#deptFormTemplate').html());
+    ModalHelper.addButton('취소', 'btn-secondary', () => ModalHelper.hide());
+    ModalHelper.addButton('저장', 'btn-primary', saveDepartment);
+    ModalHelper.show('modal-lg');
+    
+    // 데이터 채우기 (모달이 표시된 후)
+    setTimeout(() => {
+        $('#dept_seq').val(dept.seq);
+        $('#dept_name').val(dept.dept_name);
+        $('#sort').val(dept.sort);
+        $('#use_yn').val(dept.use_yn);
+        $('#company_usage').val(dept.company_id || 1);
+    }, 100);
 }
 
 // 부서 저장
@@ -278,6 +283,9 @@ function saveDepartment() {
     const method = deptSeq ? 'PUT' : 'POST';
     const url = deptSeq ? `/admin/api/departments/${deptSeq}` : '/admin/api/departments';
 
+    // 저장 중 로딩 표시
+    ModalHelper.showLoading('부서 정보를 저장하는 중...');
+
     $.ajax({
         url: url,
         method: method,
@@ -286,16 +294,16 @@ function saveDepartment() {
     })
     .done(function(response) {
         if (response.success) {
-            showAlert(response.message, 'success');
-            const modal = new bootstrap.Modal(document.getElementById('deptModal'));
-            modal.hide();
-            loadDepartments();
+            ModalHelper.showSuccess(response.message, () => {
+                ModalHelper.hide();
+                loadDepartments();
+            });
         } else {
-            showAlert(response.message, 'danger');
+            ModalHelper.showError(response.message);
         }
     })
     .fail(function() {
-        showAlert('부서 저장에 실패했습니다.', 'danger');
+        ModalHelper.showError('부서 저장에 실패했습니다.');
     });
 }
 
@@ -304,23 +312,30 @@ function deleteDepartment(deptSeq) {
     const dept = departmentsData.find(d => d.seq === deptSeq);
     if (!dept) return;
 
-    if (!confirm(`'${dept.dept_name}' 부서를 삭제하시겠습니까?`)) return;
-
-    $.ajax({
-        url: `/admin/api/departments/${deptSeq}`,
-        method: 'DELETE'
-    })
-    .done(function(response) {
-        if (response.success) {
-            showAlert(response.message, 'success');
-            loadDepartments();
-        } else {
-            showAlert(response.message, 'danger');
+    // ModalHelper로 확인 다이얼로그
+    ModalHelper.confirm(
+        '부서 삭제',
+        `'${dept.dept_name}' 부서를 삭제하시겠습니까?<br><small class="text-muted">이 작업은 되돌릴 수 없습니다.</small>`,
+        () => {
+            // 삭제 실행
+            $.ajax({
+                url: `/admin/api/departments/${deptSeq}`,
+                method: 'DELETE'
+            })
+            .done(function(response) {
+                if (response.success) {
+                    ModalHelper.showSuccess(response.message, () => {
+                        loadDepartments();
+                    });
+                } else {
+                    ModalHelper.showError(response.message);
+                }
+            })
+            .fail(function() {
+                ModalHelper.showError('부서 삭제에 실패했습니다.');
+            });
         }
-    })
-    .fail(function() {
-        showAlert('부서 삭제에 실패했습니다.', 'danger');
-    });
+    );
 }
 
 // 알림 표시

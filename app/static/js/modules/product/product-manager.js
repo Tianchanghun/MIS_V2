@@ -427,31 +427,33 @@ class ProductManager {
         $('#price').val(productData.price);
         $('#description').val(productData.description);
         
-        // 🔥 자사코드 파싱을 통한 코드 정보 추출
+        // 🔥 자사코드 파싱을 통한 코드 정보 추출 - 레거시 구조 기준
         let parsedCodes = {};
         if (productModels && productModels.length > 0) {
             const firstModel = productModels[0];
             if (firstModel.std_div_prod_code && firstModel.std_div_prod_code.length >= 16) {
                 const stdCode = firstModel.std_div_prod_code;
                 parsedCodes = {
-                    brand: stdCode.substring(0, 2),      // 브랜드 (2자리)
-                    divType: stdCode.substring(2, 3),    // 구분타입 (1자리) - 제품구분의 첫 글자
-                    prodGroup: stdCode.substring(3, 5),  // 제품구분 (2자리) - 실제 제품구분 코드
-                    prodType: stdCode.substring(5, 7),   // 제품타입 (2자리)
-                    prod: stdCode.substring(7, 9),       // 품목 (2자리)
-                    type2: stdCode.substring(9, 11),     // 타입2 (2자리)
-                    year: stdCode.substring(11, 13),     // 년도 (2자리)
-                    color: stdCode.substring(13, 16)     // 색상 (3자리)
+                    brand: stdCode.substring(0, 2),      // 위치 0-1: 브랜드 (2자리)
+                    divType: stdCode.substring(2, 3),    // 위치 2: 구분타입 (1자리)
+                    // 위치 3: 빈 자리 건너뜀
+                    prodGroup: stdCode.substring(4, 6),  // 위치 4-5: 제품구분 (2자리)
+                    prodType: stdCode.substring(6, 8),   // 위치 6-7: 제품타입 (2자리)
+                    prod: stdCode.substring(8, 10),      // 위치 8-9: 품목 (2자리)
+                    type2: stdCode.substring(10, 12),    // 위치 10-11: 타입2 (2자리)
+                    year: stdCode.substring(12, 13),     // 위치 12: 년도 (1자리)
+                    color: stdCode.substring(13, 16)     // 위치 13-15: 색상 (3자리)
                 };
-                console.log('🔧 자사코드 파싱 결과:', stdCode, '→', parsedCodes);
-                console.log('🔧 레거시 구조 분석:');
+                console.log('🔧 자사코드 파싱 결과 (레거시 구조):', stdCode, '→', parsedCodes);
+                console.log('🔧 레거시 ProductController.cs 구조 분석:');
                 console.log(`  - 브랜드: ${parsedCodes.brand} (위치 0-1)`);
                 console.log(`  - 구분타입: ${parsedCodes.divType} (위치 2)`);
-                console.log(`  - 제품구분: ${parsedCodes.prodGroup} (위치 3-4)`);
-                console.log(`  - 제품타입: ${parsedCodes.prodType} (위치 5-6)`);
-                console.log(`  - 품목: ${parsedCodes.prod} (위치 7-8)`);
-                console.log(`  - 타입2: ${parsedCodes.type2} (위치 9-10)`);
-                console.log(`  - 년도: ${parsedCodes.year} (위치 11-12)`);
+                console.log(`  - 빈자리: ${stdCode.substring(3, 4)} (위치 3)`);
+                console.log(`  - 제품구분: ${parsedCodes.prodGroup} (위치 4-5)`);
+                console.log(`  - 제품타입: ${parsedCodes.prodType} (위치 6-7)`);
+                console.log(`  - 품목: ${parsedCodes.prod} (위치 8-9)`);
+                console.log(`  - 타입2: ${parsedCodes.type2} (위치 10-11)`);
+                console.log(`  - 년도: ${parsedCodes.year} (위치 12)`);
                 console.log(`  - 색상: ${parsedCodes.color} (위치 13-15)`);
             }
         }
@@ -658,21 +660,22 @@ class ProductManager {
                 const modelItem = container.find(`.product-model-item:eq(${index})`);
                 const colorSelect = modelItem.find('.color-code');
                 
-                // 자사코드에서 각 구성 요소 파싱
+                // 자사코드에서 각 구성 요소 파싱 - 레거시 구조 기준
                 if (model.std_div_prod_code && model.std_div_prod_code.length >= 16) {
                     const stdCode = model.std_div_prod_code;
                     const parsedModel = {
-                        brand: stdCode.substring(0, 2),      // RY
-                        divType: stdCode.substring(2, 3),    // 1
-                        prodGroup: stdCode.substring(3, 5),  // SG
-                        prodType: stdCode.substring(5, 7),   // TR
-                        prod: stdCode.substring(7, 9),       // TJ
-                        type2: stdCode.substring(9, 11),     // 00
-                        year: stdCode.substring(11, 13),     // 25
-                        color: stdCode.substring(13, 16)     // BLK
+                        brand: stdCode.substring(0, 2),      // 위치 0-1: 브랜드 (2자리)
+                        divType: stdCode.substring(2, 3),    // 위치 2: 구분타입 (1자리)
+                        // 위치 3: 빈 자리 건너뜀
+                        prodGroup: stdCode.substring(4, 6),  // 위치 4-5: 제품구분 (2자리)
+                        prodType: stdCode.substring(6, 8),   // 위치 6-7: 제품타입 (2자리)
+                        prod: stdCode.substring(8, 10),      // 위치 8-9: 품목 (2자리)
+                        type2: stdCode.substring(10, 12),    // 위치 10-11: 타입2 (2자리)
+                        year: stdCode.substring(12, 13),     // 위치 12: 년도 (1자리)
+                        color: stdCode.substring(13, 16)     // 위치 13-15: 색상 (3자리)
                     };
                     
-                    console.log(`🎨 모델 ${index} 파싱 결과:`, stdCode, '→', parsedModel);
+                    console.log(`🎨 모델 ${index} 파싱 결과 (레거시 구조):`, stdCode, '→', parsedModel);
                     
                     // 1. 타입2 (TP) 설정
                     const type2Select = modelItem.find('.prod-type2-code');

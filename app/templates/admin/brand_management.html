@@ -2,6 +2,11 @@
 
 {% block page_title %}브랜드 관리{% endblock %}
 
+{% block extra_css %}
+<!-- 🎨 UI 가독성 개선 CSS -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-improvements.css') }}?v={{ moment().timestamp }}">
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">

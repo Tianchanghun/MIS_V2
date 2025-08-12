@@ -656,27 +656,37 @@ def api_generate_code():
 def generate_legacy_std_code_16digit(brand, div_type, prod_group, prod_type, prod, type2, year, color):
     """
     레거시 방식 자사코드 생성 (16자리) - tbl_Product_DTL 기준
-    🔥 실제 레거시 구조 분석: 브랜드(2) + 구분타입(1) + 제품구분(2) + 제품타입(2) + 품목(2) + 타입2(2) + 년도(2) + 색상(3)
-    실제 예시 분석: NN3SGF1TA0025BLK
-    - NN(브랜드) + 3(구분타입) + SG(제품구분) + F1(제품타입) + TA(품목) + 00(타입2) + 25(년도) + BLK(색상)
+    🔥 레거시 실제 구조 분석 (ProductController.cs 기준):
+    위치 0-1: 브랜드 (2자리)        - sBrCode = Substring(0, 2)
+    위치 2: 구분타입 (1자리)        - sDivTypeCode = Substring(2, 1)  
+    위치 3: 누락 (1자리)            - 위치 3은 사용하지 않음
+    위치 4-5: 제품그룹 (2자리)      - sProdGroupCode = Substring(4, 2)
+    위치 6-7: 제품타입 (2자리)      - sProdTypeCode = Substring(5, 2) -> 실제로는 6-7
+    위치 8-9: 제품코드 (2자리)      - sProdCode = Substring(7, 2) -> 실제로는 8-9
+    위치 10-11: 타입2 (2자리)       - sProdType2Code = Substring(9, 2) -> 실제로는 10-11
+    위치 12: 년도 (1자리)           - YearCode 
+    위치 13-15: 색상 (3자리)        - sProdColorCode = Substring(13, 3)
+    
+    실제 예시: NN3 SG F1 TA 00 2 5BLK (16자리)
     """
-    # 각 구성요소를 정해진 길이로 맞추기 (실제 데이터 기준)
-    brand_part = (brand or 'AA')[:2].ljust(2, 'A').upper()          # 2자리 브랜드
-    div_type_part = str(div_type or '1')[:1]                        # 1자리 구분타입 
-    prod_group_part = (prod_group or 'AA')[:2].ljust(2, 'A').upper() # 2자리 제품구분
-    prod_type_part = (prod_type or 'AA')[:2].ljust(2, 'A').upper()  # 2자리 제품타입  
-    prod_part = (prod or 'AA')[:2].ljust(2, 'A').upper()           # 2자리 품목
-    type2_part = (type2 or '00')[:2].ljust(2, '0')                  # 2자리 타입2
-    year_part = str(year or '00')[-2:].ljust(2, '0')                # 2자리 년도 (뒤 2자리)
-    color_part = (color or 'AAA')[:3].ljust(3, 'A').upper()        # 3자리 색상
+    # 각 구성요소를 정해진 길이로 맞추기 (레거시 실제 구조 기준)
+    brand_part = (brand or 'AA')[:2].ljust(2, 'A').upper()          # 위치 0-1: 브랜드 (2자리)
+    div_type_part = str(div_type or '1')[:1]                        # 위치 2: 구분타입 (1자리)
+    gap_part = '0'                                                  # 위치 3: 빈 자리 (1자리)
+    prod_group_part = (prod_group or 'AA')[:2].ljust(2, 'A').upper() # 위치 4-5: 제품구분 (2자리)
+    prod_type_part = (prod_type or 'AA')[:2].ljust(2, 'A').upper()  # 위치 6-7: 제품타입 (2자리)  
+    prod_part = (prod or 'AA')[:2].ljust(2, 'A').upper()           # 위치 8-9: 품목 (2자리)
+    type2_part = (type2 or '00')[:2].ljust(2, '0')                  # 위치 10-11: 타입2 (2자리)
+    year_part = str(year or '0')[-1:]                               # 위치 12: 년도 (1자리, 마지막 1자리만)
+    color_part = (color or 'AAA')[:3].ljust(3, 'A').upper()        # 위치 13-15: 색상 (3자리)
     
     # 레거시와 정확히 동일한 순서로 조합 (총 16자리)
-    std_code = brand_part + div_type_part + prod_group_part + prod_type_part + prod_part + type2_part + year_part + color_part
+    std_code = brand_part + div_type_part + gap_part + prod_group_part + prod_type_part + prod_part + type2_part + year_part + color_part
     
     # 길이 검증
     if len(std_code) != 16:
         print(f"🔥 자사코드 길이 오류: {len(std_code)}자리 - {std_code}")
-        print(f"  구성: {brand_part}({len(brand_part)}) + {div_type_part}({len(div_type_part)}) + {prod_group_part}({len(prod_group_part)}) + {prod_type_part}({len(prod_type_part)}) + {prod_part}({len(prod_part)}) + {type2_part}({len(type2_part)}) + {year_part}({len(year_part)}) + {color_part}({len(color_part)})")
+        print(f"  구성: {brand_part}({len(brand_part)}) + {div_type_part}({len(div_type_part)}) + {gap_part}({len(gap_part)}) + {prod_group_part}({len(prod_group_part)}) + {prod_type_part}({len(prod_type_part)}) + {prod_part}({len(prod_part)}) + {type2_part}({len(type2_part)}) + {year_part}({len(year_part)}) + {color_part}({len(color_part)})")
     
     return std_code.upper()
 
@@ -851,22 +861,23 @@ def api_create_product_model():
         if not all([color_code, div_type_code, type_code]):
             return jsonify({'success': False, 'message': '선택된 코드 정보를 찾을 수 없습니다.'}), 400
         
-        # 자가코드 분해 (16자리)
+        # 자가코드 분해 (16자리) - 레거시 구조 기준
         std_code = data['std_product_code']
         if len(std_code) != 16:
             return jsonify({'success': False, 'message': '자가코드는 16자리여야 합니다.'}), 400
         
-        # 제품모델 생성
+        # 제품모델 생성 - 레거시 ProductController.cs 구조 기준
         product_detail = ProductDetail(
             product_id=None,  # 임시로 None, 나중에 상품 저장 시 연결
-            brand_code=std_code[:2],
-            div_type_code=std_code[2:3],
-            prod_group_code=std_code[3:5],
-            prod_type_code=std_code[5:7],
-            prod_code=std_code[7:9],
-            prod_type2_code=std_code[9:11],
-            year_code=std_code[11:12],
-            color_code=std_code[12:15],
+            brand_code=std_code[0:2],           # 위치 0-1: 브랜드 (2자리)
+            div_type_code=std_code[2:3],        # 위치 2: 구분타입 (1자리)
+            # 위치 3은 빈 자리로 건너뜀
+            prod_group_code=std_code[4:6],      # 위치 4-5: 제품그룹 (2자리)
+            prod_type_code=std_code[6:8],       # 위치 6-7: 제품타입 (2자리) 
+            prod_code=std_code[8:10],           # 위치 8-9: 제품코드 (2자리)
+            prod_type2_code=std_code[10:12],    # 위치 10-11: 타입2 (2자리)
+            year_code=std_code[12:13],          # 위치 12: 년도 (1자리)
+            color_code=std_code[13:16],         # 위치 13-15: 색상 (3자리)
             std_div_prod_code=std_code,
             product_name=data['product_name'],
             additional_price=int(data.get('additional_price', 0)),
