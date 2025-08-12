@@ -117,11 +117,11 @@ def index():
         type2_codes = safe_get_codes('타입2')
         
         # 9. 새로운 분류 체계들 (실제 존재하는 그룹들)
-        product_group_codes = safe_get_codes('펫용품')  # PG 그룹
+        product_group_codes = safe_get_codes('제품군')  # PG 그룹
         item_codes = safe_get_codes('아이템별')
         item_detail_codes = safe_get_codes('아이템상세')
         color_by_product_codes = safe_get_codes('색상별제품')
-        product_type_category_codes = safe_get_codes('카시트 보호 매트')  # PT 그룹
+        product_type_category_codes = safe_get_codes('제품타입')  # PT 그룹
         
         # 10. 🔥 새로 추가된 색상별(상세) 코드 (CLD 그룹)
         color_detail_codes = safe_get_codes('색상별(상세)')  # CLD 그룹
@@ -537,27 +537,27 @@ def api_generate_code():
                 return jsonify({'success': False, 'message': f'{field}는 필수 항목입니다.'}), 400
         
         # 코드 정보 조회
-        brand_code = Code.query.get(data['brandSeq'])
-        prod_group_code = Code.query.get(data['prodGroupSeq'])
-        prod_code = Code.query.get(data['prodCodeSeq'])
-        prod_type_code = Code.query.get(data['prodTypeSeq'])
-        year_code = Code.query.get(data['yearSeq'])
-        color_code = Code.query.get(data['colorSeq'])
+        brand_code = Code.query.get(data['brandSeq'])          # 브랜드
+        prod_group_code = Code.query.get(data['prodGroupSeq']) # 제품구분 (PRT)
+        prod_code = Code.query.get(data['prodCodeSeq'])        # 품목 (PRD)
+        prod_type_code = Code.query.get(data['prodTypeSeq'])   # 타입 (TP)
+        year_code = Code.query.get(data['yearSeq'])            # 년도
+        color_code = Code.query.get(data['colorSeq'])          # 색상
         
         if not all([brand_code, prod_group_code, prod_code, prod_type_code, year_code, color_code]):
             return jsonify({'success': False, 'message': '선택된 코드 중 일부를 찾을 수 없습니다.'}), 400
         
         # 레거시 자사코드 생성 로직 (16자리) - tbl_Product_DTL 기준
-        # 브랜드(2) + 구분타입(1) + 제품군(2) + 제품타입(2) + 제품(2) + 타입2(2) + 년도(2) + 색상(3)
+        # 브랜드(2) + 구분타입(1) + 제품구분(2) + 제품타입(2) + 품목(2) + 타입2(2) + 년도(2) + 색상(3)
         generated_code = generate_legacy_std_code_16digit(
-            brand_code.code,
-            '1',  # 구분타입 고정 (일반)
-            prod_group_code.code,
-            prod_type_code.code,
-            prod_code.code,
-            '00',  # 타입2 기본값
-            year_code.code,
-            color_code.code
+            brand_code.code,        # 브랜드(2)
+            '1',                    # 구분타입(1) 고정
+            prod_group_code.code,   # 제품구분(2) - PRT 그룹
+            prod_type_code.code,    # 제품타입(2) - TP 그룹  
+            prod_code.code,         # 품목(2) - PRD 그룹
+            '00',                   # 타입2(2) 기본값
+            year_code.code,         # 년도(2)
+            color_code.code         # 색상(3)
         )
         
         # 중복 확인

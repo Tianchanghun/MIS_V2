@@ -828,15 +828,6 @@ class ProductManager {
                             <small class="text-muted">추가 색상 분류</small>
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="mb-3">
-                            <label class="form-label">🔥 색상별(상세)</label>
-                            <select class="form-select color-detail-code" name="color_detail_code_seq[]">
-                                ${colorDetailOptionsHtml}
-                            </select>
-                            <small class="text-muted">235개 세부 색상 선택 가능</small>
-                        </div>
-                    </div>
                 </div>
                 
                 <!-- 🔥 새로운 분류 체계 -->
@@ -873,12 +864,21 @@ class ProductManager {
                 </div>
                 
                 <div class="row">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <div class="mb-3">
                             <label class="form-label">제품타입</label>
                             <select class="form-select product-type-category-code" name="product_type_category_code_seq[]">
                                 ${productTypeOptionsHtml}
                             </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">🔥 색상별(상세)</label>
+                            <select class="form-select color-detail-code" name="color_detail_code_seq[]">
+                                ${colorDetailOptionsHtml}
+                            </select>
+                            <small class="text-muted">235개 세부 색상 선택 가능</small>
                         </div>
                     </div>
                     <div class="col-md-3">
