@@ -676,6 +676,15 @@ class ProductManager {
             });
         }
         
+        // 🔥 색상별(추가) 옵션 HTML 생성 (색상별제품 그룹)
+        let colorByProductOptionsHtml = '<option value="">선택하세요</option>';
+        if (window.colorByProductCodesData) {
+            window.colorByProductCodesData.forEach(colorByProduct => {
+                const isSelected = model.color_by_product_code_seq && model.color_by_product_code_seq == colorByProduct.seq ? 'selected' : '';
+                colorByProductOptionsHtml += `<option value="${colorByProduct.seq}" ${isSelected}>${colorByProduct.code_name} (${colorByProduct.code})</option>`;
+            });
+        }
+        
         return `
             <div class="product-model-item border p-3 mb-3" data-index="${index}" data-model-id="${model.id}">
                 <h6 class="text-primary mb-3">
@@ -823,7 +832,7 @@ class ProductManager {
                         <div class="mb-3">
                             <label class="form-label">색상별(추가)</label>
                             <select class="form-select color-by-product-code" name="color_by_product_code_seq[]">
-                                <option value="">선택하세요</option>
+                                ${colorByProductOptionsHtml}
                             </select>
                             <small class="text-muted">추가 색상 분류</small>
                         </div>

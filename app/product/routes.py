@@ -98,7 +98,7 @@ def index():
         type_codes = []
         
         # 5. 색상 코드 (색상 그룹에서 가져오기)
-        color_codes = safe_get_codes('색상')
+        color_codes = safe_get_codes('색상')  # CR 그룹
         
         # 6. 년도 코드 (년도 그룹에서 가져오기)
         year_codes = safe_get_codes('년도')
@@ -120,7 +120,7 @@ def index():
         product_group_codes = safe_get_codes('제품군')  # PG 그룹
         item_codes = safe_get_codes('아이템별')
         item_detail_codes = safe_get_codes('아이템상세')
-        color_by_product_codes = safe_get_codes('색상별제품')
+        color_by_product_codes = []  # 색상별제품 그룹이 존재하지 않음
         product_type_category_codes = safe_get_codes('제품타입')  # PT 그룹
         
         # 10. 🔥 새로 추가된 색상별(상세) 코드 (CLD 그룹)
@@ -548,7 +548,7 @@ def api_generate_code():
             return jsonify({'success': False, 'message': '선택된 코드 중 일부를 찾을 수 없습니다.'}), 400
         
         # 레거시 자사코드 생성 로직 (16자리) - tbl_Product_DTL 기준
-        # 브랜드(2) + 구분타입(1) + 제품구분(2) + 제품타입(2) + 품목(2) + 타입2(2) + 년도(2) + 색상(3)
+        # 브랜드(2) + 구분타입(1) + 제품군(2) + 제품타입(2) + 제품(2) + 타입2(2) + 년도(2) + 색상(3)
         generated_code = generate_legacy_std_code_16digit(
             brand_code.code,        # 브랜드(2)
             '1',                    # 구분타입(1) 고정
