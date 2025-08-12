@@ -110,7 +110,7 @@ def index():
         ]
         
         # 8. 레거시 호환 코드들
-        category_codes = safe_get_codes('PRT')  # 🔥 PRT 그룹으로 수정 (제품구분)
+        category_codes = safe_get_codes('제품구분')  # 🔥 올바른 그룹명 '제품구분' 사용
         div_type_codes = safe_get_codes('구분타입')
         prod_group_codes = safe_get_codes('품목그룹')
         prod_type_codes = safe_get_codes('타입')     # TP 그룹
@@ -132,7 +132,15 @@ def index():
         
         # 🔥 새로 추가된 코드들
         detail_brand_codes = safe_get_codes('세부 브랜드')  # CL2 그룹 (세부브랜드)
-        product_division_codes = safe_get_codes('PRT')  # 🔥 PRT 그룹으로 수정 (제품구분)
+        product_division_codes = safe_get_codes('제품구분')  # 🔥 올바른 그룹명 '제품구분' 사용
+        
+        # 🔥 디버깅: 제품구분 데이터 확인
+        current_app.logger.info(f"🔧 제품구분 데이터 로드 결과: {len(product_division_codes)}개")
+        if product_division_codes:
+            for i, division in enumerate(product_division_codes[:5]):  # 처음 5개만 로그
+                current_app.logger.info(f"  {i+1}. {division.get('code', 'N/A')}: {division.get('code_name', 'N/A')} (seq: {division.get('seq', 'N/A')})")
+        else:
+            current_app.logger.warning("⚠️ 제품구분 데이터가 비어있습니다!")
         
         # 9. 새로운 분류 체계들 (실제 존재하는 그룹들)
         product_group_codes = safe_get_codes('제품군')  # PG 그룹

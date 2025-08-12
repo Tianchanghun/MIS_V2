@@ -2287,5 +2287,9 @@ console.log('  - 브랜드 코드:', window.brandCodesData?.length || 0, '개');
 console.log('  - 제품군 코드:', window.productGroupCodesData?.length || 0, '개');
 console.log('  - 아이템 코드:', window.itemCodesData?.length || 0, '개');
 console.log('  - 타입2 코드:', window.tp2CodesData?.length || 0, '개');
+console.log('  - 🔥 제품구분 코드:', window.productDivisionCodesData?.length || 0, '개');
+if (window.productDivisionCodesData?.length > 0) {
+    console.log('  - 제품구분 데이터 샘플:', window.productDivisionCodesData[0]);
+}
 </script>
 {% endblock %} 

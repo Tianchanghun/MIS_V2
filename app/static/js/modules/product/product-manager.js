@@ -479,20 +479,20 @@ class ProductManager {
             console.log('🔧 제품구분 설정 데이터 확인:');
             console.log('  - productData.div_type_code_seq:', productData.div_type_code_seq);
             console.log('  - parsedCodes.prodGroup:', parsedCodes.prodGroup);
-            console.log('  - 제품구분 셀렉트박스 옵션들 (PRT 그룹):');
+            console.log('  - 제품구분 셀렉트박스 옵션들 (제품구분 그룹):');
             $('#prod_group_code_seq option').each(function() {
                 if ($(this).val()) {
                     console.log(`    * value: ${$(this).val()}, data-code: ${$(this).data('code')}, text: ${$(this).text()}`);
                 }
             });
             
-            // 우선순위: 1) div_type_code_seq 2) 파싱된 자사코드 prodGroup을 PRT 그룹에서 매칭
+            // 우선순위: 1) div_type_code_seq 2) 파싱된 자사코드 prodGroup을 제품구분 그룹에서 매칭
             if (productData.div_type_code_seq) {
-                this.setSelectValue('prod_group_code_seq', productData.div_type_code_seq, '제품구분(PRT)', parsedCodes.prodGroup);
+                this.setSelectValue('prod_group_code_seq', productData.div_type_code_seq, '제품구분', parsedCodes.prodGroup);
             } else if (parsedCodes.prodGroup) {
-                // div_type_code_seq가 없으면 파싱된 자사코드의 prodGroup을 PRT 그룹에서 매칭 시도
-                console.log('🔄 div_type_code_seq가 없어서 자사코드 파싱값으로 PRT 그룹에서 제품구분 매칭 시도');
-                this.setSelectValue('prod_group_code_seq', null, '제품구분(PRT)', parsedCodes.prodGroup);
+                // div_type_code_seq가 없으면 파싱된 자사코드의 prodGroup을 제품구분 그룹에서 매칭 시도
+                console.log('🔄 div_type_code_seq가 없어서 자사코드 파싱값으로 제품구분 그룹에서 매칭 시도');
+                this.setSelectValue('prod_group_code_seq', null, '제품구분', parsedCodes.prodGroup);
             } else {
                 console.warn('⚠️ div_type_code_seq와 파싱된 자사코드 모두 없습니다. 제품구분을 설정할 수 없습니다.');
             }
