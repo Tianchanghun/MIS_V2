@@ -236,6 +236,7 @@ class ProductManager {
                 return;
             }
             
+            // 🔥 회사 선택 필수 검증을 포함한 폼 데이터 수집
             const formData = this.getFormData();
             const url = this.isEditMode ? `/product/api/update/${this.currentProductId}` : '/product/api/create';
             const method = this.isEditMode ? 'PUT' : 'POST';
@@ -261,7 +262,8 @@ class ProductManager {
             }
         } catch (error) {
             console.error('상품 저장 오류:', error);
-            UIHelper.showAlert('상품 저장 중 오류가 발생했습니다', 'error');
+            // 🔥 회사 선택 검증 에러 등을 사용자에게 표시
+            UIHelper.showAlert(error.message || '상품 저장 중 오류가 발생했습니다', 'error');
         } finally {
             UIHelper.hideLoading();
         }
@@ -273,6 +275,12 @@ class ProductManager {
     getFormData() {
         const formData = new FormData();
         
+        // 🔥 회사 선택 필수 검증
+        const companyId = $('#company_id').val();
+        if (!companyId) {
+            throw new Error('회사를 선택해주세요. (에이원 또는 에이원 월드)');
+        }
+        
         // 🔥 백엔드가 요구하는 필수 필드들
         formData.append('product_name', $('#product_name').val() || '');
         formData.append('price', $('#price').val() || '0');
@@ -281,15 +289,16 @@ class ProductManager {
         // 🔥 백엔드가 기대하는 코드 필드들 (실제 DB 필드명 사용)
         formData.append('brand_code_seq', $('#brand_code_seq').val() || '');
         formData.append('prod_group_code_seq', $('#prod_group_code_seq').val() || '');  // 제품구분
-        formData.append('prod_type_code_seq', $('#prod_type_code_seq').val() || '');    // 타입
+        formData.append('prod_code_seq', $('#prod_code_seq').val() || '');             // 품목 추가
+        formData.append('prod_type_code_seq', $('#prod_type_code_seq').val() || '');   // 타입
         formData.append('year_code_seq', $('#year_code_seq').val() || '');
         
         // 사용여부 (use_yn)
         const useYn = $('#use_yn').val();
         formData.append('use_yn', useYn || 'Y');
         
-        // 회사 정보
-        formData.append('company_id', '1');
+        // 🔥 회사 정보 (동적으로 가져오기)
+        formData.append('company_id', companyId);
         
         // 🔥 제품 모델 데이터 수집 (새로운 필드들 포함)
         const productModels = [];

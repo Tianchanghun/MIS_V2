@@ -1,0 +1,2256 @@
+{% extends "base.html" %}
+
+{% block title %}상품관리{% endblock %}
+
+{% block extra_css %}
+<!-- 🚨 HTML 로드 확인용 -->
+<style>
+.test-banner {
+    background: red !important;
+    color: white !important;
+    font-size: 24px !important;
+    text-align: center !important;
+    padding: 20px !important;
+    margin: 10px 0 !important;
+    border: 5px solid yellow !important;
+    position: relative !important;
+    z-index: 9999 !important;
+}
+</style>
+<!-- DataTables CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+<!-- Bootstrap Select CSS -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta3/dist/css/bootstrap-select.min.css" rel="stylesheet">
+<!-- Custom CSS -->
+<style>
+th {
+    cursor: pointer;
+    user-select: none;
+}
+th:hover {
+    background-color: #e9ecef;
+}
+.search-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    margin-bottom: 15px; /* 두께 줄이기 */
+}
+.search-card .card-body {
+    padding: 15px; /* 패딩 줄이기 */
+}
+.search-card .form-control, .search-card .form-select {
+    border-radius: 20px;
+    padding: 8px 12px; /* 높이 줄이기 */
+    font-size: 0.9rem;
+}
+.table-card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+.btn-excel {
+    background: linear-gradient(45deg, #28a745, #20c997);
+    border: none;
+    color: white;
+}
+.product-status-active {
+    color: #28a745;
+    font-weight: bold;
+}
+.product-status-inactive {
+    color: #dc3545;
+    font-weight: bold;
+}
+.price-display {
+    color: #0d6efd;
+    font-weight: 600;
+}
+.company-badge-1 {
+    background: linear-gradient(45deg, #667eea, #764ba2);
+}
+.company-badge-2 {
+    background: linear-gradient(45deg, #f093fb, #f5576c);
+}
+.modal-header-add {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+.modal-header-edit {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+}
+.required {
+    color: #dc3545;
+}
+.file-upload-area {
+    border: 2px dashed #dee2e6;
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+    background: #f8f9fa;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+.file-upload-area:hover {
+    border-color: #667eea;
+    background: #e7f1ff;
+}
+.file-upload-area.dragover {
+    border-color: #667eea;
+    background: #e7f1ff;
+    transform: scale(1.02);
+}
+
+/* 스크롤 관련 스타일 - 우측 고정 */
+.table-responsive {
+    max-height: 65vh;
+    overflow-y: auto;
+    overflow-x: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    position: relative;
+}
+
+/* 스크롤바 스타일링 (우측 고정) - 더 명확하게 */
+.table-responsive::-webkit-scrollbar {
+    width: 16px;
+    height: 16px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 8px;
+    box-shadow: inset 0 0 6px rgba(0,0,0,0.1);
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px;
+    border: 2px solid #f1f1f1;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.table-responsive::-webkit-scrollbar-corner {
+    background: #f1f1f1;
+}
+
+/* 헤더 고정 */
+.sticky-top {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #f8f9fa !important;
+}
+
+.product-card {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.product-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+/* 테이블 행 호버 효과 */
+#productTableBody tr {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+#productTableBody tr:hover {
+    background-color: #f8f9fa;
+}
+
+/* 검색 영역 컴팩트화 */
+.search-row {
+    margin-bottom: 0;
+}
+
+.search-row .col-md-2,
+.search-row .col-md-3 {
+    margin-bottom: 8px;
+}
+
+.form-label {
+    margin-bottom: 4px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+/* 모달 최적화 - 페이지 잘림 방지 */
+.modal-dialog.modal-lg {
+    max-width: 90vw;
+    margin: 1rem auto;
+}
+
+@media (min-width: 1200px) {
+    .modal-dialog.modal-lg {
+        max-width: 1000px;
+    }
+}
+
+.modal-content {
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+/* 테이블 컨테이너 높이 조정 */
+.table-responsive {
+    max-height: 60vh;
+    overflow-y: auto;
+    overflow-x: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    position: relative;
+}
+
+/* 컨테이너 전체 높이 최적화 */
+.container-fluid {
+    min-height: 100vh;
+    padding-bottom: 2rem;
+}
+
+/* 모달 배경 스크롤 방지 */
+body.modal-open {
+    overflow: hidden;
+}
+
+/* 액션 버튼 영역 최적화 */
+.d-flex.justify-content-between.align-items-center.mb-3 {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+@media (max-width: 768px) {
+    .d-flex.justify-content-between.align-items-center.mb-3 {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
+/* 모달 최적화 - 노트북 화면 대응 */
+.modal-dialog.modal-xl {
+    max-width: 85vw !important;
+    width: 85vw !important;
+    margin: 1rem auto !important;
+}
+
+.modal-content {
+    max-height: 90vh !important;
+    overflow: hidden !important;
+}
+
+.modal-body {
+    max-height: 70vh !important;
+    overflow-y: auto !important;
+    padding: 1rem !important;
+}
+
+.modal-header {
+    padding: 0.75rem 1rem !important;
+    border-bottom: 1px solid #dee2e6 !important;
+}
+
+.modal-footer {
+    padding: 0.75rem 1rem !important;
+    border-top: 1px solid #dee2e6 !important;
+}
+
+/* 노트북 화면 대응 (1366px 이하) */
+@media (max-width: 1366px) {
+    .modal-dialog.modal-xl {
+        max-width: 90vw !important;
+        width: 90vw !important;
+        margin: 0.5rem auto !important;
+    }
+    
+    .modal-content {
+        max-height: 95vh !important;
+    }
+    
+    .modal-body {
+        max-height: 75vh !important;
+        padding: 0.75rem !important;
+    }
+}
+
+/* 작은 화면 대응 */
+@media (max-width: 768px) {
+    .modal-dialog.modal-xl {
+        max-width: 98vw !important;
+        width: 98vw !important;
+        margin: 0.25rem auto !important;
+    }
+    
+    .modal-content {
+        max-height: 98vh !important;
+        border-radius: 0 !important;
+    }
+    
+    .modal-body {
+        max-height: 80vh !important;
+        padding: 0.5rem !important;
+    }
+}
+
+/* 모달 z-index 보장 - 사이드바보다 높게 */
+.modal {
+    z-index: 2000 !important;
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.modal-backdrop {
+    z-index: 1900 !important;
+}
+
+/* 모달 다이얼로그 위치 조정 */
+.modal-dialog {
+    margin: 1rem auto !important;
+    position: relative !important;
+    z-index: 2001 !important;
+    width: auto !important;
+}
+
+/* 모달 표시 강제 */
+.modal.show {
+    display: block !important;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 페이지 헤더 -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0">
+                <i class="fas fa-box me-2"></i>상품관리
+            </h1>
+            <p class="text-muted mb-0">상품 정보를 등록, 수정, 삭제할 수 있습니다</p>
+        </div>
+        <div>
+            <span class="badge bg-primary fs-6" id="productCount">0</span>개 상품
+            <small class="text-muted ms-2">(상품코드 보유: <span id="stdCodeCount">0</span>개)</small>
+        </div>
+    </div>
+
+    <!-- 검색 영역 -->
+    <div class="card mb-3 search-card">
+        <div class="card-body">
+            <form id="searchForm" onsubmit="searchProducts(event)">
+            <div class="row g-2 search-row">
+                <div class="col-md-3">
+                        <label for="searchName" class="form-label">
+                            <i class="fas fa-tag me-1"></i>상품명
+                    </label>
+                        <input type="text" class="form-control" id="searchName" name="searchName"
+                               placeholder="상품명 입력..." autocomplete="off">
+                </div>
+                    <div class="col-md-3">
+                        <label for="searchProduct" class="form-label">
+                            <i class="fas fa-cube me-1"></i>품목
+                        </label>
+                        <select class="form-select" id="searchProduct" name="searchProduct">
+                            <option value="">전체 품목</option>
+                            {% for product in product_codes %}
+                            <option value="{{ product.seq }}">{{ product.code_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                        <label for="searchType" class="form-label">
+                            <i class="fas fa-cogs me-1"></i>타입
+                        </label>
+                        <select class="form-select" id="searchType" name="searchType">
+                            <option value="">전체 타입</option>
+                            <!-- 동적으로 로드됨 -->
+                    </select>
+                </div>
+                <div class="col-md-2">
+                        <div class="form-check mt-4">
+                            <input class="form-check-input" type="checkbox" id="showInactive" name="showInactive">
+                            <label class="form-check-label text-white" for="showInactive">
+                                미사용 제품 포함
+                            </label>
+                </div>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end gap-1">
+                        <button type="submit" class="btn btn-outline-light btn-sm">
+                            <i class="fas fa-search me-1"></i>검색
+                        </button>
+                        <button type="button" class="btn btn-outline-light btn-sm" onclick="resetFilters()">
+                            <i class="fas fa-refresh me-1"></i>초기화
+                    </button>
+                </div>
+            </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 액션 버튼 영역 -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-primary" onclick="addProduct()" 
+                    style="cursor: pointer !important; z-index: 10 !important; position: relative !important;"
+                    title="새 상품 등록">
+                <i class="fas fa-plus me-1"></i>상품 등록
+            </button>
+            
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-excel" onclick="downloadExcel()" title="엑셀 다운로드">
+                    <i class="fas fa-file-excel me-1"></i>엑셀 저장
+            </button>
+                <label class="btn btn-success" for="excelUpload" title="엑셀 업로드">
+                    <i class="fas fa-file-upload me-1"></i>엑셀 업로드
+                    <input type="file" id="excelUpload" accept=".xlsx,.xls" style="display: none;" onchange="uploadExcel(this)">
+                </label>
+            </div>
+        </div>
+        
+        <div class="d-flex align-items-center gap-3">
+            <!-- 정렬 옵션 -->
+            <select class="form-select form-select-sm" id="sortSelect" onchange="changeSorting()" style="width: auto;">
+                <option value="price-asc">가격순 (낮은순)</option>
+                <option value="price-desc">가격순 (높은순)</option>
+                <option value="updated_at-desc">수정일순 (최신)</option>
+                <option value="updated_at-asc">수정일순 (오래된순)</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- 로딩 스피너 (숨김 상태) -->
+    <div id="loadingSpinner" class="text-center py-5" style="display: none;">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">로딩 중...</span>
+        </div>
+        <p class="mt-2 text-muted">데이터를 불러오는 중입니다...</p>
+    </div>
+
+    <!-- 상품 목록 (테이블 뷰) -->
+    <div id="tableView" class="card table-card">
+        <div class="card-body p-0">
+            <!-- 스크롤 네비게이션 -->
+            <div class="d-flex justify-content-between align-items-center p-2 bg-light border-bottom">
+                <small class="text-muted">테이블을 우측으로 스크롤하여 더 많은 정보를 확인하세요</small>
+            <div class="btn-group btn-group-sm">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="scrollToTop()" title="맨 위로">
+                        <i class="fas fa-chevron-up"></i>
+                </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="scrollToBottom()" title="맨 아래로">
+                        <i class="fas fa-chevron-down"></i>
+                </button>
+            </div>
+        </div>
+            
+            <div class="table-responsive" id="productTableContainer">
+                <table class="table table-hover mb-0" id="productTable">
+                    <thead class="table-light sticky-top">
+                        <tr>
+                            <th style="width: 60px;">번호</th>
+                            <th style="width: 100px;">회사</th>
+                            <th style="width: 100px;">브랜드</th>
+                            <th>상품명/코드</th>
+                            <th style="width: 120px;">품목</th>
+                            <th style="width: 100px;">타입</th>
+                            <th style="width: 80px;">년도</th>
+                            <th style="width: 100px;">가격</th>
+                            <th style="width: 80px;">상태</th>
+                            <th style="width: 120px;">등록일</th>
+                            <th style="width: 120px;">액션</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productTableBody">
+                        <!-- 동적으로 채워짐 -->
+                    </tbody>
+                </table>
+        </div>
+    </div>
+
+        <!-- 페이징 -->
+        <div class="card-footer bg-light">
+                <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-3">
+                    <small class="text-muted">
+                        페이지 당 표시:
+                        <select class="form-select form-select-sm d-inline-block" style="width: auto;" onchange="changePerPage(this.value)">
+                            <option value="10">10개</option>
+                            <option value="25">25개</option>
+                            <option value="50" selected>50개</option>
+                            <option value="100">100개</option>
+                        </select>
+                    </small>
+                    <small class="text-muted" id="recordInfo">
+                        데이터 로딩 중...
+                        </small>
+                    </div>
+            
+                <nav>
+                    <ul class="pagination pagination-sm mb-0" id="pagination">
+                        <!-- 동적으로 채워짐 -->
+                    </ul>
+                </nav>
+                    </div>
+                </div>
+        </div>
+
+    <!-- 상품 목록 (카드 뷰) -->
+    <div id="cardView" class="row" style="display: none;">
+        <!-- 동적으로 채워짐 -->
+    </div>
+
+    <!-- 빈 상태 표시 -->
+    <div id="emptyState" class="text-center py-5" style="display: none;">
+        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+        <h5 class="text-muted">등록된 상품이 없습니다</h5>
+        <p class="text-muted">상품을 등록하거나 검색 조건을 변경해 보세요.</p>
+        <button type="button" class="btn btn-primary" onclick="addProduct()">
+            <i class="fas fa-plus me-1"></i>첫 상품 등록하기
+        </button>
+    </div>
+</div>
+
+<!-- 상품 등록/수정 모달 -->
+<div class="modal fade" id="productModal" tabindex="-1" aria-labelledby="productModalLabel" aria-modal="true" role="dialog" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document" style="max-width: 60vw; margin-left: 320px; margin-right: 40px;">
+        <div class="modal-content" style="max-height: 80vh;">
+            <div class="modal-header" style="padding: 0.75rem 1rem;">
+                <h5 class="modal-title" id="productModalLabel">상품 등록</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
+            </div>
+            <form id="productForm" enctype="multipart/form-data">
+                <input type="hidden" id="productId" name="productId">
+                <input type="hidden" id="isEditMode" value="false">
+                
+                <div class="modal-body" style="max-height: 60vh; overflow-y: auto; padding: 1rem;">
+                    <div class="container-fluid">
+                        
+                        <!-- 1단계: 기본 상품 정보 (레거시 호환) -->
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="company_id" class="form-label">회사 <span class="required">*</span></label>
+                                    <select class="form-select" id="company_id" name="company_id" required>
+                                        <option value="">선택하세요</option>
+                                        <option value="1">에이원</option>
+                                        <option value="2">에이원 월드</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                    <label for="brand_code_seq" class="form-label">브랜드 <span class="required">*</span></label>
+                                    <select class="form-select" id="brand_code_seq" name="brand_code_seq" required>
+                                        <option value="">선택하세요</option>
+                                        {% for brand in brand_codes %}
+                                        <option value="{{ brand.seq }}">{{ brand.code_name }}</option>
+                                        {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label for="prod_group_code_seq" class="form-label">제품구분 <span class="required">*</span></label>
+                                <select class="form-select" id="prod_group_code_seq" name="prod_group_code_seq" required>
+                                    <option value="">선택하세요</option>
+                                    {% for category in category_codes %}
+                                    <option value="{{ category.seq }}">{{ category.code_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <label for="prod_code_seq" class="form-label">
+                                    <i class="fas fa-cube me-1"></i>품목 (PRD) <span class="required">*</span>
+                                </label>
+                                <select class="form-select" id="prod_code_seq" name="prod_code_seq" required>
+                                    <option value="">품목을 선택하세요</option>
+                                    {% for product in product_codes %}
+                                    <option value="{{ product.seq }}" data-code="{{ product.code }}">{{ product.code_name }} ({{ product.code }})</option>
+                                    {% endfor %}
+                                </select>
+                                <small class="text-muted">ERPia 연동 없이 자체 관리됩니다</small>
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <label for="prod_type_code_seq" class="form-label">타입 <span class="required">*</span></label>
+                                <select class="form-select" id="prod_type_code_seq" name="prod_type_code_seq" required>
+                                    <option value="">품목을 먼저 선택하세요</option>
+                                    <!-- 품목 선택 시 동적으로 로드됨 -->
+                                </select>
+                                <small class="text-muted">품목 선택 후 자동 로드</small>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="product_name" class="form-label">상품명 <span class="required">*</span></label>
+                                    <input type="text" class="form-control" id="product_name" name="product_name" required 
+                                           placeholder="상품명을 입력하세요">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="year_code_seq" class="form-label">년식 <span class="required">*</span></label>
+                                    <select class="form-select" id="year_code_seq" name="year_code_seq" required>
+                                        <option value="">선택하세요</option>
+                                    {% for year in year_codes %}
+                                        <option value="{{ year.seq }}" data-code="{{ year.code }}">{{ year.code_name }}</option>
+                                    {% endfor %}
+                                </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 제품 세부 정보 (tbl_Product_DTL 연동) -->
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-cogs me-2"></i>제품 모델 정보 (tbl_Product_DTL)
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="productModelsContainer">
+                                    <!-- 제품 모델 템플릿이 여기에 추가됨 -->
+                                    <div class="product-model-item border p-3 mb-3" data-index="0">
+                                        <h6 class="text-primary mb-3">
+                                            <i class="fas fa-box me-1"></i>제품 모델 #1
+                                            <small class="text-muted">(tbl_Product_DTL)</small>
+                                        </h6>
+                                        
+                                        <!-- 기본 정보 -->
+                        <div class="row">
+                                            <div class="col-md-4">
+                                                <div class="mb-3">
+                                                    <label class="form-label">
+                                                        <i class="fas fa-palette me-1"></i>색상 (CR) <span class="required">*</span>
+                                                    </label>
+                                                    <select class="form-select color-code" name="color_code[]" required>
+                                                        <option value="">색상을 선택하세요</option>
+                                                        <!-- 동적으로 채워짐 -->
+                                                    </select>
+                                                    <small class="text-muted">CR 코드 그룹에서 관리</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="mb-3">
+                                                    <label class="form-label">제품명 (색상별)</label>
+                                                    <input type="text" class="form-control product-model-name" 
+                                                           name="product_model_name[]" 
+                                                           placeholder="색상별 제품명 (선택사항)">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="mb-3">
+                                                    <label class="form-label">16자리 자사코드</label>
+                                                    <div class="input-group">
+                                                        <input type="text" class="form-control std-product-code" 
+                                                               name="std_product_code[]" 
+                                                               placeholder="자동생성됨" readonly>
+                                                        <button type="button" class="btn btn-primary btn-generate-code" title="선택된 코드 기준으로 생성">
+                                                            <i class="fas fa-magic"></i> 자동생성
+                                                        </button>
+                                                    </div>
+                                                    <small class="text-muted">tbl_Product_DTL - 16자리 레거시 형식</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- 🔥 코드 관리 필드 -->
+                                        <div class="row mt-3">
+                                            <div class="col-12">
+                                                <h6 class="text-secondary">
+                                                    <i class="fas fa-code me-1"></i>코드 관리
+                                                </h6>
+                                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                                    <label class="form-label">더존코드 (20자)</label>
+                                                    <input type="text" class="form-control douzone-code" 
+                                                           name="douzone_code[]" maxlength="20"
+                                                           placeholder="더존 연동 코드">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                                    <label class="form-label">ERPIA코드 (13자)</label>
+                                                    <input type="text" class="form-control erpia-code" 
+                                                           name="erpia_code[]" maxlength="13"
+                                                           placeholder="ERPIA 연동 코드">
+                            </div>
+                        </div>
+                        </div>
+                        
+                                        <!-- 🔥 가격 관리 필드 -->
+                                        <div class="row">
+                                            <div class="col-12">
+                                                <h6 class="text-secondary">
+                                                    <i class="fas fa-won-sign me-1"></i>가격 관리
+                                                </h6>
+                        </div>
+                                            <div class="col-md-4">
+                                                <div class="mb-3">
+                                                    <label class="form-label">공식원가</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text">₩</span>
+                                                        <input type="number" class="form-control official-cost" 
+                                                               name="official_cost[]" min="0"
+                                                               placeholder="0">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="mb-3">
+                                                    <label class="form-label">소비자가</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text">₩</span>
+                                                        <input type="number" class="form-control consumer-price" 
+                                                               name="consumer_price[]" min="0"
+                                                               placeholder="0">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="mb-3">
+                                                    <label class="form-label">운영가</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text">₩</span>
+                                                        <input type="number" class="form-control operation-price" 
+                                                               name="operation_price[]" min="0"
+                                                               placeholder="0">
+                                                    </div>
+                                                </div>
+                                            </div>
+                        </div>
+                        
+                                        <!-- 🔥 추가 관리 필드들 (ANS, 세부브랜드, 색상별) -->
+                                <div class="row">
+                                            <div class="col-12">
+                                                <h6 class="text-secondary">
+                                                    <i class="fas fa-cogs me-1"></i>추가 관리
+                                                </h6>
+                                            </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                                    <label class="form-label">ANS</label>
+                                                    <select class="form-select ans-value" name="ans_value[]">
+                                                <option value="">선택하세요</option>
+                                                        ${Array.from({length: 30}, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('')}
+                                            </select>
+                                                    <small class="text-muted">1~30 값 선택</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                                    <label class="form-label">세부브랜드</label>
+                                                    <select class="form-select detail-brand-code" name="detail_brand_code_seq[]">
+                                                        <option value="">선택하세요</option>
+                                                        ${window.brandCodesData ? window.brandCodesData.map(brand => 
+                                                            `<option value="${brand.seq}">${brand.code_name} (${brand.code})</option>`
+                                                        ).join('') : ''}
+                                                    </select>
+                                                    <small class="text-muted">브랜드 코드 참조</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                                    <label class="form-label">색상별(추가)</label>
+                                                    <select class="form-select color-by-product-code" name="color_by_product_code_seq[]">
+                                                        <option value="">선택하세요</option>
+                                                    </select>
+                                                    <small class="text-muted">추가 색상 분류</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                                    <label class="form-label">🔥 색상별(상세)</label>
+                                                    <select class="form-select color-detail-code" name="color_detail_code_seq[]">
+                                                        <option value="">선택하세요</option>
+                                                    </select>
+                                                    <small class="text-muted">235개 세부 색상 선택 가능</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                        <!-- 제거 버튼 영역 -->
+                                        <div class="row mt-3">
+                                            <div class="col-12">
+                                                <hr class="my-2">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-info-circle me-1"></i>
+                                                        이 색상 모델을 삭제하려면 제거 버튼을 클릭하세요
+                                                    </small>
+                                                    <button type="button" class="btn btn-outline-danger btn-sm btn-remove-model">
+                                                        <i class="fas fa-times me-1"></i>이 색상 모델 제거
+                                        </button>
+                                                </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                                <div class="text-end mt-2">
+                                    <button type="button" class="btn btn-outline-primary btn-sm" id="addProductModelBtn">
+                                        <i class="fas fa-plus me-1"></i>색상 모델 추가
+                            </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 기본 상품 정보 (tbl_Product) -->
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-tag me-2"></i>기본 상품 정보 (tbl_Product)
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="price" class="form-label">상품가격(Tag) <span class="required">*</span></label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">₩</span>
+                                                <input type="number" class="form-control" id="price" name="price" 
+                                                       required min="0" placeholder="0">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="use_yn" class="form-label">사용여부 <span class="required">*</span></label>
+                                            <select class="form-select" id="use_yn" name="use_yn" required>
+                                                <option value="Y" selected>사용</option>
+                                                <option value="N">미사용</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 히든 필드: 구분타입 "일반"으로 고정 -->
+                        <input type="hidden" id="div_type_code_seq" name="div_type_code_seq" value="">
+                        
+                        <!-- 추가 정보 (선택사항) -->
+                        <hr class="my-4">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <label for="description" class="form-label">설명</label>
+                                    <textarea class="form-control" id="description" name="description" rows="3" placeholder="상품에 대한 설명을 입력하세요..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        
+                    </div>
+                </div>
+                
+                <div class="modal-footer" style="padding: 0.75rem 1rem;">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>닫기
+                    </button>
+                    <button type="submit" class="btn btn-primary" id="saveProductBtn">
+                        <i class="fas fa-save me-1"></i>저장
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- 공통 라이브러리 -->
+<script src="/static/js/common/ajax-helper.js?v=1754968604"></script>
+<script src="/static/js/common/ui-components.js?v=1754968604"></script>
+
+<!-- 상품 관리 모듈 -->
+<script src="/static/js/modules/product/product-list.js?v=1754968604"></script>
+<script src="/static/js/modules/product/product-manager.js?v=1754968604"></script>
+
+<script>
+// 페이지 초기화 완료 로그
+$(document).ready(function() {
+    console.log('✅ 상품관리 페이지 모듈화 완료');
+    console.log('🔍 브라우저 환경 체크:', {
+        userAgent: navigator.userAgent,
+        URL: window.location.href,
+        jQuery: typeof $,
+        bootstrap: typeof bootstrap
+    });
+    
+    // 🔧 색상 코드 데이터를 전역 변수로 설정
+    try {
+        window.colorCodesData = JSON.parse('{{ color_codes | tojson | safe }}');
+        console.log('✅ 색상 코드 데이터 로드:', window.colorCodesData.length + '개');
+    } catch (e) {
+        console.error('❌ 색상 코드 데이터 로드 실패:', e);
+        window.colorCodesData = [];
+    }
+    
+    // 🔧 브랜드 코드 데이터를 전역 변수로 설정
+    try {
+        window.brandCodesData = JSON.parse('{{ brand_codes | tojson | safe }}');
+        console.log('✅ 브랜드 코드 데이터 로드:', window.brandCodesData.length + '개');
+    } catch (e) {
+        console.error('❌ 브랜드 코드 데이터 로드 실패:', e);
+        window.brandCodesData = [];
+    }
+    
+    // 🔧 제품 그룹 코드 데이터를 전역 변수로 설정
+    try {
+        window.productGroupCodesData = JSON.parse('{{ product_group_codes | tojson | safe }}');
+        console.log('✅ 제품 그룹 코드 데이터 로드:', window.productGroupCodesData.length + '개');
+    } catch (e) {
+        console.error('❌ 제품 그룹 코드 데이터 로드 실패:', e);
+        window.productGroupCodesData = [];
+    }
+    
+    // 🔧 아이템 코드 데이터를 전역 변수로 설정
+    try {
+        window.itemCodesData = JSON.parse('{{ item_codes | tojson | safe }}');
+        console.log('✅ 아이템 코드 데이터 로드:', window.itemCodesData.length + '개');
+    } catch (e) {
+        console.error('❌ 아이템 코드 데이터 로드 실패:', e);
+        window.itemCodesData = [];
+    }
+    
+    // 🔧 아이템 상세 코드 데이터를 전역 변수로 설정
+    try {
+        window.itemDetailCodesData = JSON.parse('{{ item_detail_codes | tojson | safe }}');
+        console.log('✅ 아이템 상세 코드 데이터 로드:', window.itemDetailCodesData.length + '개');
+    } catch (e) {
+        console.error('❌ 아이템 상세 코드 데이터 로드 실패:', e);
+        window.itemDetailCodesData = [];
+    }
+    
+    // 🔧 제품 타입 카테고리 코드 데이터를 전역 변수로 설정
+    try {
+        window.productTypeCategoryCodesData = JSON.parse('{{ product_type_category_codes | tojson | safe }}');
+        console.log('✅ 제품 타입 카테고리 코드 데이터 로드:', window.productTypeCategoryCodesData.length + '개');
+    } catch (e) {
+        console.error('❌ 제품 타입 카테고리 코드 데이터 로드 실패:', e);
+        window.productTypeCategoryCodesData = [];
+    }
+    
+    // 🔧 색상별 제품 코드 데이터를 전역 변수로 설정
+    try {
+        window.colorByProductCodesData = JSON.parse('{{ color_by_product_codes | tojson | safe }}');
+        console.log('✅ 색상별 제품 코드 데이터 로드:', window.colorByProductCodesData.length + '개');
+    } catch (e) {
+        console.error('❌ 색상별 제품 코드 데이터 로드 실패:', e);
+        window.colorByProductCodesData = [];
+    }
+    
+    // 🔧 색상별(상세) 코드 데이터를 전역 변수로 설정
+    try {
+        window.colorDetailCodesData = JSON.parse('{{ color_detail_codes | tojson | safe }}');
+        console.log('✅ 색상별(상세) 코드 데이터 로드:', window.colorDetailCodesData.length + '개');
+    } catch (e) {
+        console.error('❌ 색상별(상세) 코드 데이터 로드 실패:', e);
+        window.colorDetailCodesData = [];
+    }
+    
+    // 🔥 새로 추가된 코드들
+    // 세부브랜드(CL2) 코드 데이터를 전역 변수로 설정
+    try {
+        window.detailBrandCodesData = JSON.parse('{{ detail_brand_codes | tojson | safe }}');
+        console.log('✅ 세부브랜드 코드 데이터 로드:', window.detailBrandCodesData.length + '개');
+    } catch (e) {
+        console.error('❌ 세부브랜드 코드 데이터 로드 실패:', e);
+        window.detailBrandCodesData = [];
+    }
+    
+    // 제품구분(PD) 코드 데이터를 전역 변수로 설정
+    try {
+        window.productDivisionCodesData = JSON.parse('{{ product_division_codes | tojson | safe }}');
+        console.log('✅ 제품구분 코드 데이터 로드:', window.productDivisionCodesData.length + '개');
+    } catch (e) {
+        console.error('❌ 제품구분 코드 데이터 로드 실패:', e);
+        window.productDivisionCodesData = [];
+    }
+    
+    // ✅ 모든 중복 API 호출 제거 - productListManager가 알아서 처리
+    console.log('🎯 ProductListManager 초기화 확인');
+    
+    // 🔧 초기화 안전성 검사
+    console.log('🔍 필수 라이브러리 확인...');
+    
+    // jQuery 확인
+    if (typeof $ === 'undefined') {
+        console.error('❌ jQuery가 로드되지 않았습니다');
+        alert('페이지 로딩 오류: jQuery가 없습니다. 새로고침해주세요.');
+        return;
+    }
+    console.log('✅ jQuery 로드됨');
+    
+    // UIHelper 확인
+    if (typeof UIHelper === 'undefined') {
+        console.error('❌ UIHelper가 로드되지 않았습니다');
+        alert('페이지 로딩 오류: UIHelper가 없습니다. 새로고침해주세요.');
+        return;
+    }
+    console.log('✅ UIHelper 로드됨');
+    
+    // AjaxHelper 확인
+    if (typeof AjaxHelper === 'undefined') {
+        console.error('❌ AjaxHelper가 로드되지 않았습니다');
+        alert('페이지 로딩 오류: AjaxHelper가 없습니다. 새로고침해주세요.');
+        return;
+    }
+    console.log('✅ AjaxHelper 로드됨');
+        
+    // ProductListManager 강제 초기화 및 즉시 로드 (더 안전하게)
+    setTimeout(() => {
+        try {
+            // ProductListManager 확인 및 초기화
+            if (typeof window.productListManager !== 'undefined' && window.productListManager) {
+                console.log('✅ ProductListManager 이미 초기화됨');
+            } else {
+                console.log('🔄 ProductListManager 초기화 시작');
+                if (typeof ProductListManager !== 'undefined') {
+            window.productListManager = new ProductListManager();
+                    console.log('✅ ProductListManager 초기화 완료');
+                } else {
+                    console.error('❌ ProductListManager 클래스가 로드되지 않았습니다');
+                    UIHelper.showAlert('상품 목록 관리자를 로드할 수 없습니다. 새로고침해주세요.', 'error');
+                }
+            }
+
+            // ProductManager 확인 및 초기화
+            if (typeof window.productManager !== 'undefined' && window.productManager) {
+                console.log('✅ ProductManager 이미 초기화됨');
+            } else {
+                console.log('🔄 ProductManager 초기화 시작');
+                if (typeof ProductManager !== 'undefined') {
+            window.productManager = new ProductManager();
+                    console.log('✅ ProductManager 초기화 완료');
+                } else {
+                    console.error('❌ ProductManager 클래스가 로드되지 않았습니다');
+                    UIHelper.showAlert('상품 관리자를 로드할 수 없습니다. 새로고침해주세요.', 'error');
+                }
+            }
+        } catch (error) {
+            console.error('❌ 매니저 초기화 중 오류:', error);
+            UIHelper.showAlert('페이지 초기화 중 오류가 발생했습니다. 새로고침해주세요.', 'error');
+        }
+    }, 500); // 지연 시간을 500ms로 늘림
+    
+    // 모달 이벤트 설정
+    setupModalEvents();
+});
+
+// 모달 이벤트 설정
+function setupModalEvents() {
+    // PRD 품목 선택 시 타입 코드 동적 로드
+    $('#prod_code_seq').on('change', function() {
+        const selectedPrdSeq = $(this).val();
+        console.log('📦 모달에서 PRD 품목 선택:', selectedPrdSeq);
+        loadTypeCodesForModal(selectedPrdSeq);
+    });
+    
+    // 제품 모델 추가 버튼
+    $('#addProductModelBtn').on('click', function() {
+        addProductModel();
+    });
+    
+    // 제품 모델 제거 버튼 (이벤트 위임)
+    $(document).on('click', '.btn-remove-model', function() {
+        const modelItem = $(this).closest('.product-model-item');
+        const index = modelItem.data('index');
+        
+        // 마지막 하나가 아니면 제거 가능
+        if ($('.product-model-item').length > 1) {
+            modelItem.remove();
+            updateModelIndices();
+        } else {
+            UIHelper.showAlert('최소 하나의 색상은 필요합니다', 'warning');
+        }
+    });
+    
+    // 자가코드 생성 버튼 (이벤트 위임) - 레거시 방식 적용
+    $(document).on('click', '.btn-generate-code', function() {
+        const stdCodeInput = $(this).siblings('.std-product-code');
+        generateStdCodeFromSelection(stdCodeInput);
+    });
+    
+    // 색상 선택 시 자동으로 제품명 업데이트
+    $(document).on('change', '.color-code', function() {
+        const selectedColorName = $(this).find('option:selected').text();
+        const productModelName = $(this).closest('.product-model-item').find('.product-model-name');
+        const baseProductName = $('#product_name').val();
+        
+        if (baseProductName && selectedColorName && selectedColorName !== '색상을 선택하세요') {
+            const colorName = selectedColorName.split('(')[0].trim(); // 코드 부분 제거
+            productModelName.val(baseProductName + ' - ' + colorName);
+        }
+    });
+}
+
+// 상품 관리를 위한 전역 함수들 (레거시 호환) - 강화 버전
+function addProduct() {
+    console.log('📝 상품 등록 버튼 클릭됨 - 타임스탬프:', new Date().toISOString());
+    
+    // 🚨 중복 클릭 방지
+    if (window.addProductInProgress) {
+        console.warn('⚠️ 상품 등록이 이미 진행 중입니다');
+        return;
+    }
+    window.addProductInProgress = true;
+    
+    // 🔥 1단계: ProductManager 시도
+    try {
+        if (window.productManager && typeof window.productManager.showAddModal === 'function') {
+            console.log('✅ ProductManager로 모달 열기');
+            window.productManager.showAddModal();
+            setTimeout(() => { window.addProductInProgress = false; }, 1000);
+            return;
+        }
+    } catch (error) {
+        console.error('❌ ProductManager 1단계 실패:', error);
+    }
+    
+    // 🔥 2단계: ProductManager 강제 생성 및 재시도
+    try {
+        console.log('🔄 ProductManager 강제 생성 시도');
+        if (typeof ProductManager !== 'undefined') {
+            window.productManager = new ProductManager();
+            
+            if (window.productManager.showAddModal) {
+                console.log('✅ 강제 생성 후 모달 열기');
+                window.productManager.showAddModal();
+                setTimeout(() => { window.addProductInProgress = false; }, 1000);
+                return;
+            }
+        }
+    } catch (error) {
+        console.error('❌ ProductManager 2단계 실패:', error);
+    }
+
+    // 🔥 3단계: 직접 Bootstrap 모달 열기 (ARIA 개선)
+    console.log('🚨 Bootstrap 모달 직접 열기');
+    try {
+        const modalElement = document.getElementById('productModal');
+        if (!modalElement) {
+            console.error('❌ productModal 요소를 찾을 수 없습니다');
+            alert('모달 요소가 존재하지 않습니다. 페이지를 새로고침해주세요.');
+            window.addProductInProgress = false;
+            return;
+        }
+
+        // 기존 모달 인스턴스 제거
+        const existingModal = bootstrap.Modal.getInstance(modalElement);
+        if (existingModal) {
+            existingModal.dispose();
+        }
+        
+        // 🔧 모달 상태를 등록 모드로 초기화
+        $('#productModalLabel').text('상품 등록');
+        $('#isEditMode').val('false');
+        $('#productId').val('');
+        $('#saveProductBtn').html('<i class="fas fa-save me-1"></i>저장');
+        
+        // 폼 완전 초기화
+        const form = document.getElementById('productForm');
+        if (form) {
+            form.reset();
+        }
+        
+        // 제품 모델 컨테이너 초기화 + 옵션 동적 채우기
+        $('#productModelsContainer').empty();
+        
+        // 색상 옵션 HTML 생성
+        let colorOptionsHtml = '<option value="">색상을 선택하세요</option>';
+        if (window.colorCodesData && window.colorCodesData.length > 0) {
+            window.colorCodesData.forEach(color => {
+                colorOptionsHtml += `<option value="${color.seq}" data-code="${color.code}">${color.code_name} (${color.code})</option>`;
+            });
+        }
+        
+        // 브랜드 옵션 HTML 생성 (세부브랜드용)
+        let brandOptionsHtml = '<option value="">브랜드를 선택하세요</option>';
+        if (window.brandCodesData && window.brandCodesData.length > 0) {
+            window.brandCodesData.forEach(brand => {
+                brandOptionsHtml += `<option value="${brand.seq}">${brand.code_name} (${brand.code})</option>`;
+            });
+        }
+        
+        // 🔥 세부브랜드(CL2) 옵션 HTML 생성
+        let detailBrandOptionsHtml = '<option value="">세부브랜드를 선택하세요</option>';
+        if (window.detailBrandCodesData) {
+            window.detailBrandCodesData.forEach(detailBrand => {
+                detailBrandOptionsHtml += `<option value="${detailBrand.seq}">${detailBrand.code_name} (${detailBrand.code})</option>`;
+            });
+        }
+        
+        // 🔥 제품구분(PD) 옵션 HTML 생성
+        let productDivisionOptionsHtml = '<option value="">제품구분을 선택하세요</option>';
+        if (window.productDivisionCodesData) {
+            window.productDivisionCodesData.forEach(division => {
+                productDivisionOptionsHtml += `<option value="${division.seq}">${division.code_name} (${division.code})</option>`;
+            });
+        }
+        
+        // 🔥 색상별(상세) 옵션 HTML 생성
+        let colorDetailOptionsHtml = '<option value="">색상별(상세)를 선택하세요</option>';
+        if (window.colorDetailCodesData) {
+            window.colorDetailCodesData.forEach(colorDetail => {
+                colorDetailOptionsHtml += `<option value="${colorDetail.seq}">${colorDetail.code_name} (${colorDetail.code})</option>`;
+            });
+        }
+        
+        // 분류 옵션들 생성
+        let productGroupOptionsHtml = '<option value="">제품군을 선택하세요</option>';
+        if (window.productGroupCodesData && window.productGroupCodesData.length > 0) {
+            window.productGroupCodesData.forEach(group => {
+                productGroupOptionsHtml += `<option value="${group.seq}">${group.code_name}</option>`;
+            });
+        }
+        
+        let itemOptionsHtml = '<option value="">아이템을 선택하세요</option>';
+        if (window.itemCodesData && window.itemCodesData.length > 0) {
+            window.itemCodesData.forEach(item => {
+                itemOptionsHtml += `<option value="${item.seq}">${item.code_name}</option>`;
+            });
+        }
+        
+        let itemDetailOptionsHtml = '<option value="">아이템상세를 선택하세요</option>';
+        if (window.itemDetailCodesData && window.itemDetailCodesData.length > 0) {
+            window.itemDetailCodesData.forEach(detail => {
+                itemDetailOptionsHtml += `<option value="${detail.seq}">${detail.code_name}</option>`;
+            });
+        }
+        
+        let productTypeOptionsHtml = '<option value="">제품타입을 선택하세요</option>';
+        if (window.productTypeCategoryCodesData && window.productTypeCategoryCodesData.length > 0) {
+            window.productTypeCategoryCodesData.forEach(type => {
+                productTypeOptionsHtml += `<option value="${type.seq}">${type.code_name}</option>`;
+            });
+        }
+        
+        // ANS 옵션 생성 (1~30)
+        let ansOptionsHtml = '<option value="">ANS를 선택하세요</option>';
+        for (let i = 1; i <= 30; i++) {
+            ansOptionsHtml += `<option value="${i}">${i}</option>`;
+        }
+        
+        $('#productModelsContainer').html(`
+            <div class="product-model-item border p-3 mb-3" data-index="0">
+                <h6 class="text-primary mb-3">
+                    <i class="fas fa-box me-1"></i>제품 모델 #1
+                    <small class="text-muted">(tbl_Product_DTL)</small>
+                </h6>
+                
+                <!-- 기본 정보 -->
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-palette me-1"></i>색상 (CR) <span class="required">*</span>
+                            </label>
+                            <select class="form-select color-code" name="color_code[]" required>
+                                ${colorOptionsHtml}
+                            </select>
+                            <small class="text-muted">CR 코드 그룹에서 관리</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">제품명 (색상별)</label>
+                            <input type="text" class="form-control product-model-name" 
+                                   name="product_model_name[]" 
+                                   placeholder="색상별 제품명 (선택사항)">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">16자리 자사코드</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control std-product-code" 
+                                       name="std_product_code[]" 
+                                       placeholder="자동생성됨" readonly>
+                                <button type="button" class="btn btn-primary btn-generate-code" title="선택된 코드 기준으로 생성">
+                                    <i class="fas fa-magic"></i> 자동생성
+                                </button>
+                            </div>
+                            <small class="text-muted">tbl_Product_DTL - 16자리 레거시 형식</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 🔥 코드 관리 필드 -->
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6 class="text-secondary">
+                            <i class="fas fa-code me-1"></i>코드 관리
+                        </h6>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">더존코드 (20자)</label>
+                            <input type="text" class="form-control douzone-code" 
+                                   name="douzone_code[]" maxlength="20"
+                                   placeholder="더존 연동 코드">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">ERPIA코드 (13자)</label>
+                            <input type="text" class="form-control erpia-code" 
+                                   name="erpia_code[]" maxlength="13"
+                                   placeholder="ERPIA 연동 코드">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 🔥 가격 관리 필드 -->
+                <div class="row">
+                    <div class="col-12">
+                        <h6 class="text-secondary">
+                            <i class="fas fa-won-sign me-1"></i>가격 관리
+                        </h6>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">공식원가</label>
+                            <div class="input-group">
+                                <span class="input-group-text">₩</span>
+                                <input type="number" class="form-control official-cost" 
+                                       name="official_cost[]" min="0"
+                                       placeholder="0">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">소비자가</label>
+                            <div class="input-group">
+                                <span class="input-group-text">₩</span>
+                                <input type="number" class="form-control consumer-price" 
+                                       name="consumer_price[]" min="0"
+                                       placeholder="0">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">운영가</label>
+                            <div class="input-group">
+                                <span class="input-group-text">₩</span>
+                                <input type="number" class="form-control operation-price" 
+                                       name="operation_price[]" min="0"
+                                       placeholder="0">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 🔥 추가 관리 필드들 (ANS, 세부브랜드, 색상별) -->
+                <div class="row">
+                    <div class="col-12">
+                        <h6 class="text-secondary">
+                            <i class="fas fa-cogs me-1"></i>추가 관리
+                        </h6>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">ANS</label>
+                            <select class="form-select ans-value" name="ans_value[]">
+                                ${ansOptionsHtml}
+                            </select>
+                            <small class="text-muted">1~30 값 선택</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">세부브랜드</label>
+                            <select class="form-select detail-brand-code" name="detail_brand_code_seq[]">
+                                ${detailBrandOptionsHtml}
+                            </select>
+                            <small class="text-muted">브랜드 코드 참조</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">색상별(추가)</label>
+                            <select class="form-select color-by-product-code" name="color_by_product_code_seq[]">
+                                <option value="">선택하세요</option>
+                            </select>
+                            <small class="text-muted">추가 색상 분류</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">🔥 색상별(상세)</label>
+                            <select class="form-select color-detail-code" name="color_detail_code_seq[]">
+                                ${colorDetailOptionsHtml}
+                            </select>
+                            <small class="text-muted">235개 세부 색상 선택 가능</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 제거 버튼 영역 -->
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <hr class="my-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                이 색상 모델을 삭제하려면 제거 버튼을 클릭하세요
+                            </small>
+                            <button type="button" class="btn btn-outline-danger btn-sm btn-remove-model">
+                                <i class="fas fa-times me-1"></i>이 색상 모델 제거
+                        </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `);
+        
+        // 🔧 ARIA 속성 올바르게 설정 (포커스 문제 해결)
+        modalElement.removeAttribute('aria-hidden');
+        modalElement.setAttribute('aria-modal', 'true');
+        modalElement.setAttribute('role', 'dialog');
+        modalElement.setAttribute('aria-hidden', 'false'); // 명시적으로 false 설정
+        
+        // Bootstrap 5 모달 인스턴스 생성 및 표시
+        const modal = new bootstrap.Modal(modalElement, {
+            backdrop: 'static',
+            keyboard: false,
+            focus: false  // focus를 false로 설정하여 ARIA 충돌 방지
+        });
+        
+        // 모달 표시
+        modal.show();
+        
+        // 강제 표시 확인 및 z-index 설정
+        setTimeout(() => {
+            if (!modalElement.classList.contains('show')) {
+                console.warn('⚠️ 모달이 show 클래스가 없음 - 강제 추가');
+                modalElement.classList.add('show');
+                modalElement.style.display = 'block';
+                modalElement.style.zIndex = '2000';
+
+                // 백드롭 추가
+                if (!document.querySelector('.modal-backdrop')) {
+                    const backdrop = document.createElement('div');
+                    backdrop.className = 'modal-backdrop fade show';
+                    backdrop.style.zIndex = '1900';
+                    document.body.appendChild(backdrop);
+                }
+            }
+            window.addProductInProgress = false;
+        }, 200);
+        
+        console.log('✅ Bootstrap 모달 직접 열기 성공');
+
+    } catch (error) {
+        console.error('❌ Bootstrap 모달 열기 실패:', error);
+        
+        // 🔥 4단계: 최후의 수단 - jQuery 모달
+        try {
+            console.log('🆘 jQuery 모달 시도');
+            
+            // jQuery로 모달 상태 초기화
+            $('#productModalLabel').text('상품 등록');
+            $('#isEditMode').val('false');
+            $('#productId').val('');
+            $('#saveProductBtn').html('<i class="fas fa-save me-1"></i>저장');
+            $('#productForm')[0].reset();
+            
+            // ARIA 속성 설정
+            $('#productModal').removeAttr('aria-hidden').attr('aria-modal', 'true');
+            
+            $('#productModal').modal('show');
+            console.log('✅ jQuery 모달 성공');
+            setTimeout(() => { window.addProductInProgress = false; }, 1000);
+        } catch (jqueryError) {
+            console.error('❌ jQuery 모달도 실패:', jqueryError);
+            alert('모달을 열 수 없습니다. 페이지를 새로고침 후 다시 시도해주세요.');
+            window.addProductInProgress = false;
+        }
+    }
+}
+
+function editProduct(productId) {
+    console.log('✏️ 상품 수정 버튼 클릭:', productId);
+    
+    if (window.productManager && typeof window.productManager.showEditModal === 'function') {
+        productManager.showEditModal(productId);
+    } else {
+        console.error('❌ ProductManager가 초기화되지 않았습니다');
+        
+        // 긴급 초기화 시도
+        setTimeout(() => {
+            if (window.productManager && typeof window.productManager.showEditModal === 'function') {
+                console.log('🔄 재시도로 상품 수정 모달 열기');
+                productManager.showEditModal(productId);
+            } else {
+                alert('상품 관리자가 아직 로드 중입니다. 잠시 후 다시 시도해주세요.');
+                // 페이지 새로고침 제안
+                if (confirm('페이지를 새로고침하시겠습니까?')) {
+                    window.location.reload();
+                }
+            }
+        }, 2000);
+    }
+}
+
+function deleteProduct(productId) {
+    console.log('🗑️ 상품 삭제 버튼 클릭:', productId);
+    
+    if (window.productManager && typeof window.productManager.deleteProduct === 'function') {
+        productManager.deleteProduct(productId);
+    } else {
+        console.error('❌ ProductManager가 초기화되지 않았습니다');
+        alert('상품 관리자가 아직 로드 중입니다. 잠시 후 다시 시도해주세요.');
+    }
+}
+
+function downloadTemplate() {
+    if (window.productManager) {
+        productManager.downloadTemplate();
+    } else {
+        window.open('/product/api/download-template', '_blank');
+    }
+}
+
+function uploadExcel() {
+    if (window.productManager) {
+        productManager.uploadExcel();
+    } else {
+        console.error('❌ ProductManager가 초기화되지 않았습니다');
+    }
+}
+
+// 🔧 기타 유틸리티 함수들
+function resetFilters() {
+    $('#searchInput').val('');
+    if (window.productListManager) {
+        productListManager.loadProducts();
+    }
+}
+
+function changeSorting() {
+    if (window.productListManager) {
+        productListManager.loadProducts();
+    }
+}
+
+function changePerPage(perPage) {
+    if (window.productListManager) {
+        productListManager.currentPerPage = parseInt(perPage);
+        productListManager.currentPage = 1; // 페이지를 1로 리셋
+        productListManager.loadProducts();
+    }
+}
+
+// 🔥 페이지 이동 함수
+function goToPage(page) {
+    if (window.productListManager) {
+        productListManager.goToPage(page);
+    }
+}
+
+// 🔥 정렬 변경 함수
+function changeSorting() {
+    if (window.productListManager) {
+        const sortValue = $('#sortSelect').val();
+        if (sortValue) {
+            const [column, direction] = sortValue.split('-');
+            productListManager.currentSort = { column, direction };
+            productListManager.currentPage = 1; // 페이지를 1로 리셋
+            productListManager.loadProducts();
+        }
+    }
+}
+
+// 🔥 엑셀 다운로드 함수
+function downloadExcel() {
+    try {
+        // 현재 검색어 가져오기
+        const searchTerm = $('#searchInput').val() || '';
+        
+        // 엑셀 다운로드 URL 생성
+        const params = new URLSearchParams();
+        if (searchTerm) {
+            params.append('search', searchTerm);
+        }
+        
+        const downloadUrl = `/product/api/excel/download?${params.toString()}`;
+        
+        // 다운로드 시작
+        console.log('📥 엑셀 다운로드 시작:', downloadUrl);
+        
+        // 임시 링크 생성하여 다운로드
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = ''; // 서버에서 지정한 파일명 사용
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // 사용자에게 피드백
+        UIHelper.showAlert('엑셀 파일 다운로드가 시작되었습니다.', 'success');
+        
+    } catch (error) {
+        console.error('❌ 엑셀 다운로드 실패:', error);
+        UIHelper.showAlert('엑셀 다운로드 중 오류가 발생했습니다.', 'error');
+    }
+}
+
+function switchView(viewType) {
+    if (viewType === 'table') {
+        $('#tableView').show();
+        $('#cardView').hide();
+        $('#tableViewBtn').addClass('active');
+        $('#cardViewBtn').removeClass('active');
+    } else {
+        $('#tableView').hide();
+        $('#cardView').show();
+        $('#tableViewBtn').removeClass('active');
+        $('#cardViewBtn').addClass('active');
+    }
+}
+
+// 🔧 타입 코드 로드 함수 (모달용)
+function loadTypeCodesForModal(selectedPrdSeq) {
+    if (!selectedPrdSeq) {
+        $('#prod_type_code_seq').html('<option value="">품목을 먼저 선택하세요</option>');
+        return;
+    }
+    
+    console.log('🔄 타입 코드 로드 요청:', selectedPrdSeq);
+    
+    $.get(`/product/api/get-types-by-product-seq/${selectedPrdSeq}`)
+        .done(function(response) {
+            if (response.success && response.types) {
+                const typeSelect = $('#prod_type_code_seq');
+                typeSelect.empty();
+                typeSelect.append('<option value="">타입 선택</option>');
+                
+                response.types.forEach(type => {
+                    typeSelect.append(`<option value="${type.seq}">${type.code_name}</option>`);
+                });
+                
+                console.log(`✅ ${response.types.length}개 타입 로드 완료`);
+            } else {
+                $('#prod_type_code_seq').html('<option value="">타입 없음</option>');
+            }
+        })
+        .fail(function() {
+            $('#prod_type_code_seq').html('<option value="">로드 실패</option>');
+        });
+}
+
+// 🔧 제품 모델 추가 함수
+function addProductModel() {
+    const container = $('#productModelsContainer');
+    const currentIndex = $('.product-model-item').length;
+    
+    // 색상 옵션 HTML 생성
+    let colorOptionsHtml = '<option value="">색상을 선택하세요</option>';
+    if (window.colorCodesData) {
+        window.colorCodesData.forEach(color => {
+            colorOptionsHtml += `<option value="${color.seq}" data-code="${color.code}">${color.code_name} (${color.code})</option>`;
+        });
+    }
+    
+    // 브랜드 옵션 HTML 생성 (세부브랜드용)
+    let brandOptionsHtml = '<option value="">브랜드를 선택하세요</option>';
+    if (window.brandCodesData) {
+        window.brandCodesData.forEach(brand => {
+            brandOptionsHtml += `<option value="${brand.seq}">${brand.code_name} (${brand.code})</option>`;
+        });
+    }
+    
+    // 🔥 세부브랜드(CL2) 옵션 HTML 생성
+    let detailBrandOptionsHtml = '<option value="">세부브랜드를 선택하세요</option>';
+    if (window.detailBrandCodesData) {
+        window.detailBrandCodesData.forEach(detailBrand => {
+            detailBrandOptionsHtml += `<option value="${detailBrand.seq}">${detailBrand.code_name} (${detailBrand.code})</option>`;
+        });
+    }
+    
+    // 🔥 제품구분(PD) 옵션 HTML 생성
+    let productDivisionOptionsHtml = '<option value="">제품구분을 선택하세요</option>';
+    if (window.productDivisionCodesData) {
+        window.productDivisionCodesData.forEach(division => {
+            productDivisionOptionsHtml += `<option value="${division.seq}">${division.code_name} (${division.code})</option>`;
+        });
+    }
+    
+    // 🔥 색상별(상세) 옵션 HTML 생성
+    let colorDetailOptionsHtml = '<option value="">색상별(상세)를 선택하세요</option>';
+    if (window.colorDetailCodesData) {
+        window.colorDetailCodesData.forEach(colorDetail => {
+            colorDetailOptionsHtml += `<option value="${colorDetail.seq}">${colorDetail.code_name} (${colorDetail.code})</option>`;
+        });
+    }
+    
+    // 새로운 분류 체계 옵션들 생성
+    let productGroupOptionsHtml = '<option value="">제품군을 선택하세요</option>';
+    if (window.productGroupCodesData) {
+        window.productGroupCodesData.forEach(group => {
+            productGroupOptionsHtml += `<option value="${group.seq}">${group.code_name}</option>`;
+        });
+    }
+    
+    let itemOptionsHtml = '<option value="">아이템을 선택하세요</option>';
+    if (window.itemCodesData) {
+        window.itemCodesData.forEach(item => {
+            itemOptionsHtml += `<option value="${item.seq}">${item.code_name}</option>`;
+        });
+    }
+    
+    let itemDetailOptionsHtml = '<option value="">아이템상세를 선택하세요</option>';
+    if (window.itemDetailCodesData) {
+        window.itemDetailCodesData.forEach(detail => {
+            itemDetailOptionsHtml += `<option value="${detail.seq}">${detail.code_name}</option>`;
+        });
+    }
+    
+    let productTypeOptionsHtml = '<option value="">제품타입을 선택하세요</option>';
+    if (window.productTypeCategoryCodesData) {
+        window.productTypeCategoryCodesData.forEach(type => {
+            productTypeOptionsHtml += `<option value="${type.seq}">${type.code_name}</option>`;
+        });
+    }
+    
+    // ANS 옵션 생성 (1~30)
+    let ansOptionsHtml = '<option value="">ANS를 선택하세요</option>';
+    for (let i = 1; i <= 30; i++) {
+        ansOptionsHtml += `<option value="${i}">${i}</option>`;
+    }
+    
+    const modelHtml = `
+        <div class="product-model-item border p-3 mb-3" data-index="${currentIndex}">
+            <h6 class="text-primary mb-3">
+                <i class="fas fa-box me-1"></i>제품 모델 #${currentIndex + 1}
+                <small class="text-muted">(tbl_Product_DTL)</small>
+            </h6>
+            
+            <!-- 기본 정보 -->
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="fas fa-palette me-1"></i>색상 (CR) <span class="required">*</span>
+                        </label>
+                        <select class="form-select color-code" name="color_code[]" required>
+                            ${colorOptionsHtml}
+                        </select>
+                        <small class="text-muted">CR 코드 그룹에서 관리</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label">제품명 (색상별)</label>
+                        <input type="text" class="form-control product-model-name" 
+                               name="product_model_name[]" 
+                               placeholder="색상별 제품명 (선택사항)">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label">16자리 자사코드</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control std-product-code" 
+                                   name="std_product_code[]" 
+                                   placeholder="자동생성됨" readonly>
+                            <button type="button" class="btn btn-primary btn-generate-code" title="선택된 코드 기준으로 생성">
+                                <i class="fas fa-magic"></i> 자동생성
+                            </button>
+                        </div>
+                        <small class="text-muted">tbl_Product_DTL - 16자리 레거시 형식</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 🔥 코드 관리 필드 -->
+            <div class="row mt-3">
+                <div class="col-12">
+                    <h6 class="text-secondary">
+                        <i class="fas fa-code me-1"></i>코드 관리
+                    </h6>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">더존코드 (20자)</label>
+                        <input type="text" class="form-control douzone-code" 
+                               name="douzone_code[]" maxlength="20"
+                               placeholder="더존 연동 코드">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">ERPIA코드 (13자)</label>
+                        <input type="text" class="form-control erpia-code" 
+                               name="erpia_code[]" maxlength="13"
+                               placeholder="ERPIA 연동 코드">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 🔥 가격 관리 필드 -->
+            <div class="row">
+                <div class="col-12">
+                    <h6 class="text-secondary">
+                        <i class="fas fa-won-sign me-1"></i>가격 관리
+                    </h6>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label">공식원가</label>
+                        <div class="input-group">
+                            <span class="input-group-text">₩</span>
+                            <input type="number" class="form-control official-cost" 
+                                   name="official_cost[]" min="0"
+                                   placeholder="0">
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label">소비자가</label>
+                        <div class="input-group">
+                            <span class="input-group-text">₩</span>
+                            <input type="number" class="form-control consumer-price" 
+                                   name="consumer_price[]" min="0"
+                                   placeholder="0">
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label">운영가</label>
+                        <div class="input-group">
+                            <span class="input-group-text">₩</span>
+                            <input type="number" class="form-control operation-price" 
+                                   name="operation_price[]" min="0"
+                                   placeholder="0">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- �� 추가 관리 필드들 (ANS, 세부브랜드) -->
+            <div class="row">
+                <div class="col-12">
+                    <h6 class="text-secondary">
+                        <i class="fas fa-cogs me-1"></i>추가 관리
+                    </h6>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">ANS</label>
+                        <select class="form-select ans-value" name="ans_value[]">
+                            ${ansOptionsHtml}
+                        </select>
+                        <small class="text-muted">1~30 값 선택</small>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">세부브랜드</label>
+                        <select class="form-select detail-brand-code" name="detail_brand_code_seq[]">
+                            ${detailBrandOptionsHtml}
+                        </select>
+                        <small class="text-muted">브랜드 코드 참조</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 🔥 새로운 분류 체계 -->
+            <div class="row">
+                <div class="col-12">
+                    <h6 class="text-secondary">
+                        <i class="fas fa-sitemap me-1"></i>분류 관리 (Excel 기반)
+                    </h6>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label">🔥 제품구분</label>
+                        <select class="form-select product-division-code" name="product_division_code_seq[]">
+                            ${productDivisionOptionsHtml}
+                        </select>
+                        <small class="text-muted">PD 그룹 (4개)</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label">제품군</label>
+                        <select class="form-select product-group-code" name="product_group_code_seq[]">
+                            ${productGroupOptionsHtml}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label">아이템별</label>
+                        <select class="form-select item-code" name="item_code_seq[]">
+                            ${itemOptionsHtml}
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label">아이템상세</label>
+                        <select class="form-select item-detail-code" name="item_detail_code_seq[]">
+                            ${itemDetailOptionsHtml}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label">제품타입</label>
+                        <select class="form-select product-type-category-code" name="product_type_category_code_seq[]">
+                            ${productTypeOptionsHtml}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label">🔥 색상별(상세)</label>
+                        <select class="form-select color-detail-code" name="color_detail_code_seq[]">
+                            ${colorDetailOptionsHtml}
+                        </select>
+                        <small class="text-muted">235개 세부 색상 선택 가능</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    container.append(modelHtml);
+    updateModelIndices();
+}
+
+// 🔧 모델 인덱스 업데이트
+function updateModelIndices() {
+    $('.product-model-item').each(function(index) {
+        $(this).attr('data-index', index);
+    });
+}
+
+// 🔧 자사코드 생성 함수 - 개선된 버전
+function generateStdCodeFromSelection(stdCodeInput) {
+    console.log('🔧 자사코드 생성 시작');
+    
+    // 필수 필드들 수집 (실제 필드 ID 사용)
+    const brandSeq = $('#brand_code_seq').val();
+    const prodGroupSeq = $('#prod_group_code_seq').val();
+    const prodCodeSeq = $('#prod_code_seq').val();
+    const prodTypeSeq = $('#prod_type_code_seq').val();
+    const yearSeq = $('#year_code_seq').val();
+    
+    // 색상은 해당 제품 모델에서 가져오기
+    const colorSeq = stdCodeInput.closest('.product-model-item').find('.color-code').val();
+    
+    console.log('📊 필드 값 확인:', {
+        brandSeq: brandSeq,
+        prodGroupSeq: prodGroupSeq,
+        prodCodeSeq: prodCodeSeq,
+        prodTypeSeq: prodTypeSeq,
+        yearSeq: yearSeq,
+        colorSeq: colorSeq
+    });
+    
+    // 필수 필드 검증
+    const missingFields = [];
+    if (!brandSeq) missingFields.push('브랜드');
+    if (!prodGroupSeq) missingFields.push('제품구분');
+    if (!prodCodeSeq) missingFields.push('품목');
+    if (!prodTypeSeq) missingFields.push('타입');
+    if (!yearSeq) missingFields.push('년식');
+    if (!colorSeq) missingFields.push('색상');
+    
+    if (missingFields.length > 0) {
+        alert('❌ 다음 필드를 먼저 선택해주세요:\n' + missingFields.join(', '));
+        console.warn('❌ 필수 필드 누락:', missingFields);
+        return;
+    }
+    
+    // 백엔드 API를 통한 자동생성 호출
+    const requestData = {
+        brandSeq: parseInt(brandSeq),
+        prodGroupSeq: parseInt(prodGroupSeq),
+        prodCodeSeq: parseInt(prodCodeSeq),
+        prodTypeSeq: parseInt(prodTypeSeq),
+        yearSeq: parseInt(yearSeq),
+        colorSeq: parseInt(colorSeq)
+    };
+    
+    console.log('📡 자사코드 생성 요청 데이터:', requestData);
+    
+    // 로딩 표시
+    const generateBtn = stdCodeInput.siblings('.btn-generate-code');
+    const originalText = generateBtn.html();
+    generateBtn.html('<i class="fas fa-spinner fa-spin"></i> 생성중...');
+    generateBtn.prop('disabled', true);
+    
+    $.ajax({
+        url: '/product/api/generate-code',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(requestData),
+        success: function(response) {
+            console.log('📡 API 응답:', response);
+            if (response.success && response.generated_code) {
+                stdCodeInput.val(response.generated_code);
+                console.log('✅ 자사코드 생성 성공:', response.generated_code);
+                console.log('🔧 구성 요소:', response.components);
+                
+                // 성공 표시
+                stdCodeInput.addClass('border-success');
+                setTimeout(() => {
+                    stdCodeInput.removeClass('border-success');
+                }, 2000);
+                
+                // 성공 메시지
+                UIHelper.showAlert(`✅ 자사코드 생성 완료: ${response.generated_code}`, 'success');
+            } else {
+                console.error('❌ 자사코드 생성 실패:', response);
+                alert('❌ 자사코드 생성 실패: ' + (response.message || '알 수 없는 오류'));
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('❌ 자사코드 생성 API 오류:', {
+                status: xhr.status,
+                statusText: xhr.statusText,
+                responseText: xhr.responseText,
+                error: error
+            });
+            alert('❌ 자사코드 생성 중 오류가 발생했습니다.\n상세 내용: ' + (xhr.responseText || error));
+        },
+        complete: function() {
+            // 로딩 해제
+            generateBtn.html(originalText);
+            generateBtn.prop('disabled', false);
+        }
+    });
+}
+
+function scrollToTop() {
+    $('#productTableContainer').scrollTop(0);
+}
+
+function scrollToBottom() {
+    const container = $('#productTableContainer');
+    container.scrollTop(container[0].scrollHeight);
+}
+
+// 🔍 검색 관련 함수들
+function searchProducts(event) {
+    if (event) event.preventDefault();
+    if (window.productListManager) {
+        productListManager.searchProducts();
+    }
+}
+
+function resetFilters() {
+    $('#searchName').val('');
+    $('#searchProduct').val('');
+    $('#searchType').val('').html('<option value="">전체 타입</option>');
+    $('#showInactive').prop('checked', false);
+    
+    if (window.productListManager) {
+        productListManager.searchProducts();
+    }
+}
+
+// 📊 엑셀 다운로드 함수
+function downloadExcel() {
+    // 현재 검색 조건 가져오기
+    const params = new URLSearchParams();
+    
+    const searchName = $('#searchName').val();
+    const searchProduct = $('#searchProduct').val();
+    const searchType = $('#searchType').val();
+    const showInactive = $('#showInactive').is(':checked');
+    
+    if (searchName) params.append('search_name', searchName);
+    if (searchProduct) params.append('search_product', searchProduct);
+    if (searchType) params.append('search_type', searchType);
+    if (showInactive) params.append('show_inactive', 'true');
+    
+    // 엑셀 다운로드 URL로 이동
+    window.location.href = `/product/api/excel/download?${params.toString()}`;
+}
+
+// 📤 엑셀 업로드 함수
+async function uploadExcel(input) {
+    const file = input.files[0];
+    if (!file) return;
+    
+    // 파일 확장자 체크
+    const allowedExtensions = ['.xlsx', '.xls'];
+    const fileName = file.name.toLowerCase();
+    const isValidFile = allowedExtensions.some(ext => fileName.endsWith(ext));
+    
+    if (!isValidFile) {
+        alert('엑셀 파일(.xlsx, .xls)만 업로드 가능합니다.');
+        input.value = '';
+        return;
+    }
+    
+    // 확인 메시지
+    if (!confirm('엑셀 파일을 업로드하시겠습니까?\n기존 데이터가 업데이트될 수 있습니다.')) {
+        input.value = '';
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+        // 로딩 표시
+        UIHelper.showLoading();
+        
+        const response = await fetch('/product/api/excel/upload', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(`✅ 업로드 완료!\n처리된 상품: ${result.processed || 0}개\n오류: ${result.errors || 0}개`);
+            
+            // 상품 목록 새로고침
+            if (window.productListManager) {
+                productListManager.loadProducts();
+            }
+        } else {
+            alert(`❌ 업로드 실패: ${result.message || '알 수 없는 오류'}`);
+        }
+        
+    } catch (error) {
+        console.error('엑셀 업로드 오류:', error);
+        alert('❌ 업로드 중 오류가 발생했습니다.');
+    } finally {
+        UIHelper.hideLoading();
+        input.value = ''; // 파일 input 초기화
+    }
+}
+</script>
+
+<style>
+/* 🔧 모달 사이즈 최적화 - 좌측 메뉴 고려 */
+.modal {
+    z-index: 2000 !important;
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.modal-backdrop {
+    z-index: 1900 !important;
+}
+
+.modal.show {
+    display: block !important;
+}
+
+/* 좌측 메뉴 고려한 모달 위치 조정 */
+.modal-dialog {
+    position: relative !important;
+    z-index: 2001 !important;
+    margin-top: 1rem !important;
+    margin-bottom: 1rem !important;
+}
+
+/* 모달 크기 반응형 처리 - 더 좁게 */
+@media (max-width: 1600px) {
+    .modal-dialog {
+        max-width: 55vw !important;
+        margin-left: 350px !important;
+        margin-right: 50px !important;
+    }
+}
+
+@media (max-width: 1366px) {
+    .modal-dialog {
+        max-width: 50vw !important;
+        margin-left: 380px !important;
+        margin-right: 60px !important;
+    }
+}
+
+@media (max-width: 1024px) {
+    .modal-dialog {
+        max-width: 65vw !important;
+        margin-left: 300px !important;
+        margin-right: 40px !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .modal-dialog {
+        max-width: 95vw !important;
+        margin-left: 10px !important;
+        margin-right: 10px !important;
+    }
+}
+
+/* 모달 내용 스크롤 최적화 */
+.modal-content {
+    border-radius: 0.5rem !important;
+}
+
+.modal-body {
+    padding: 1rem !important;
+}
+
+.modal-header, .modal-footer {
+    padding: 0.75rem 1rem !important;
+}
+</style>
+
+<!-- 🔥 코드 데이터를 JavaScript 변수로 설정 -->
+<script>
+// 전역 변수로 코드 데이터 설정
+window.colorCodesData = {{ color_codes | tojson }};
+window.brandCodesData = {{ brand_codes | tojson }};
+window.productGroupCodesData = {{ product_group_codes | tojson }};
+window.itemCodesData = {{ item_codes | tojson }};
+window.itemDetailCodesData = {{ item_detail_codes | tojson }};
+window.productTypeCategoryCodesData = {{ product_type_category_codes | tojson }};
+window.companyCodesData = {{ company_codes | tojson }};
+window.yearCodesData = {{ year_codes | tojson }};
+
+console.log('🔧 JavaScript 변수 설정 완료:');
+console.log('  - 색상 코드:', window.colorCodesData?.length || 0, '개');
+console.log('  - 브랜드 코드:', window.brandCodesData?.length || 0, '개');
+console.log('  - 제품군 코드:', window.productGroupCodesData?.length || 0, '개');
+console.log('  - 아이템 코드:', window.itemCodesData?.length || 0, '개');
+console.log('  - 아이템상세 코드:', window.itemDetailCodesData?.length || 0, '개');
+console.log('  - 제품타입카테고리 코드:', window.productTypeCategoryCodesData?.length || 0, '개');
+console.log('  - 회사 코드:', window.companyCodesData?.length || 0, '개');
+console.log('  - 년도 코드:', window.yearCodesData?.length || 0, '개');
+</script>
+{% endblock %} 

@@ -556,9 +556,10 @@ def api_generate_code():
         
         # 레거시 자사코드 생성 로직 (16자리) - tbl_Product_DTL 기준
         # 브랜드(2) + 구분타입(1) + 제품군(2) + 제품타입(2) + 제품(2) + 타입2(2) + 년도(2) + 색상(3)
+        # 🔥 레거시와 달리 제품구분 코드를 구분타입으로 사용 (고정 '1' 대신)
         generated_code = generate_legacy_std_code_16digit(
             brand_code.code,        # 브랜드(2)
-            '1',                    # 구분타입(1) 고정
+            prod_group_code.code[:1],  # 🔥 제품구분 코드의 첫 글자를 구분타입(1)으로 사용
             prod_group_code.code,   # 제품구분(2) - PRT 그룹
             prod_type_code.code,    # 제품타입(2) - TP 그룹  
             prod_code.code,         # 품목(2) - PRD 그룹
