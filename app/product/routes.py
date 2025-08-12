@@ -178,7 +178,7 @@ def index():
                              category_code_seq=category_code_seq,
                              type_code_seq=type_code_seq,
                              year_code_seq=year_code_seq,
-                             show_inactive=show_inactive)
+                             show_inactive=show_inactive))
         
         # 캐시 방지 헤더 설정
         response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
