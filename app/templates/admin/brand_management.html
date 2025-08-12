@@ -62,12 +62,12 @@
 </div>
 
 <!-- 브랜드 추가/수정 모달 -->
-<div class="modal fade" id="brandModal" tabindex="-1">
+<div class="modal fade" id="brandModal" tabindex="-1" aria-labelledby="modalTitle" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="modalTitle">브랜드 추가</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <form id="brandForm">
@@ -125,38 +125,38 @@
 let isEditMode = false;
 
 function showAddBrandModal() {
-    isEditMode = false;
+    resetForm();
     $('#modalTitle').text('브랜드 추가');
-    $('#brandForm')[0].reset();
-    $('#brandSeq').val('');
-    $('#use_yn').val('Y');
-    $('#brandModal').modal('show');
+    $('#brand_seq').val('');
+    
+    // Bootstrap 5 방식으로 모달 표시
+    const modal = new bootstrap.Modal(document.getElementById('brandModal'));
+    modal.show();
 }
 
-function editBrand(seq) {
-    isEditMode = true;
-    seq = parseInt(seq); // 문자열을 숫자로 변환
+function editBrand(brand) {
     $('#modalTitle').text('브랜드 수정');
+    $('#brand_seq').val(brand.seq);
+    $('#brand_name').val(brand.brand_name);
+    $('#brand_code').val(brand.brand_code);
+    $('#company_id').val(brand.company_id);
+    $('#use_yn').val(brand.use_yn);
+    $('#sort').val(brand.sort);
+    $('#brand_info').val(brand.brand_info);
     
-    // 테이블에서 데이터 추출
-    const row = $(`button[onclick="editBrand('${seq}')"]`).closest('tr');
-    const sort = row.find('td:nth-child(1)').text();
-    const brandCode = row.find('td:nth-child(2)').text();
-    const brandName = row.find('td:nth-child(3)').text();
-    const brandEngName = row.find('td:nth-child(4)').text();
-    const useYn = row.find('td:nth-child(5) .badge').text();
-    const brandInfo = row.find('td:nth-child(6)').text();
+    // 로고 정보 표시
+    if (brand.logo_image_url) {
+        $('#currentLogo').show();
+        $('#currentLogoImg').attr('src', brand.logo_image_url);
+        $('#currentLogoName').text(brand.logo_image_name || '현재 로고');
+        $('#deleteLogo').prop('checked', false);
+    } else {
+        $('#currentLogo').hide();
+    }
     
-    // 폼에 데이터 설정
-    $('#brandSeq').val(seq);
-    $('#brand_code').val(brandCode);
-    $('#brand_name').val(brandName);
-    $('#brand_eng_name').val(brandEngName === '-' ? '' : brandEngName);
-    $('#brand_info').val(brandInfo === '-' ? '' : brandInfo);
-    $('#sort').val(sort);
-    $('#use_yn').val(useYn);
-    
-    $('#brandModal').modal('show');
+    // Bootstrap 5 방식으로 모달 표시
+    const modal = new bootstrap.Modal(document.getElementById('brandModal'));
+    modal.show();
 }
 
 function saveBrand() {
@@ -185,8 +185,16 @@ function saveBrand() {
         data: JSON.stringify(formData),
         success: function(response) {
             if (response.success) {
-                alert(isEditMode ? '브랜드가 수정되었습니다.' : '브랜드가 추가되었습니다.');
-                location.reload();
+                alert(response.message || '브랜드가 저장되었습니다.');
+                
+                // Bootstrap 5 방식으로 모달 닫기
+                const modal = bootstrap.Modal.getInstance(document.getElementById('brandModal'));
+                if (modal) {
+                    modal.hide();
+                }
+                
+                // 목록 새로고침 (페이지 전체 새로고침 대신)
+                loadBrands();
             } else {
                 alert('오류: ' + response.message);
             }

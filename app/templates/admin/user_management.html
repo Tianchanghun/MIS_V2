@@ -76,12 +76,12 @@
 </div>
 
 <!-- 사용자 추가/수정 모달 -->
-<div class="modal fade" id="userModal" tabindex="-1">
+<div class="modal fade" id="userModal" tabindex="-1" aria-labelledby="userModalTitle" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="userModalTitle">사용자 추가</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <form id="userForm">
@@ -192,12 +192,12 @@
 </div>
 
 <!-- 비밀번호 변경 모달 -->
-<div class="modal fade" id="passwordModal" tabindex="-1">
+<div class="modal fade" id="passwordModal" tabindex="-1" aria-labelledby="passwordModalTitle" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">비밀번호 변경</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title" id="passwordModalTitle">비밀번호 변경</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <form id="passwordForm">
@@ -442,13 +442,12 @@ function showAddUserModal() {
     $('#userModalTitle').text('사용자 추가');
     $('#userForm')[0].reset();
     $('#user_seq').val('');
-    $('#passwordRequired').show();
     $('#password').prop('required', true);
+    $('#passwordRequired').show();
     
-    renderCompaniesSection([]);
-    renderDepartmentsSection([]);
-    
-    $('#userModal').modal('show');
+    // Bootstrap 5 방식으로 모달 표시
+    const modal = new bootstrap.Modal(document.getElementById('userModal'));
+    modal.show();
 }
 
 // 회사 선택 섹션 렌더링
@@ -585,7 +584,8 @@ function editUser(userSeq) {
                 renderCompaniesSection(userData.companies);
                 renderDepartmentsSection(userData.departments);
                 
-                $('#userModal').modal('show');
+                const modal = new bootstrap.Modal(document.getElementById('userModal'));
+                modal.show();
             } else {
                 showAlert(response.message, 'danger');
             }
@@ -638,7 +638,8 @@ function saveUser() {
     .done(function(response) {
         if (response.success) {
             showAlert(response.message, 'success');
-            $('#userModal').modal('hide');
+            const modal = new bootstrap.Modal(document.getElementById('userModal'));
+            modal.hide();
             loadUsers(currentPage);
         } else {
             showAlert(response.message, 'danger');
@@ -653,7 +654,8 @@ function saveUser() {
 function changeUserPassword(userSeq) {
     $('#pwd_user_seq').val(userSeq);
     $('#passwordForm')[0].reset();
-    $('#passwordModal').modal('show');
+    const modal = new bootstrap.Modal(document.getElementById('passwordModal'));
+    modal.show();
 }
 
 function changePassword() {
@@ -676,7 +678,8 @@ function changePassword() {
     .done(function(response) {
         if (response.success) {
             showAlert(response.message, 'success');
-            $('#passwordModal').modal('hide');
+            const modal = new bootstrap.Modal(document.getElementById('passwordModal'));
+            modal.hide();
         } else {
             showAlert(response.message, 'danger');
         }

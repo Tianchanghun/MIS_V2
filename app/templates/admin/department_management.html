@@ -66,12 +66,12 @@
 </div>
 
 <!-- 부서 추가/수정 모달 -->
-<div class="modal fade" id="deptModal" tabindex="-1">
+<div class="modal fade" id="deptModal" tabindex="-1" aria-labelledby="deptModalTitle" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="deptModalTitle">부서 추가</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <form id="deptForm">
@@ -174,7 +174,7 @@ function renderDepartmentsTable(departments) {
         }
 
         tbody.append(`
-            <tr>
+            <tr id="dept-${dept.seq}">
                 <td>${dept.sort}</td>
                 <td>${dept.dept_name}</td>
                 <td>${companyBadge}</td>
@@ -241,8 +241,10 @@ function showAddDeptModal() {
     $('#deptModalTitle').text('부서 추가');
     $('#deptForm')[0].reset();
     $('#dept_seq').val('');
-    $('#company_usage').val('1'); // 기본값: 에이원
-    $('#deptModal').modal('show');
+    
+    // Bootstrap 5 방식으로 모달 표시
+    const modal = new bootstrap.Modal(document.getElementById('deptModal'));
+    modal.show();
 }
 
 // 부서 수정
@@ -257,7 +259,9 @@ function editDepartment(deptSeq) {
     $('#use_yn').val(dept.use_yn);
     $('#company_usage').val(dept.company_id || 1);
 
-    $('#deptModal').modal('show');
+    // Bootstrap 5 방식으로 모달 표시
+    const modal = new bootstrap.Modal(document.getElementById('deptModal'));
+    modal.show();
 }
 
 // 부서 저장
@@ -283,7 +287,8 @@ function saveDepartment() {
     .done(function(response) {
         if (response.success) {
             showAlert(response.message, 'success');
-            $('#deptModal').modal('hide');
+            const modal = new bootstrap.Modal(document.getElementById('deptModal'));
+            modal.hide();
             loadDepartments();
         } else {
             showAlert(response.message, 'danger');
