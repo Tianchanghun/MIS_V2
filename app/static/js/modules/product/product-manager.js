@@ -531,7 +531,7 @@ class ProductManager {
      */
     setSelectValue(selectId, value, label, codeValue = null) {
         const selectElement = $(`#${selectId}`);
-        const stringValue = String(value);
+        let stringValue = String(value);  // 🔥 const → let 변경으로 재할당 허용
         
         console.log(`🔧 ${label} 설정 시도:`, stringValue, codeValue ? `(코드: ${codeValue})` : '');
         
@@ -544,7 +544,35 @@ class ProductManager {
             targetOption = selectElement.find(`option[data-code="${codeValue}"]`);
             if (targetOption.length > 0) {
                 console.log(`✅ ${label} 코드값으로 매칭 성공:`, codeValue, '→', targetOption.val());
-                stringValue = targetOption.val();
+                stringValue = targetOption.val();  // 🔥 재할당 가능
+            } else {
+                // 🔧 유사한 코드 찾기 시도 (브랜드 NU → NN 매칭 등)
+                console.warn(`⚠️ ${label} 정확한 코드 매칭 실패: ${codeValue}`);
+                
+                // 유사한 코드 패턴 시도
+                if (label === '브랜드' && codeValue === 'NU') {
+                    // NU → NN 변환 시도
+                    targetOption = selectElement.find(`option[data-code="NN"]`);
+                    if (targetOption.length > 0) {
+                        console.log(`🔄 ${label} 유사 코드로 매칭: NU → NN`);
+                        stringValue = targetOption.val();
+                    }
+                }
+                
+                // 추가 패턴들
+                if (targetOption.length === 0) {
+                    // 모든 옵션을 순회하며 유사한 것 찾기
+                    options.each(function() {
+                        const optionCode = $(this).data('code');
+                        const optionText = $(this).text();
+                        if (optionCode && codeValue && optionCode.includes(codeValue.substring(0, 1))) {
+                            console.log(`🔄 ${label} 부분 매칭 시도: ${codeValue} → ${optionCode}`);
+                            targetOption = $(this);
+                            stringValue = targetOption.val();
+                            return false; // break
+                        }
+                    });
+                }
             }
         }
         
@@ -553,6 +581,13 @@ class ProductManager {
         
         if (targetOption.length === 0) {
             console.error(`❌ ${label} 옵션에서 값을 찾을 수 없습니다:`, stringValue, codeValue ? `(코드: ${codeValue})` : '');
+            console.log(`📋 ${label} 사용 가능한 옵션들:`);
+            options.each(function() {
+                const opt = $(this);
+                if (opt.val()) {  // 빈 값이 아닌 옵션만
+                    console.log(`  - value: ${opt.val()}, data-code: ${opt.data('code')}, text: ${opt.text()}`);
+                }
+            });
             return false;
         }
         
