@@ -441,21 +441,21 @@ class ProductManager {
         // 🔥 3단계: 브랜드 코드 설정 (100ms 지연) - 파싱된 코드값 활용
         setTimeout(() => {
         if (productData.brand_code_seq) {
-                this.setSelectValue('brand_code_seq', productData.brand_code_seq, '브랜드', parsedCodes.brand);
+                this.setSelectValue('brand_code_seq', productData.brand_code_seq, parsedCodes.brand);
         }
         }, 100);
         
         // 🔥 4단계: 제품구분 설정 (200ms 지연) - 파싱된 코드값 활용
         setTimeout(() => {
         if (productData.category_code_seq) {
-                this.setSelectValue('prod_group_code_seq', productData.category_code_seq, '제품구분', parsedCodes.prodGroup);
+                this.setSelectValue('prod_group_code_seq', productData.category_code_seq, parsedCodes.prodGroup);
             }
         }, 200);
         
         // 🔥 5단계: 품목 설정 (300ms 지연) - 파싱된 코드값 활용
         setTimeout(() => {
             if (productData.category_code_seq) {
-                this.setSelectValue('prod_code_seq', productData.category_code_seq, '품목', parsedCodes.prod);
+                this.setSelectValue('prod_code_seq', productData.category_code_seq, parsedCodes.prod);
             }
         }, 300);
         
@@ -484,12 +484,12 @@ class ProductManager {
                                 
                                 // 로드 후 다시 시도 (파싱된 코드값 활용)
                                 setTimeout(() => {
-                                    this.setSelectValue('prod_type_code_seq', productData.type_code_seq, '타입', parsedCodes.prodType);
+                                    this.setSelectValue('prod_type_code_seq', productData.type_code_seq, parsedCodes.prodType);
                                 }, 200);
                             });
                     }
                 } else {
-                    this.setSelectValue('prod_type_code_seq', productData.type_code_seq, '타입', parsedCodes.prodType);
+                    this.setSelectValue('prod_type_code_seq', productData.type_code_seq, parsedCodes.prodType);
                 }
             }
         }, 500);
@@ -497,7 +497,7 @@ class ProductManager {
         // 🔥 7단계: 년식 설정 (400ms 지연) - 파싱된 코드값 활용
         setTimeout(() => {
         if (productData.year_code_seq) {
-                this.setSelectValue('year_code_seq', productData.year_code_seq, '년식', parsedCodes.year);
+                this.setSelectValue('year_code_seq', productData.year_code_seq, parsedCodes.year);
             }
         }, 400);
         

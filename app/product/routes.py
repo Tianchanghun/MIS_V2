@@ -117,17 +117,18 @@ def index():
         type2_codes = safe_get_codes('타입2')
         
         # 🔥 타입2 코드들 (TP 그룹에서 2자리 코드만 필터링)
-        tp_codes_raw = safe_get_codes('TP')
-        if not tp_codes_raw:
-            # TP 그룹이 없으면 기본 타입2 코드들 생성
-            tp2_codes = [
-                {'seq': 9999, 'code': '00', 'code_name': '기본타입'},
-                {'seq': 9998, 'code': '01', 'code_name': '타입01'},
-                {'seq': 9997, 'code': '02', 'code_name': '타입02'}
-            ]
-        else:
-            # 2자리 코드만 필터링
-            tp2_codes = [code for code in tp_codes_raw if len(code.get('code', '')) == 2]
+        tp_codes_raw = safe_get_codes('타입')  # 🔥 실제 그룹명 '타입' 사용
+        current_app.logger.info(f"🔧 '타입' 그룹 원본 데이터: {len(tp_codes_raw)}개")
+        
+        # 2자리 코드만 필터링
+        tp2_codes = []
+        if tp_codes_raw:
+            for code in tp_codes_raw:
+                if isinstance(code, dict) and code.get('code') and len(str(code['code'])) == 2:
+                    tp2_codes.append(code)
+                    current_app.logger.info(f"🔧 TP 코드 추가: {code}")
+        
+        current_app.logger.info(f"🔧 필터링된 TP2 코드: {len(tp2_codes)}개")
         
         # 🔥 새로 추가된 코드들
         detail_brand_codes = safe_get_codes('세부 브랜드')  # CL2 그룹 (세부브랜드)

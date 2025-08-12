@@ -556,7 +556,7 @@ body.modal-open {
                                     <select class="form-select" id="brand_code_seq" name="brand_code_seq" required>
                                         <option value="">선택하세요</option>
                                         {% for brand in brand_codes %}
-                                        <option value="{{ brand.seq }}">{{ brand.code_name }}</option>
+                                        <option value="{{ brand.seq }}" data-code="{{ brand.code }}">{{ brand.code_name }} ({{ brand.code }})</option>
                                         {% endfor %}
                                 </select>
                             </div>
@@ -568,8 +568,8 @@ body.modal-open {
                                 <label for="prod_group_code_seq" class="form-label">제품구분 <span class="required">*</span></label>
                                 <select class="form-select" id="prod_group_code_seq" name="prod_group_code_seq" required>
                                     <option value="">선택하세요</option>
-                                    {% for category in category_codes %}
-                                    <option value="{{ category.seq }}">{{ category.code_name }}</option>
+                                    {% for division in product_division_codes %}
+                                    <option value="{{ division.seq }}" data-code="{{ division.code }}">{{ division.code_name }} ({{ division.code }})</option>
                                     {% endfor %}
                                 </select>
                             </div>
