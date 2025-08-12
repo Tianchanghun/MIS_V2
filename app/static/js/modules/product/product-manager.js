@@ -447,21 +447,21 @@ class ProductManager {
         // 🔥 3단계: 브랜드 코드 설정 (100ms 지연) - 파싱된 코드값 활용
         setTimeout(() => {
         if (productData.brand_code_seq) {
-                this.setSelectValue('brand_code_seq', productData.brand_code_seq, parsedCodes.brand);
+                this.setSelectValue('brand_code_seq', productData.brand_code_seq, '브랜드', parsedCodes.brand);
         }
         }, 100);
         
         // 🔥 4단계: 제품구분 설정 (200ms 지연) - 파싱된 코드값 활용
         setTimeout(() => {
         if (productData.category_code_seq) {
-                this.setSelectValue('prod_group_code_seq', productData.category_code_seq, parsedCodes.prodGroup);
+                this.setSelectValue('prod_group_code_seq', productData.category_code_seq, '제품구분', parsedCodes.prodGroup);
             }
         }, 200);
         
         // 🔥 5단계: 품목 설정 (300ms 지연) - 파싱된 코드값 활용
         setTimeout(() => {
             if (productData.category_code_seq) {
-                this.setSelectValue('prod_code_seq', productData.category_code_seq, parsedCodes.prod);
+                this.setSelectValue('prod_code_seq', productData.category_code_seq, '품목', parsedCodes.prod);
             }
         }, 300);
         
@@ -490,12 +490,12 @@ class ProductManager {
                                 
                                 // 로드 후 다시 시도 (파싱된 코드값 활용)
                                 setTimeout(() => {
-                                    this.setSelectValue('prod_type_code_seq', productData.type_code_seq, parsedCodes.prodType);
+                                    this.setSelectValue('prod_type_code_seq', productData.type_code_seq, '타입', parsedCodes.prodType);
                                 }, 200);
                             });
                     }
                 } else {
-                    this.setSelectValue('prod_type_code_seq', productData.type_code_seq, parsedCodes.prodType);
+                    this.setSelectValue('prod_type_code_seq', productData.type_code_seq, '타입', parsedCodes.prodType);
                 }
             }
         }, 500);
@@ -503,7 +503,7 @@ class ProductManager {
         // 🔥 7단계: 년식 설정 (400ms 지연) - 파싱된 코드값 활용
         setTimeout(() => {
         if (productData.year_code_seq) {
-                this.setSelectValue('year_code_seq', productData.year_code_seq, parsedCodes.year);
+                this.setSelectValue('year_code_seq', productData.year_code_seq, '년식', parsedCodes.year);
             }
         }, 400);
         
@@ -580,39 +580,113 @@ class ProductManager {
             
             // 🔥 색상 선택 설정 (자사코드 기반)
             setTimeout(() => {
-                const colorSelect = container.find(`.product-model-item:eq(${index}) .color-code`);
+                const modelItem = container.find(`.product-model-item:eq(${index})`);
+                const colorSelect = modelItem.find('.color-code');
                 
-                // 자사코드에서 색상 코드 파싱
+                // 자사코드에서 각 구성 요소 파싱
                 if (model.std_div_prod_code && model.std_div_prod_code.length >= 16) {
-                    const colorCode = model.std_div_prod_code.substring(13, 16); // 마지막 3자리
-                    console.log(`🎨 모델 ${index} 색상 설정:`, model.color_code, `(자사코드: ${colorCode})`);
+                    const stdCode = model.std_div_prod_code;
+                    const parsedModel = {
+                        brand: stdCode.substring(0, 2),      // RY
+                        divType: stdCode.substring(2, 3),    // 1
+                        prodGroup: stdCode.substring(3, 5),  // SG
+                        prodType: stdCode.substring(5, 7),   // TR
+                        prod: stdCode.substring(7, 9),       // TJ
+                        type2: stdCode.substring(9, 11),     // 00
+                        year: stdCode.substring(11, 13),     // 25
+                        color: stdCode.substring(13, 16)     // BLK
+                    };
                     
-                    // 1. color_code 값으로 직접 매칭
-                    if (model.color_code) {
+                    console.log(`🎨 모델 ${index} 파싱 결과:`, stdCode, '→', parsedModel);
+                    
+                    // 1. 타입2 (TP) 설정
+                    const type2Select = modelItem.find('.prod-type2-code');
+                    if (model.prod_type2_code || parsedModel.type2) {
                         // data-code 속성으로 찾기
-                        let colorOption = colorSelect.find(`option[data-code="${model.color_code}"]`);
-                        if (colorOption.length === 0) {
-                            // 파싱된 색상 코드로 찾기
-                            colorOption = colorSelect.find(`option[data-code="${colorCode}"]`);
+                        let type2Option = type2Select.find(`option[data-code="${model.prod_type2_code || parsedModel.type2}"]`);
+                        if (type2Option.length > 0) {
+                            type2Select.val(type2Option.val()).trigger('change');
+                            console.log(`✅ 모델 ${index} 타입2 설정 완료:`, type2Option.text());
+                        } else {
+                            console.warn(`⚠️ 모델 ${index} 타입2 코드를 찾을 수 없음:`, model.prod_type2_code, parsedModel.type2);
                         }
-                        
+                    }
+                    
+                    // 2. 색상 설정
+                    if (model.color_code || parsedModel.color) {
+                        // data-code 속성으로 찾기
+                        let colorOption = colorSelect.find(`option[data-code="${model.color_code || parsedModel.color}"]`);
                         if (colorOption.length > 0) {
                             colorSelect.val(colorOption.val()).trigger('change');
                             console.log(`✅ 모델 ${index} 색상 설정 완료:`, colorOption.text());
-            } else {
-                            console.warn(`⚠️ 모델 ${index} 색상 코드를 찾을 수 없음:`, model.color_code, colorCode);
+                        } else {
+                            console.warn(`⚠️ 모델 ${index} 색상 코드를 찾을 수 없음:`, model.color_code, parsedModel.color);
                         }
                     }
                 }
                 
-                // 2. 제품명 설정
+                // 3. 제품명 설정
                 if (model.product_name) {
-                    container.find(`.product-model-item:eq(${index}) .product-model-name`).val(model.product_name);
+                    modelItem.find('.product-model-name').val(model.product_name);
                 }
                 
-                // 3. 자사코드 설정
+                // 4. 자사코드 설정
                 if (model.std_div_prod_code) {
-                    container.find(`.product-model-item:eq(${index}) .std-product-code`).val(model.std_div_prod_code);
+                    modelItem.find('.std-product-code').val(model.std_div_prod_code);
+                }
+                
+                // 5. 🔥 가격 정보 설정
+                if (model.official_cost) {
+                    modelItem.find('.official-cost').val(model.official_cost);
+                }
+                if (model.consumer_price) {
+                    modelItem.find('.consumer-price').val(model.consumer_price);
+                }
+                if (model.operation_price) {
+                    modelItem.find('.operation-price').val(model.operation_price);
+                }
+                
+                // 6. 🔥 코드 관리 필드 설정
+                if (model.douzone_code) {
+                    modelItem.find('.douzone-code').val(model.douzone_code);
+                }
+                if (model.erpia_code) {
+                    modelItem.find('.erpia-code').val(model.erpia_code);
+                }
+                
+                // 7. 🔥 ANS 값 설정
+                if (model.ans_value) {
+                    const ansSelect = modelItem.find('.ans-value');
+                    ansSelect.val(model.ans_value).trigger('change');
+                    console.log(`✅ 모델 ${index} ANS 설정 완료:`, model.ans_value);
+                }
+                
+                // 8. 🔥 세부브랜드 설정
+                if (model.detail_brand_code_seq) {
+                    const detailBrandSelect = modelItem.find('.detail-brand-code');
+                    detailBrandSelect.val(model.detail_brand_code_seq).trigger('change');
+                    console.log(`✅ 모델 ${index} 세부브랜드 설정 완료:`, model.detail_brand_code_seq);
+                }
+                
+                // 9. 🔥 색상별(상세) 설정
+                if (model.color_detail_code_seq) {
+                    const colorDetailSelect = modelItem.find('.color-detail-code');
+                    colorDetailSelect.val(model.color_detail_code_seq).trigger('change');
+                    console.log(`✅ 모델 ${index} 색상별(상세) 설정 완료:`, model.color_detail_code_seq);
+                }
+                
+                // 10. 🔥 새로운 분류 체계 설정
+                if (model.product_group_code_seq) {
+                    modelItem.find('.product-group-code').val(model.product_group_code_seq).trigger('change');
+                }
+                if (model.item_code_seq) {
+                    modelItem.find('.item-code').val(model.item_code_seq).trigger('change');
+                }
+                if (model.item_detail_code_seq) {
+                    modelItem.find('.item-detail-code').val(model.item_detail_code_seq).trigger('change');
+                }
+                if (model.product_type_category_code_seq) {
+                    modelItem.find('.product-type-category-code').val(model.product_type_category_code_seq).trigger('change');
                 }
                 
             }, 200 + (index * 100)); // 순차적으로 100ms씩 지연
