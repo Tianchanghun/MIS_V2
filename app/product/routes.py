@@ -651,21 +651,27 @@ def api_generate_code():
 def generate_legacy_std_code_16digit(brand, div_type, prod_group, prod_type, prod, type2, year, color):
     """
     레거시 방식 자사코드 생성 (16자리) - tbl_Product_DTL 기준
-    🔥 실제 레거시 구조: 브랜드(2) + 구분타입(1) + 제품군(2) + 제품타입(2) + 품목(2) + 타입2(2) + 년도(2) + 색상(3)
-    레거시 예시: JI1SGTR0025BLK (실제 사용된 예시)
+    🔥 실제 레거시 구조 분석: 브랜드(2) + 구분타입(1) + 제품구분(2) + 제품타입(2) + 품목(2) + 타입2(2) + 년도(2) + 색상(3)
+    실제 예시 분석: NN3SGF1TA0025BLK
+    - NN(브랜드) + 3(구분타입) + SG(제품구분) + F1(제품타입) + TA(품목) + 00(타입2) + 25(년도) + BLK(색상)
     """
-    # 각 구성요소를 정해진 길이로 맞추기 (레거시와 정확히 동일)
+    # 각 구성요소를 정해진 길이로 맞추기 (실제 데이터 기준)
     brand_part = (brand or 'AA')[:2].ljust(2, 'A').upper()          # 2자리 브랜드
-    div_type_part = (div_type or '1')[:1]                           # 1자리 구분타입 (제품구분 첫글자)
-    prod_group_part = (prod_group or 'AA')[:2].ljust(2, 'A').upper() # 2자리 제품군
+    div_type_part = str(div_type or '1')[:1]                        # 1자리 구분타입 
+    prod_group_part = (prod_group or 'AA')[:2].ljust(2, 'A').upper() # 2자리 제품구분
     prod_type_part = (prod_type or 'AA')[:2].ljust(2, 'A').upper()  # 2자리 제품타입  
     prod_part = (prod or 'AA')[:2].ljust(2, 'A').upper()           # 2자리 품목
     type2_part = (type2 or '00')[:2].ljust(2, '0')                  # 2자리 타입2
-    year_part = (year or '00')[-2:].ljust(2, '0')                   # 2자리 년도 (뒤 2자리)
+    year_part = str(year or '00')[-2:].ljust(2, '0')                # 2자리 년도 (뒤 2자리)
     color_part = (color or 'AAA')[:3].ljust(3, 'A').upper()        # 3자리 색상
     
-    # 레거시와 정확히 동일한 순서로 조합
+    # 레거시와 정확히 동일한 순서로 조합 (총 16자리)
     std_code = brand_part + div_type_part + prod_group_part + prod_type_part + prod_part + type2_part + year_part + color_part
+    
+    # 길이 검증
+    if len(std_code) != 16:
+        print(f"🔥 자사코드 길이 오류: {len(std_code)}자리 - {std_code}")
+        print(f"  구성: {brand_part}({len(brand_part)}) + {div_type_part}({len(div_type_part)}) + {prod_group_part}({len(prod_group_part)}) + {prod_type_part}({len(prod_type_part)}) + {prod_part}({len(prod_part)}) + {type2_part}({len(type2_part)}) + {year_part}({len(year_part)}) + {color_part}({len(color_part)})")
     
     return std_code.upper()
 

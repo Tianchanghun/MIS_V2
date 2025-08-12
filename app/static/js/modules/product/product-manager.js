@@ -485,10 +485,15 @@ class ProductManager {
                 }
             });
             
+            // 우선순위: 1) div_type_code_seq 2) 파싱된 자사코드 prodGroup
             if (productData.div_type_code_seq) {
                 this.setSelectValue('prod_group_code_seq', productData.div_type_code_seq, '제품구분', parsedCodes.prodGroup);
+            } else if (parsedCodes.prodGroup) {
+                // div_type_code_seq가 없으면 파싱된 자사코드로 매칭 시도
+                console.log('🔄 div_type_code_seq가 없어서 자사코드 파싱값으로 제품구분 매칭 시도');
+                this.setSelectValue('prod_group_code_seq', null, '제품구분', parsedCodes.prodGroup);
             } else {
-                console.warn('⚠️ div_type_code_seq가 없습니다. 제품구분을 설정할 수 없습니다.');
+                console.warn('⚠️ div_type_code_seq와 파싱된 자사코드 모두 없습니다. 제품구분을 설정할 수 없습니다.');
             }
         }, 200);
         
