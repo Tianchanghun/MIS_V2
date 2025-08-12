@@ -559,7 +559,7 @@ def api_generate_code():
         # 레거시 파싱: Substring(0,2) + Substring(2,1) + Substring(4,2) + Substring(5,2) + Substring(7,2) + Substring(9,2) + 년도 + Substring(13,3)
         generated_code = generate_legacy_std_code_16digit(
             brand_code.code,           # 브랜드(2) - 위치 0-1
-            prod_group_code.code[:1],  # 🔥 구분타입(1) - 위치 2 (제품구분 코드의 첫 글자)  
+            prod_group_code.code,      # 🔥 구분타입(1) - 제품구분의 실제 Code 값 (예: "1")
             prod_group_code.code,      # 제품구분(2) - 위치 3-4 (레거시에서는 4-5 위치에 제품군)
             prod_type_code.code,       # 제품타입(2) - 위치 5-6 (레거시와 동일)
             prod_code.code,            # 품목(2) - 위치 7-8 (레거시와 동일)
@@ -590,7 +590,7 @@ def api_generate_code():
             'generated_code': generated_code,
             'components': {
                 'brand': brand_code.code,                    # 브랜드 (위치 0-1)
-                'div_type': prod_group_code.code[:1],        # 🔥 구분타입 (위치 2) - 제품구분 첫글자
+                'div_type': prod_group_code.code,            # 🔥 구분타입 (위치 2) - 제품구분의 실제 Code 값
                 'prod_group': prod_group_code.code,          # 제품군 (위치 3-4)
                 'prod_type': prod_type_code.code,            # 제품타입 (위치 5-6)
                 'prod': prod_code.code,                      # 품목 (위치 7-8)
