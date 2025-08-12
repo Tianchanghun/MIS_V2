@@ -6,43 +6,262 @@
     <meta name="current-company-id" content="{{ session.get('current_company_id', 1) }}">
     <title>{% block title %}MIS v2.0{% endblock %}</title>
     
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- AdminLTE 3 CSS (Bootstrap 4/5 기반) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Bootstrap Icons -->
+    <!-- Bootstrap Icons (추가 아이콘) -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <!-- DataTables CSS -->
+    <!-- DataTables CSS (AdminLTE 호환) -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
     
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-    <!-- Bootstrap JS -->
+    <!-- Bootstrap JS (AdminLTE 호환) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- AdminLTE JS -->
+    <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
     <!-- DataTables JS -->
     <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
     
-    <!-- Custom CSS -->
+    <!-- 🎨 AdminLTE 3 커스텀 테마 CSS -->
     <style>
+        /* 한국어 폰트 설정 */
         html, body {
+            font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
             height: 100% !important;
-            font-family: 'Noto Sans KR', sans-serif;
-            background-color: #f8f9fa;
+            background-color: #f4f6f9 !important;
             margin: 0 !important;
             padding: 0 !important;
             overflow-x: hidden !important;
+        }
+        
+        /* 🔥 통일된 모달 스타일 (AdminLTE 3 기반) */
+        .modal {
+            z-index: 2000 !important;
+            font-family: 'Noto Sans KR', sans-serif !important;
+        }
+        
+        .modal-backdrop {
+            z-index: 1900 !important;
+            background-color: rgba(0, 0, 0, 0.6) !important;
+        }
+        
+        .modal-dialog {
+            margin: 1.75rem auto !important;
+            z-index: 2001 !important;
+        }
+        
+        .modal-content {
+            border: none !important;
+            border-radius: 0.5rem !important;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
+            background: #ffffff !important;
+        }
+        
+        .modal-header {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+            color: #ffffff !important;
+            border-bottom: none !important;
+            border-radius: 0.5rem 0.5rem 0 0 !important;
+            padding: 1rem 1.5rem !important;
+        }
+        
+        .modal-header .modal-title {
+            font-weight: 600 !important;
+            font-size: 1.1rem !important;
+            color: #ffffff !important;
+        }
+        
+        .modal-header .btn-close {
+            background: none !important;
+            border: none !important;
+            color: #ffffff !important;
+            opacity: 0.8 !important;
+            font-size: 1.2rem !important;
+        }
+        
+        .modal-header .btn-close:hover {
+            opacity: 1 !important;
+            transform: scale(1.1) !important;
+        }
+        
+        .modal-body {
+            padding: 1.5rem !important;
+            background: #ffffff !important;
+            max-height: 70vh !important;
             overflow-y: auto !important;
         }
         
-        /* 메인 콘텐츠 영역 - 반응형 레이아웃 */
+        .modal-footer {
+            padding: 1rem 1.5rem !important;
+            background: #f8f9fa !important;
+            border-top: 1px solid #e9ecef !important;
+            border-radius: 0 0 0.5rem 0.5rem !important;
+        }
+        
+        .modal-footer .btn {
+            font-weight: 500 !important;
+            padding: 0.5rem 1.5rem !important;
+            border-radius: 0.375rem !important;
+        }
+        
+        /* 🔥 AdminLTE 모달 크기 최적화 */
+        .modal-sm { max-width: 400px !important; }
+        .modal-lg { max-width: 900px !important; }
+        .modal-xl { max-width: 1200px !important; }
+        
+        /* 반응형 모달 */
+        @media (max-width: 1400px) {
+            .modal-lg { max-width: 800px !important; }
+            .modal-xl { max-width: 1000px !important; }
+        }
+        
+        @media (max-width: 992px) {
+            .modal-lg { max-width: 90vw !important; }
+            .modal-xl { max-width: 95vw !important; }
+        }
+        
+        @media (max-width: 768px) {
+            .modal-dialog {
+                margin: 1rem !important;
+                max-width: calc(100vw - 2rem) !important;
+            }
+        }
+        
+        /* 🔥 폼 요소 스타일 통일 */
+        .form-control, .form-select {
+            border: 1px solid #ced4da !important;
+            border-radius: 0.375rem !important;
+            font-size: 0.9rem !important;
+            padding: 0.5rem 0.75rem !important;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: #007bff !important;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
+        }
+        
+        .form-label {
+            font-weight: 500 !important;
+            color: #495057 !important;
+            margin-bottom: 0.5rem !important;
+        }
+        
+        /* 필수 필드 표시 */
+        .form-label .text-danger,
+        .form-label .required {
+            color: #dc3545 !important;
+            font-weight: 700 !important;
+        }
+        
+        /* 🔥 버튼 스타일 통일 */
+        .btn {
+            font-weight: 500 !important;
+            border-radius: 0.375rem !important;
+            padding: 0.5rem 1rem !important;
+            transition: all 0.15s ease-in-out !important;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+            border: none !important;
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #0056b3 0%, #004085 100%) !important;
+            transform: translateY(-1px) !important;
+        }
+        
+        .btn-secondary {
+            background: #6c757d !important;
+            border: none !important;
+        }
+        
+        .btn-secondary:hover {
+            background: #545b62 !important;
+            transform: translateY(-1px) !important;
+        }
+        
+        /* 🔥 테이블 스타일 */
+        .table {
+            font-size: 0.9rem !important;
+        }
+        
+        .table th {
+            background: #f8f9fa !important;
+            font-weight: 600 !important;
+            border-bottom: 2px solid #dee2e6 !important;
+        }
+        
+        .table-hover tbody tr:hover {
+            background-color: rgba(0, 123, 255, 0.05) !important;
+        }
+        
+        /* 🔥 카드 스타일 */
+        .card {
+            border: none !important;
+            border-radius: 0.5rem !important;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08) !important;
+        }
+        
+        .card-header {
+            background: #f8f9fa !important;
+            border-bottom: 1px solid #e9ecef !important;
+            border-radius: 0.5rem 0.5rem 0 0 !important;
+            font-weight: 600 !important;
+        }
+        
+        /* 🔥 알림/Alert 스타일 */
+        .alert {
+            border: none !important;
+            border-radius: 0.5rem !important;
+            font-weight: 500 !important;
+        }
+        
+        .alert-success {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%) !important;
+            color: #155724 !important;
+        }
+        
+        .alert-danger {
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%) !important;
+            color: #721c24 !important;
+        }
+        
+        .alert-warning {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%) !important;
+            color: #856404 !important;
+        }
+        
+        .alert-info {
+            background: linear-gradient(135deg, #cce8ff 0%, #b8daff 100%) !important;
+            color: #004085 !important;
+        }
+        
+        /* 🔥 로딩 스피너 */
+        .spinner-border-sm {
+            width: 1rem !important;
+            height: 1rem !important;
+        }
+        
+        /* 🔥 배지 스타일 */
+        .badge {
+            font-weight: 500 !important;
+            border-radius: 0.375rem !important;
+        }
+        
+        /* 🔥 메인 콘텐츠 영역 - AdminLTE 호환 */
         .main-content {
-            min-height: 100vh;
-            padding: 20px;
+            min-height: 100vh !important;
+            padding: 20px !important;
             position: relative !important;
-            overflow: visible !important;
-            z-index: 1 !important;
-            background: white !important;
+            background: #f4f6f9 !important;
         }
         
         /* 데스크톱: 사이드바 옆에 메인 콘텐츠 배치 */

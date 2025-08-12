@@ -75,150 +75,148 @@
     </div>
 </div>
 
-<!-- 사용자 추가/수정 모달 -->
-<div class="modal fade" id="userModal" tabindex="-1" aria-labelledby="userModalTitle" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="userModalTitle">사용자 추가</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<!-- 🎨 사용자 추가/수정 모달 (AdminLTE 3 통일 방식) -->
+{% set modal_id = 'userModal' %}
+{% set modal_title = '사용자 추가' %}
+{% set modal_size = 'lg' %}
+{% set modal_icon = 'fas fa-user-plus' %}
+{% set modal_body_content %}
+    <form id="userForm">
+        <input type="hidden" id="user_seq" name="user_seq">
+        
+        <!-- 기본 정보 -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="login_id" class="form-label">로그인 ID <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="login_id" name="login_id" required>
+                </div>
             </div>
-            <div class="modal-body">
-                <form id="userForm">
-                    <input type="hidden" id="user_seq" name="user_seq">
-                    
-                    <!-- 기본 정보 -->
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="login_id" class="form-label">로그인 ID <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="login_id" name="login_id" required>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="name" class="form-label">이름 <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="name" name="name" required>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="password" class="form-label">비밀번호 <span id="passwordRequired" class="text-danger">*</span></label>
-                                <input type="password" class="form-control" id="password" name="password">
-                                <div class="form-text">수정 시에는 변경할 때만 입력하세요.</div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="id_number" class="form-label">사번</label>
-                                <input type="text" class="form-control" id="id_number" name="id_number">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- 연락처 정보 -->
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="email" class="form-label">이메일</label>
-                                <input type="email" class="form-control" id="email" name="email">
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="mb-3">
-                                <label for="mobile" class="form-label">핸드폰</label>
-                                <input type="text" class="form-control" id="mobile" name="mobile">
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="mb-3">
-                                <label for="extension_number" class="form-label">내선번호</label>
-                                <input type="text" class="form-control" id="extension_number" name="extension_number">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- 회사 소속 -->
-                    <div class="mb-3">
-                        <label class="form-label">회사 소속</label>
-                        <div id="companiesSection">
-                            <!-- 동적으로 생성 -->
-                        </div>
-                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="addCompanySelection()">
-                            <i class="fas fa-plus"></i> 회사 추가
-                        </button>
-                    </div>
-                    
-                    <!-- 부서 선택 -->
-                    <div class="mb-3">
-                        <label class="form-label">부서 (다중 선택 가능)</label>
-                        <div id="departmentsSection">
-                            <!-- 동적으로 생성 -->
-                        </div>
-                    </div>
-                    
-                    <!-- 시스템 설정 -->
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="member_status" class="form-label">상태</label>
-                                <select class="form-control" id="member_status" name="member_status">
-                                    <option value="Y">재직</option>
-                                    <option value="N">퇴사</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="super_user" class="form-label">슈퍼유저</label>
-                                <select class="form-control" id="super_user" name="super_user">
-                                    <option value="N">일반 사용자</option>
-                                    <option value="Y">슈퍼유저</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                <button type="button" class="btn btn-primary" onclick="saveUser()">저장</button>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="name" class="form-label">이름 <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="name" name="name" required>
+                </div>
             </div>
         </div>
-    </div>
-</div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="password" class="form-label">비밀번호 <span id="passwordRequired" class="text-danger">*</span></label>
+                    <input type="password" class="form-control" id="password" name="password">
+                    <div class="form-text">수정 시에는 변경할 때만 입력하세요.</div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="id_number" class="form-label">사번</label>
+                    <input type="text" class="form-control" id="id_number" name="id_number">
+                </div>
+            </div>
+        </div>
+        
+        <!-- 연락처 정보 -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="email" class="form-label">이메일</label>
+                    <input type="email" class="form-control" id="email" name="email">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="mb-3">
+                    <label for="mobile" class="form-label">핸드폰</label>
+                    <input type="text" class="form-control" id="mobile" name="mobile">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="mb-3">
+                    <label for="extension_number" class="form-label">내선번호</label>
+                    <input type="text" class="form-control" id="extension_number" name="extension_number">
+                </div>
+            </div>
+        </div>
+        
+        <!-- 회사 소속 -->
+        <div class="mb-3">
+            <label class="form-label">회사 소속</label>
+            <div id="companiesSection">
+                <!-- 동적으로 생성 -->
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="addCompanySelection()">
+                <i class="fas fa-plus"></i> 회사 추가
+            </button>
+        </div>
+        
+        <!-- 부서 선택 -->
+        <div class="mb-3">
+            <label class="form-label">부서 (다중 선택 가능)</label>
+            <div id="departmentsSection">
+                <!-- 동적으로 생성 -->
+            </div>
+        </div>
+        
+        <!-- 시스템 설정 -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="member_status" class="form-label">상태</label>
+                    <select class="form-control" id="member_status" name="member_status">
+                        <option value="Y">재직</option>
+                        <option value="N">퇴사</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="super_user" class="form-label">슈퍼유저</label>
+                    <select class="form-control" id="super_user" name="super_user">
+                        <option value="N">일반 사용자</option>
+                        <option value="Y">슈퍼유저</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </form>
+{% endset %}
+{% set footer_buttons %}
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+        <i class="fas fa-times me-1"></i>취소
+    </button>
+    <button type="button" class="btn btn-primary" onclick="saveUser()">
+        <i class="fas fa-save me-1"></i>저장
+    </button>
+{% endset %}
+{% include 'components/modal_base.html' %}
 
-<!-- 비밀번호 변경 모달 -->
-<div class="modal fade" id="passwordModal" tabindex="-1" aria-labelledby="passwordModalTitle" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="passwordModalTitle">비밀번호 변경</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="passwordForm">
-                    <input type="hidden" id="pwd_user_seq">
-                    <div class="mb-3">
-                        <label for="new_password" class="form-label">새 비밀번호 <span class="text-danger">*</span></label>
-                        <input type="password" class="form-control" id="new_password" name="new_password" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="confirm_password" class="form-label">비밀번호 확인 <span class="text-danger">*</span></label>
-                        <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                <button type="button" class="btn btn-primary" onclick="changePassword()">변경</button>
-            </div>
+<!-- 🎨 비밀번호 변경 모달 (AdminLTE 3 통일 방식) -->
+{% set modal_id = 'passwordModal' %}
+{% set modal_title = '비밀번호 변경' %}
+{% set modal_size = '' %}
+{% set modal_icon = 'fas fa-key' %}
+{% set modal_body_content %}
+    <form id="passwordForm">
+        <input type="hidden" id="pwd_user_seq">
+        <div class="mb-3">
+            <label for="new_password" class="form-label">새 비밀번호 <span class="text-danger">*</span></label>
+            <input type="password" class="form-control" id="new_password" name="new_password" required>
         </div>
-    </div>
-</div>
+        <div class="mb-3">
+            <label for="confirm_password" class="form-label">비밀번호 확인 <span class="text-danger">*</span></label>
+            <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+        </div>
+    </form>
+{% endset %}
+{% set footer_buttons %}
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+        <i class="fas fa-times me-1"></i>취소
+    </button>
+    <button type="button" class="btn btn-primary" onclick="changePassword()">
+        <i class="fas fa-check me-1"></i>변경
+    </button>
+{% endset %}
+{% include 'components/modal_base.html' %}
 
 <script>
 let currentPage = 1;
@@ -437,7 +435,7 @@ function resetSearch() {
     loadUsers();
 }
 
-// 사용자 추가 모달 표시
+// 사용자 추가 모달 표시 (🎨 AdminLTE 3 방식)
 function showAddUserModal() {
     $('#userModalTitle').text('사용자 추가');
     $('#userForm')[0].reset();
@@ -445,9 +443,9 @@ function showAddUserModal() {
     $('#password').prop('required', true);
     $('#passwordRequired').show();
     
-    // Bootstrap 5 방식으로 모달 표시
-    const modal = new bootstrap.Modal(document.getElementById('userModal'));
-    modal.show();
+    // ModalHelper 사용
+    ModalHelper.setTitle('userModal', '사용자 추가', 'fas fa-user-plus');
+    ModalHelper.show('userModal');
 }
 
 // 회사 선택 섹션 렌더링
@@ -584,8 +582,9 @@ function editUser(userSeq) {
                 renderCompaniesSection(userData.companies);
                 renderDepartmentsSection(userData.departments);
                 
-                const modal = new bootstrap.Modal(document.getElementById('userModal'));
-                modal.show();
+                // ModalHelper 사용
+                ModalHelper.setTitle('userModal', '사용자 수정', 'fas fa-user-edit');
+                ModalHelper.show('userModal');
             } else {
                 showAlert(response.message, 'danger');
             }
@@ -638,8 +637,7 @@ function saveUser() {
     .done(function(response) {
         if (response.success) {
             showAlert(response.message, 'success');
-            const modal = new bootstrap.Modal(document.getElementById('userModal'));
-            modal.hide();
+            ModalHelper.hide('userModal');
             loadUsers(currentPage);
         } else {
             showAlert(response.message, 'danger');
@@ -654,8 +652,7 @@ function saveUser() {
 function changeUserPassword(userSeq) {
     $('#pwd_user_seq').val(userSeq);
     $('#passwordForm')[0].reset();
-    const modal = new bootstrap.Modal(document.getElementById('passwordModal'));
-    modal.show();
+    ModalHelper.show('passwordModal');
 }
 
 function changePassword() {
@@ -678,8 +675,7 @@ function changePassword() {
     .done(function(response) {
         if (response.success) {
             showAlert(response.message, 'success');
-            const modal = new bootstrap.Modal(document.getElementById('passwordModal'));
-            modal.hide();
+            ModalHelper.hide('passwordModal');
         } else {
             showAlert(response.message, 'danger');
         }
