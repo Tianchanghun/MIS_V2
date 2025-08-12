@@ -144,7 +144,8 @@ def index():
         # 10. 🔥 새로 추가된 색상별(상세) 코드 (CLD 그룹)
         color_detail_codes = safe_get_codes('색상별(상세)')  # CLD 그룹
         
-        return render_template('product/index.html',
+        # 캐시 방지 헤더 추가
+        response = make_response(render_template('product/index.html',
                              products=products,
                              # 새로운 코드 체계 (요구사항)
                              company_codes=company_codes,        # 회사 (에이원, 에이원월드)
@@ -178,6 +179,13 @@ def index():
                              type_code_seq=type_code_seq,
                              year_code_seq=year_code_seq,
                              show_inactive=show_inactive)
+        
+        # 캐시 방지 헤더 설정
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        
+        return response
         
     except Exception as e:
         current_app.logger.error(f"❌ 상품 목록 조회 실패: {e}")

@@ -3,6 +3,10 @@
 {% block title %}상품관리{% endblock %}
 
 {% block extra_css %}
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+
 <!-- 🚨 HTML 로드 확인용 -->
 <style>
 .test-banner {
@@ -627,28 +631,44 @@ body.modal-open {
                             </div>
                             <div class="card-body">
                                 <div id="productModelsContainer">
-                                    <!-- 제품 모델 템플릿이 여기에 추가됨 -->
-                                    <div class="product-model-item border p-3 mb-3" data-index="0">
+                                    <!-- 🔥 서버사이드 렌더링으로 기본 모델 템플릿 제공 -->
+                                    <div class="product-model-item border p-3 mb-3" data-index="0" data-model-id="">
                                         <h6 class="text-primary mb-3">
                                             <i class="fas fa-box me-1"></i>제품 모델 #1
                                             <small class="text-muted">(tbl_Product_DTL)</small>
                                         </h6>
                                         
                                         <!-- 기본 정보 -->
-                        <div class="row">
-                                            <div class="col-md-4">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <div class="mb-3">
+                                                    <label class="form-label">
+                                                        <i class="fas fa-cog me-1"></i>타입2 (TP) <span class="required">*</span>
+                                                    </label>
+                                                    <select class="form-select prod-type2-code" name="prod_type2_code[]" required>
+                                                        <option value="">타입2를 선택하세요</option>
+                                                        {% for tp2 in tp2_codes %}
+                                                        <option value="{{ tp2.seq }}" data-code="{{ tp2.code }}">{{ tp2.code_name }} ({{ tp2.code }})</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                    <small class="text-muted">TP 코드 그룹에서 관리 (2자리)</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
                                                 <div class="mb-3">
                                                     <label class="form-label">
                                                         <i class="fas fa-palette me-1"></i>색상 (CR) <span class="required">*</span>
                                                     </label>
                                                     <select class="form-select color-code" name="color_code[]" required>
                                                         <option value="">색상을 선택하세요</option>
-                                                        <!-- 동적으로 채워짐 -->
+                                                        {% for color in color_codes %}
+                                                        <option value="{{ color.seq }}" data-code="{{ color.code }}">{{ color.code_name }} ({{ color.code }})</option>
+                                                        {% endfor %}
                                                     </select>
                                                     <small class="text-muted">CR 코드 그룹에서 관리</small>
                                                 </div>
                                             </div>
-                                            <div class="col-md-4">
+                                            <div class="col-md-3">
                                                 <div class="mb-3">
                                                     <label class="form-label">제품명 (색상별)</label>
                                                     <input type="text" class="form-control product-model-name" 
@@ -656,7 +676,7 @@ body.modal-open {
                                                            placeholder="색상별 제품명 (선택사항)">
                                                 </div>
                                             </div>
-                                            <div class="col-md-4">
+                                            <div class="col-md-3">
                                                 <div class="mb-3">
                                                     <label class="form-label">16자리 자사코드</label>
                                                     <div class="input-group">
@@ -679,38 +699,38 @@ body.modal-open {
                                                     <i class="fas fa-code me-1"></i>코드 관리
                                                 </h6>
                                             </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
                                                     <label class="form-label">더존코드 (20자)</label>
                                                     <input type="text" class="form-control douzone-code" 
                                                            name="douzone_code[]" maxlength="20"
                                                            placeholder="더존 연동 코드">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
                                                     <label class="form-label">ERPIA코드 (13자)</label>
                                                     <input type="text" class="form-control erpia-code" 
                                                            name="erpia_code[]" maxlength="13"
                                                            placeholder="ERPIA 연동 코드">
-                            </div>
-                        </div>
-                        </div>
-                        
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
                                         <!-- 🔥 가격 관리 필드 -->
                                         <div class="row">
                                             <div class="col-12">
                                                 <h6 class="text-secondary">
                                                     <i class="fas fa-won-sign me-1"></i>가격 관리
                                                 </h6>
-                        </div>
+                                            </div>
                                             <div class="col-md-4">
                                                 <div class="mb-3">
                                                     <label class="form-label">공식원가</label>
                                                     <div class="input-group">
                                                         <span class="input-group-text">₩</span>
                                                         <input type="number" class="form-control official-cost" 
-                                                               name="official_cost[]" min="0"
+                                                               name="official_cost[]" min="0" value="0"
                                                                placeholder="0">
                                                     </div>
                                                 </div>
@@ -721,7 +741,7 @@ body.modal-open {
                                                     <div class="input-group">
                                                         <span class="input-group-text">₩</span>
                                                         <input type="number" class="form-control consumer-price" 
-                                                               name="consumer_price[]" min="0"
+                                                               name="consumer_price[]" min="0" value="0"
                                                                placeholder="0">
                                                     </div>
                                                 </div>
@@ -732,84 +752,127 @@ body.modal-open {
                                                     <div class="input-group">
                                                         <span class="input-group-text">₩</span>
                                                         <input type="number" class="form-control operation-price" 
-                                                               name="operation_price[]" min="0"
+                                                               name="operation_price[]" min="0" value="0"
                                                                placeholder="0">
                                                     </div>
                                                 </div>
                                             </div>
-                        </div>
-                        
+                                        </div>
+                                        
                                         <!-- 🔥 추가 관리 필드들 (ANS, 세부브랜드, 색상별) -->
-                                <div class="row">
+                                        <div class="row">
                                             <div class="col-12">
                                                 <h6 class="text-secondary">
                                                     <i class="fas fa-cogs me-1"></i>추가 관리
                                                 </h6>
                                             </div>
-                                    <div class="col-md-4">
-                                        <div class="mb-3">
+                                            <div class="col-md-4">
+                                                <div class="mb-3">
                                                     <label class="form-label">ANS</label>
                                                     <select class="form-select ans-value" name="ans_value[]">
-                                                <option value="">선택하세요</option>
-                                                        ${Array.from({length: 30}, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('')}
-                                            </select>
+                                                        <option value="">ANS를 선택하세요</option>
+                                                        {% for i in range(1, 31) %}
+                                                        <option value="{{ i }}">{{ i }}</option>
+                                                        {% endfor %}
+                                                    </select>
                                                     <small class="text-muted">1~30 값 선택</small>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="mb-3">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="mb-3">
                                                     <label class="form-label">세부브랜드</label>
                                                     <select class="form-select detail-brand-code" name="detail_brand_code_seq[]">
-                                                        <option value="">선택하세요</option>
-                                                        ${window.brandCodesData ? window.brandCodesData.map(brand => 
-                                                            `<option value="${brand.seq}">${brand.code_name} (${brand.code})</option>`
-                                                        ).join('') : ''}
+                                                        <option value="">세부브랜드를 선택하세요</option>
+                                                        {% for detail_brand in detail_brand_codes %}
+                                                        <option value="{{ detail_brand.seq }}">{{ detail_brand.code_name }} ({{ detail_brand.code }})</option>
+                                                        {% endfor %}
                                                     </select>
                                                     <small class="text-muted">브랜드 코드 참조</small>
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="mb-3">
-                                                    <label class="form-label">색상별(추가)</label>
-                                                    <select class="form-select color-by-product-code" name="color_by_product_code_seq[]">
-                                                        <option value="">선택하세요</option>
+                                        
+                                        <!-- 🔥 새로운 분류 체계 -->
+                                        <div class="row">
+                                            <div class="col-12">
+                                                <h6 class="text-secondary">
+                                                    <i class="fas fa-sitemap me-1"></i>분류 관리 (Excel 기반)
+                                                </h6>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="mb-3">
+                                                    <label class="form-label">제품군</label>
+                                                    <select class="form-select product-group-code" name="product_group_code_seq[]">
+                                                        <option value="">제품군을 선택하세요</option>
+                                                        {% for group in product_group_codes %}
+                                                        <option value="{{ group.seq }}">{{ group.code_name }}</option>
+                                                        {% endfor %}
                                                     </select>
-                                                    <small class="text-muted">추가 색상 분류</small>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="mb-3">
-                                                    <label class="form-label">🔥 색상별(상세)</label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="mb-3">
+                                                    <label class="form-label">아이템별</label>
+                                                    <select class="form-select item-code" name="item_code_seq[]">
+                                                        <option value="">아이템을 선택하세요</option>
+                                                        {% for item in item_codes %}
+                                                        <option value="{{ item.seq }}">{{ item.code_name }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="mb-3">
+                                                    <label class="form-label">아이템상세</label>
+                                                    <select class="form-select item-detail-code" name="item_detail_code_seq[]">
+                                                        <option value="">아이템상세를 선택하세요</option>
+                                                        {% for detail in item_detail_codes %}
+                                                        <option value="{{ detail.seq }}">{{ detail.code_name }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="mb-3">
+                                                    <label class="form-label">제품타입</label>
+                                                    <select class="form-select product-type-category-code" name="product_type_category_code_seq[]">
+                                                        <option value="">제품타입을 선택하세요</option>
+                                                        {% for type in product_type_category_codes %}
+                                                        <option value="{{ type.seq }}">{{ type.code_name }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="mb-3">
+                                                    <label class="form-label">색상별(상세)</label>
                                                     <select class="form-select color-detail-code" name="color_detail_code_seq[]">
-                                                        <option value="">선택하세요</option>
+                                                        <option value="">색상별(상세)를 선택하세요</option>
+                                                        {% for color_detail in color_detail_codes %}
+                                                        <option value="{{ color_detail.seq }}">{{ color_detail.code_name }} ({{ color_detail.code }})</option>
+                                                        {% endfor %}
                                                     </select>
                                                     <small class="text-muted">235개 세부 색상 선택 가능</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-info">
+                                                    <i class="fas fa-info-circle me-1"></i> Excel에서 가져온 분류 체계입니다.
+                                                </small>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <button type="button" class="btn btn-outline-danger btn-sm btn-remove-model w-100">
+                                                    <i class="fas fa-times me-1"></i>이 색상 모델 제거
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                                 
-                                        <!-- 제거 버튼 영역 -->
-                                        <div class="row mt-3">
-                                            <div class="col-12">
-                                                <hr class="my-2">
-                                                <div class="d-flex justify-content-between align-items-center">
-                                                    <small class="text-muted">
-                                                        <i class="fas fa-info-circle me-1"></i>
-                                                        이 색상 모델을 삭제하려면 제거 버튼을 클릭하세요
-                                                    </small>
-                                                    <button type="button" class="btn btn-outline-danger btn-sm btn-remove-model">
-                                                        <i class="fas fa-times me-1"></i>이 색상 모델 제거
-                                        </button>
-                                                </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
                                 <div class="text-end mt-2">
                                     <button type="button" class="btn btn-outline-primary btn-sm" id="addProductModelBtn">
                                         <i class="fas fa-plus me-1"></i>색상 모델 추가
-                            </button>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -879,10 +942,10 @@ body.modal-open {
 
 {% block extra_js %}
 <!-- 상품 관리 JavaScript 파일들 -->
-<script src="/static/js/common/ajax-helper.js?v=20241224000000"></script>
-<script src="/static/js/common/ui-components.js?v=20241224000000"></script>
-<script src="/static/js/modules/product/product-list.js?v=20241224000000"></script>
-<script src="/static/js/modules/product/product-manager.js?v=20241224000000"></script>
+<script src="/static/js/common/ajax-helper.js?v=1754977360"></script>
+<script src="/static/js/common/ui-components.js?v=1754977360"></script>
+<script src="/static/js/modules/product/product-list.js?v=1754977360"></script>
+<script src="/static/js/modules/product/product-manager.js?v=1754977360"></script>
 
 <script>
 // 페이지 초기화 완료 로그
@@ -1851,14 +1914,14 @@ function addProductModel() {
                 </div>
             </div>
             
-            <!-- �� 추가 관리 필드들 (ANS, 세부브랜드) -->
+            <!-- 🔥 추가 관리 필드들 (ANS, 세부브랜드, 색상별) -->
             <div class="row">
                 <div class="col-12">
                     <h6 class="text-secondary">
                         <i class="fas fa-cogs me-1"></i>추가 관리
                     </h6>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <div class="mb-3">
                         <label class="form-label">ANS</label>
                         <select class="form-select ans-value" name="ans_value[]">
@@ -1867,7 +1930,7 @@ function addProductModel() {
                         <small class="text-muted">1~30 값 선택</small>
                     </div>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <div class="mb-3">
                         <label class="form-label">세부브랜드</label>
                         <select class="form-select detail-brand-code" name="detail_brand_code_seq[]">
@@ -1876,57 +1939,13 @@ function addProductModel() {
                         <small class="text-muted">브랜드 코드 참조</small>
                     </div>
                 </div>
-            </div>
-            
-            <!-- 🔥 새로운 분류 체계 -->
-            <div class="row">
-                <div class="col-12">
-                    <h6 class="text-secondary">
-                        <i class="fas fa-sitemap me-1"></i>분류 관리 (Excel 기반)
-                    </h6>
-                </div>
                 <div class="col-md-4">
                     <div class="mb-3">
-                        <label class="form-label">🔥 제품구분</label>
-                        <select class="form-select product-division-code" name="product_division_code_seq[]">
-                            ${productDivisionOptionsHtml}
+                        <label class="form-label">색상별(추가)</label>
+                        <select class="form-select color-by-product-code" name="color_by_product_code_seq[]">
+                            <option value="">선택하세요</option>
                         </select>
-                        <small class="text-muted">PD 그룹 (4개)</small>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="mb-3">
-                        <label class="form-label">제품군</label>
-                        <select class="form-select product-group-code" name="product_group_code_seq[]">
-                            ${productGroupOptionsHtml}
-                        </select>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="mb-3">
-                        <label class="form-label">아이템별</label>
-                        <select class="form-select item-code" name="item_code_seq[]">
-                            ${itemOptionsHtml}
-                        </select>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="row">
-                <div class="col-md-4">
-                    <div class="mb-3">
-                        <label class="form-label">아이템상세</label>
-                        <select class="form-select item-detail-code" name="item_detail_code_seq[]">
-                            ${itemDetailOptionsHtml}
-                        </select>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="mb-3">
-                        <label class="form-label">제품타입</label>
-                        <select class="form-select product-type-category-code" name="product_type_category_code_seq[]">
-                            ${productTypeOptionsHtml}
-                        </select>
+                        <small class="text-muted">추가 색상 분류</small>
                     </div>
                 </div>
                 <div class="col-md-4">
@@ -1936,6 +1955,22 @@ function addProductModel() {
                             ${colorDetailOptionsHtml}
                         </select>
                         <small class="text-muted">235개 세부 색상 선택 가능</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 제거 버튼 영역 -->
+            <div class="row mt-3">
+                <div class="col-12">
+                    <hr class="my-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            이 색상 모델을 삭제하려면 제거 버튼을 클릭하세요
+                        </small>
+                        <button type="button" class="btn btn-outline-danger btn-sm btn-remove-model">
+                            <i class="fas fa-times me-1"></i>이 색상 모델 제거
+                    </button>
                     </div>
                 </div>
             </div>
