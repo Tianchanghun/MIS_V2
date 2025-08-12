@@ -407,6 +407,19 @@ class ProductManager {
         console.log('📝 상품 수정 폼 채우기:', productData);
         console.log('📦 상품 모델 데이터:', productModels);
         
+        // 🔍 API 응답 데이터 상세 분석
+        console.log('🔍 productData 상세 분석:');
+        console.log(`  - id: ${productData.id}`);
+        console.log(`  - company_id: ${productData.company_id}`);
+        console.log(`  - brand_code_seq: ${productData.brand_code_seq}`);
+        console.log(`  - category_code_seq: ${productData.category_code_seq}`);
+        console.log(`  - type_code_seq: ${productData.type_code_seq}`);
+        console.log(`  - year_code_seq: ${productData.year_code_seq}`);
+        console.log(`  - div_type_code_seq: ${productData.div_type_code_seq} ⬅️ 제품구분 필드`);
+        console.log(`  - color_code_seq: ${productData.color_code_seq}`);
+        console.log(`  - product_code_seq: ${productData.product_code_seq}`);
+        console.log(`  - is_active: ${productData.is_active}`);
+        
         // 기본 필드들
         $('#productId').val(productData.id);
         $('#product_name').val(productData.product_name);
@@ -462,8 +475,20 @@ class ProductManager {
         
         // 🔥 4단계: 제품구분 설정 (200ms 지연) - 파싱된 코드값 활용  
         setTimeout(() => {
-        if (productData.div_type_code_seq) {
+            console.log('🔧 제품구분 설정 데이터 확인:');
+            console.log('  - productData.div_type_code_seq:', productData.div_type_code_seq);
+            console.log('  - parsedCodes.prodGroup:', parsedCodes.prodGroup);
+            console.log('  - 제품구분 셀렉트박스 옵션들:');
+            $('#prod_group_code_seq option').each(function() {
+                if ($(this).val()) {
+                    console.log(`    * value: ${$(this).val()}, data-code: ${$(this).data('code')}, text: ${$(this).text()}`);
+                }
+            });
+            
+            if (productData.div_type_code_seq) {
                 this.setSelectValue('prod_group_code_seq', productData.div_type_code_seq, '제품구분', parsedCodes.prodGroup);
+            } else {
+                console.warn('⚠️ div_type_code_seq가 없습니다. 제품구분을 설정할 수 없습니다.');
             }
         }, 200);
         
