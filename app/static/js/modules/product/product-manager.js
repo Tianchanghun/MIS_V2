@@ -312,10 +312,10 @@ class ProductManager {
                 // 🔥 추가 관리 필드들
                 ans_value: $(this).find('.ans-value').val(),
                 detail_brand_code_seq: $(this).find('.detail-brand-code').val(),
-                color_by_product_code_seq: $(this).find('.color-by-product-code').val(),
                 color_detail_code_seq: $(this).find('.color-detail-code').val(),
                 
                 // 🔥 새로운 분류 체계 필드들
+                product_division_code_seq: $(this).find('.product_division_code_seq').val(),
                 product_group_code_seq: $(this).find('.product-group-code').val(),
                 item_code_seq: $(this).find('.item-code').val(),
                 item_detail_code_seq: $(this).find('.item-detail-code').val(),
@@ -676,12 +676,21 @@ class ProductManager {
             });
         }
         
-        // 🔥 색상별(추가) 옵션 HTML 생성 (색상별제품 그룹)
-        let colorByProductOptionsHtml = '<option value="">선택하세요</option>';
-        if (window.colorByProductCodesData) {
-            window.colorByProductCodesData.forEach(colorByProduct => {
-                const isSelected = model.color_by_product_code_seq && model.color_by_product_code_seq == colorByProduct.seq ? 'selected' : '';
-                colorByProductOptionsHtml += `<option value="${colorByProduct.seq}" ${isSelected}>${colorByProduct.code_name} (${colorByProduct.code})</option>`;
+        // 🔥 세부브랜드(CL2) 옵션 HTML 생성
+        let detailBrandOptionsHtml = '<option value="">세부브랜드를 선택하세요</option>';
+        if (window.detailBrandCodesData) {
+            window.detailBrandCodesData.forEach(detailBrand => {
+                const isSelected = model.detail_brand_code_seq && model.detail_brand_code_seq == detailBrand.seq ? 'selected' : '';
+                detailBrandOptionsHtml += `<option value="${detailBrand.seq}" ${isSelected}>${detailBrand.code_name} (${detailBrand.code})</option>`;
+            });
+        }
+        
+        // 🔥 제품구분(PD) 옵션 HTML 생성
+        let productDivisionOptionsHtml = '<option value="">제품구분을 선택하세요</option>';
+        if (window.productDivisionCodesData) {
+            window.productDivisionCodesData.forEach(division => {
+                const isSelected = model.product_division_code_seq && model.product_division_code_seq == division.seq ? 'selected' : '';
+                productDivisionOptionsHtml += `<option value="${division.seq}" ${isSelected}>${division.code_name} (${division.code})</option>`;
             });
         }
         
@@ -823,18 +832,9 @@ class ProductManager {
                         <div class="mb-3">
                             <label class="form-label">세부브랜드</label>
                             <select class="form-select detail-brand-code" name="detail_brand_code_seq[]">
-                                ${brandOptionsHtml}
+                                ${detailBrandOptionsHtml}
                             </select>
                             <small class="text-muted">브랜드 코드 참조</small>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="mb-3">
-                            <label class="form-label">색상별(추가)</label>
-                            <select class="form-select color-by-product-code" name="color_by_product_code_seq[]">
-                                ${colorByProductOptionsHtml}
-                            </select>
-                            <small class="text-muted">추가 색상 분류</small>
                         </div>
                     </div>
                 </div>
@@ -873,6 +873,14 @@ class ProductManager {
                 </div>
                 
                 <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">제품구분</label>
+                            <select class="form-select product_division_code_seq" name="product_division_code_seq[]">
+                                ${productDivisionOptionsHtml}
+                            </select>
+                        </div>
+                    </div>
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label class="form-label">제품타입</label>

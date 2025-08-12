@@ -116,6 +116,10 @@ def index():
         prod_type_codes = safe_get_codes('타입')     # TP 그룹
         type2_codes = safe_get_codes('타입2')
         
+        # 🔥 새로 추가된 코드들
+        detail_brand_codes = safe_get_codes('분류2')  # CL2 그룹 (세부브랜드)
+        product_division_codes = safe_get_codes('제품구분')  # PD 그룹
+        
         # 9. 새로운 분류 체계들 (실제 존재하는 그룹들)
         product_group_codes = safe_get_codes('제품군')  # PG 그룹
         item_codes = safe_get_codes('아이템별')
@@ -149,6 +153,9 @@ def index():
                              color_by_product_codes=color_by_product_codes,
                              product_type_category_codes=product_type_category_codes,
                              color_detail_codes=color_detail_codes,
+                             # 🔥 새로 추가된 코드들
+                             detail_brand_codes=detail_brand_codes,
+                             product_division_codes=product_division_codes,
                              search_term=search_term,
                              brand_code_seq=brand_code_seq,
                              category_code_seq=category_code_seq,
@@ -356,12 +363,12 @@ def api_create():
                             operation_price=int(model_data.get('operation_price', 0)) if model_data.get('operation_price') else 0,
                             ans_value=int(model_data.get('ans_value', 0)) if model_data.get('ans_value') else None,
                             detail_brand_code_seq=int(model_data.get('detail_brand_code_seq', 0)) if model_data.get('detail_brand_code_seq') else None,
-                            color_by_product_code_seq=int(model_data.get('color_by_product_code_seq', 0)) if model_data.get('color_by_product_code_seq') else None,
+                            color_detail_code_seq=int(model_data.get('color_detail_code_seq', 0)) if model_data.get('color_detail_code_seq') else None,
+                            product_division_code_seq=int(model_data.get('product_division_code_seq', 0)) if model_data.get('product_division_code_seq') else None,
                             product_group_code_seq=int(model_data.get('product_group_code_seq', 0)) if model_data.get('product_group_code_seq') else None,
                             item_code_seq=int(model_data.get('item_code_seq', 0)) if model_data.get('item_code_seq') else None,
                             item_detail_code_seq=int(model_data.get('item_detail_code_seq', 0)) if model_data.get('item_detail_code_seq') else None,
                             product_type_category_code_seq=int(model_data.get('product_type_category_code_seq', 0)) if model_data.get('product_type_category_code_seq') else None,
-                            color_detail_code_seq=int(model_data.get('color_detail_code_seq', 0)) if model_data.get('color_detail_code_seq') else None,
                             
                             created_by=session.get('member_id', 'admin'),
                             updated_by=session.get('member_id', 'admin')

@@ -969,6 +969,25 @@ $(document).ready(function() {
         window.colorDetailCodesData = [];
     }
     
+    // 🔥 새로 추가된 코드들
+    // 세부브랜드(CL2) 코드 데이터를 전역 변수로 설정
+    try {
+        window.detailBrandCodesData = JSON.parse('{{ detail_brand_codes | tojson | safe }}');
+        console.log('✅ 세부브랜드 코드 데이터 로드:', window.detailBrandCodesData.length + '개');
+    } catch (e) {
+        console.error('❌ 세부브랜드 코드 데이터 로드 실패:', e);
+        window.detailBrandCodesData = [];
+    }
+    
+    // 제품구분(PD) 코드 데이터를 전역 변수로 설정
+    try {
+        window.productDivisionCodesData = JSON.parse('{{ product_division_codes | tojson | safe }}');
+        console.log('✅ 제품구분 코드 데이터 로드:', window.productDivisionCodesData.length + '개');
+    } catch (e) {
+        console.error('❌ 제품구분 코드 데이터 로드 실패:', e);
+        window.productDivisionCodesData = [];
+    }
+    
     // ✅ 모든 중복 API 호출 제거 - productListManager가 알아서 처리
     console.log('🎯 ProductListManager 초기화 확인');
     
