@@ -555,17 +555,17 @@ def api_generate_code():
             return jsonify({'success': False, 'message': '선택된 코드 중 일부를 찾을 수 없습니다.'}), 400
         
         # 레거시 자사코드 생성 로직 (16자리) - tbl_Product_DTL 기준
-        # 브랜드(2) + 구분타입(1) + 제품군(2) + 제품타입(2) + 제품(2) + 타입2(2) + 년도(2) + 색상(3)
-        # 🔥 레거시와 달리 제품구분 코드를 구분타입으로 사용 (고정 '1' 대신)
+        # 🔥 레거시 정확한 구조: 브랜드(2) + 구분타입(1) + 제품군(2) + 제품타입(2) + 품목(2) + 타입2(2) + 년도(2) + 색상(3)
+        # 레거시 파싱: Substring(0,2) + Substring(2,1) + Substring(4,2) + Substring(5,2) + Substring(7,2) + Substring(9,2) + 년도 + Substring(13,3)
         generated_code = generate_legacy_std_code_16digit(
-            brand_code.code,        # 브랜드(2)
-            prod_group_code.code[:1],  # 🔥 제품구분 코드의 첫 글자를 구분타입(1)으로 사용
-            prod_group_code.code,   # 제품구분(2) - PRT 그룹
-            prod_type_code.code,    # 제품타입(2) - TP 그룹  
-            prod_code.code,         # 품목(2) - PRD 그룹
-            '00',                   # 타입2(2) 기본값
-            year_code.code,         # 년도(2)
-            color_code.code         # 색상(3)
+            brand_code.code,           # 브랜드(2) - 위치 0-1
+            prod_group_code.code[:1],  # 🔥 구분타입(1) - 위치 2 (제품구분 코드의 첫 글자)  
+            prod_group_code.code,      # 제품구분(2) - 위치 3-4 (레거시에서는 4-5 위치에 제품군)
+            prod_type_code.code,       # 제품타입(2) - 위치 5-6 (레거시와 동일)
+            prod_code.code,            # 품목(2) - 위치 7-8 (레거시와 동일)
+            '00',                      # 타입2(2) - 위치 9-10 (기본값)
+            year_code.code,            # 년도(2) - 위치 11-12 (레거시와 동일)
+            color_code.code            # 색상(3) - 위치 13-15 (레거시와 동일)
         )
         
         # 중복 확인
@@ -589,14 +589,14 @@ def api_generate_code():
             'success': True,
             'generated_code': generated_code,
             'components': {
-                'brand': brand_code.code,
-                'div_type': '1',
-                'prod_group': prod_group_code.code,
-                'prod_type': prod_type_code.code,
-                'prod': prod_code.code,
-                'type2': '00',
-                'year': year_code.code,
-                'color': color_code.code
+                'brand': brand_code.code,                    # 브랜드 (위치 0-1)
+                'div_type': prod_group_code.code[:1],        # 🔥 구분타입 (위치 2) - 제품구분 첫글자
+                'prod_group': prod_group_code.code,          # 제품군 (위치 3-4)
+                'prod_type': prod_type_code.code,            # 제품타입 (위치 5-6)
+                'prod': prod_code.code,                      # 품목 (위치 7-8)
+                'type2': '00',                               # 타입2 (위치 9-10)
+                'year': year_code.code,                      # 년도 (위치 11-12)
+                'color': color_code.code                     # 색상 (위치 13-15)
             }
         })
         
@@ -607,19 +607,20 @@ def api_generate_code():
 def generate_legacy_std_code_16digit(brand, div_type, prod_group, prod_type, prod, type2, year, color):
     """
     레거시 방식 자사코드 생성 (16자리) - tbl_Product_DTL 기준
-    총 16자리: 브랜드(2) + 구분타입(1) + 제품군(2) + 제품타입(2) + 제품(2) + 타입2(2) + 년도(2) + 색상(3)
-    예시: JI1SGZ1CT0018STN
+    🔥 실제 레거시 구조: 브랜드(2) + 구분타입(1) + 제품군(2) + 제품타입(2) + 품목(2) + 타입2(2) + 년도(2) + 색상(3)
+    레거시 예시: JI1SGTR0025BLK (실제 사용된 예시)
     """
-    # 각 구성요소를 정해진 길이로 맞추기
-    brand_part = (brand or 'AA')[:2].ljust(2, 'A').upper()          # 2자리 (JI)
-    div_type_part = (div_type or '1')[:1]                           # 1자리 (1)
-    prod_group_part = (prod_group or 'AA')[:2].ljust(2, 'A').upper() # 2자리 (SG)
-    prod_type_part = (prod_type or 'AA')[:2].ljust(2, 'A').upper()  # 2자리 (Z1)  
-    prod_part = (prod or 'AA')[:2].ljust(2, 'A').upper()           # 2자리 (CT)
-    type2_part = (type2 or '00')[:2].ljust(2, '0')                  # 2자리 (00)
-    year_part = (year or '00')[-2:].ljust(2, '0')                   # 2자리 년도 (18)
-    color_part = (color or 'AAA')[:3].ljust(3, 'A').upper()        # 3자리 색상 (STN)
+    # 각 구성요소를 정해진 길이로 맞추기 (레거시와 정확히 동일)
+    brand_part = (brand or 'AA')[:2].ljust(2, 'A').upper()          # 2자리 브랜드
+    div_type_part = (div_type or '1')[:1]                           # 1자리 구분타입 (제품구분 첫글자)
+    prod_group_part = (prod_group or 'AA')[:2].ljust(2, 'A').upper() # 2자리 제품군
+    prod_type_part = (prod_type or 'AA')[:2].ljust(2, 'A').upper()  # 2자리 제품타입  
+    prod_part = (prod or 'AA')[:2].ljust(2, 'A').upper()           # 2자리 품목
+    type2_part = (type2 or '00')[:2].ljust(2, '0')                  # 2자리 타입2
+    year_part = (year or '00')[-2:].ljust(2, '0')                   # 2자리 년도 (뒤 2자리)
+    color_part = (color or 'AAA')[:3].ljust(3, 'A').upper()        # 3자리 색상
     
+    # 레거시와 정확히 동일한 순서로 조합
     std_code = brand_part + div_type_part + prod_group_part + prod_type_part + prod_part + type2_part + year_part + color_part
     
     return std_code.upper()
