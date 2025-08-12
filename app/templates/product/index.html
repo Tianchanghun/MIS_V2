@@ -2242,6 +2242,8 @@ window.itemDetailCodesData = {{ item_detail_codes | tojson }};
 window.productTypeCategoryCodesData = {{ product_type_category_codes | tojson }};
 window.companyCodesData = {{ company_codes | tojson }};
 window.yearCodesData = {{ year_codes | tojson }};
+// 🔥 타입2 코드 데이터 추가 (TP 그룹 - 2자리)
+window.tp2CodesData = {{ tp2_codes | tojson }};
 
 console.log('🔧 JavaScript 변수 설정 완료:');
 console.log('  - 색상 코드:', window.colorCodesData?.length || 0, '개');

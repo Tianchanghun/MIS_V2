@@ -116,6 +116,19 @@ def index():
         prod_type_codes = safe_get_codes('타입')     # TP 그룹
         type2_codes = safe_get_codes('타입2')
         
+        # 🔥 타입2 코드들 (TP 그룹에서 2자리 코드만 필터링)
+        tp_codes_raw = safe_get_codes('TP')
+        if not tp_codes_raw:
+            # TP 그룹이 없으면 기본 타입2 코드들 생성
+            tp2_codes = [
+                {'seq': 9999, 'code': '00', 'code_name': '기본타입'},
+                {'seq': 9998, 'code': '01', 'code_name': '타입01'},
+                {'seq': 9997, 'code': '02', 'code_name': '타입02'}
+            ]
+        else:
+            # 2자리 코드만 필터링
+            tp2_codes = [code for code in tp_codes_raw if len(code.get('code', '')) == 2]
+        
         # 🔥 새로 추가된 코드들
         detail_brand_codes = safe_get_codes('세부 브랜드')  # CL2 그룹 (세부브랜드)
         product_division_codes = safe_get_codes('제품구분')  # PD 그룹 (4개)
@@ -146,6 +159,8 @@ def index():
                              prod_group_codes=prod_group_codes,
                              prod_type_codes=prod_type_codes,
                              type2_codes=type2_codes,
+                             # 🔥 타입2 코드들 (TP 그룹 - 2자리만)
+                             tp2_codes=tp2_codes,
                              # 🔥 새로운 분류 체계들 추가
                              product_group_codes=product_group_codes,
                              item_codes=item_codes,
@@ -551,6 +566,12 @@ def api_generate_code():
         year_code = Code.query.get(data['yearSeq'])            # 년도
         color_code = Code.query.get(data['colorSeq'])          # 색상
         
+        # 🔥 타입2 코드 조회 (선택사항 - 없으면 기본값 '00')
+        type2_code = None
+        if data.get('type2Seq'):
+            type2_code = Code.query.get(data['type2Seq'])
+        type2_value = type2_code.code if type2_code else '00'
+        
         if not all([brand_code, prod_group_code, prod_code, prod_type_code, year_code, color_code]):
             return jsonify({'success': False, 'message': '선택된 코드 중 일부를 찾을 수 없습니다.'}), 400
         
@@ -563,7 +584,7 @@ def api_generate_code():
             prod_group_code.code,      # 제품구분(2) - 위치 3-4 (레거시에서는 4-5 위치에 제품군)
             prod_type_code.code,       # 제품타입(2) - 위치 5-6 (레거시와 동일)
             prod_code.code,            # 품목(2) - 위치 7-8 (레거시와 동일)
-            '00',                      # 타입2(2) - 위치 9-10 (기본값)
+            type2_value,               # 타입2(2) - 위치 9-10 (기본값)
             year_code.code,            # 년도(2) - 위치 11-12 (레거시와 동일)
             color_code.code            # 색상(3) - 위치 13-15 (레거시와 동일)
         )
@@ -594,7 +615,7 @@ def api_generate_code():
                 'prod_group': prod_group_code.code,          # 제품군 (위치 3-4)
                 'prod_type': prod_type_code.code,            # 제품타입 (위치 5-6)
                 'prod': prod_code.code,                      # 품목 (위치 7-8)
-                'type2': '00',                               # 타입2 (위치 9-10)
+                'type2': type2_value,                        # 타입2 (위치 9-10)
                 'year': year_code.code,                      # 년도 (위치 11-12)
                 'color': color_code.code                     # 색상 (위치 13-15)
             }

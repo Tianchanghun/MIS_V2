@@ -309,6 +309,9 @@ class ProductManager {
                 name: $(this).find('.product-model-name').val() || $('#product_name').val(),
                 std_code: $(this).find('.std-product-code').val(),
                 
+                // 🔥 타입2 코드 추가
+                prod_type2_code_seq: $(this).find('.prod-type2-code').val(),
+                
                 // 🔥 코드 관리 필드들
                 douzone_code: $(this).find('.douzone-code').val(),
                 erpia_code: $(this).find('.erpia-code').val(),
@@ -703,6 +706,15 @@ class ProductManager {
             });
         }
         
+        // 🔥 타입2(TP) 옵션 HTML 생성 (2자리 코드만)
+        let tp2OptionsHtml = '<option value="">타입2를 선택하세요</option>';
+        if (window.tp2CodesData) {
+            window.tp2CodesData.forEach(tp2 => {
+                const isSelected = model.prod_type2_code_seq && model.prod_type2_code_seq == tp2.seq ? 'selected' : '';
+                tp2OptionsHtml += `<option value="${tp2.seq}" data-code="${tp2.code}" ${isSelected}>${tp2.code_name} (${tp2.code})</option>`;
+            });
+        }
+        
         return `
             <div class="product-model-item border p-3 mb-3" data-index="${index}" data-model-id="${model.id}">
                 <h6 class="text-primary mb-3">
@@ -712,7 +724,18 @@ class ProductManager {
 
                 <!-- 기본 정보 -->
                 <div class="row">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-cog me-1"></i>타입2 (TP) <span class="required">*</span>
+                            </label>
+                            <select class="form-select prod-type2-code" name="prod_type2_code[]" required>
+                                ${tp2OptionsHtml}
+                            </select>
+                            <small class="text-muted">TP 코드 그룹에서 관리 (2자리)</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
                         <div class="mb-3">
                             <label class="form-label">
                                 <i class="fas fa-palette me-1"></i>색상 (CR) <span class="required">*</span>
@@ -723,7 +746,7 @@ class ProductManager {
                             <small class="text-muted">CR 코드 그룹에서 관리</small>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="mb-3">
                             <label class="form-label">제품명 (색상별)</label>
                             <input type="text" class="form-control product-model-name" 
@@ -732,7 +755,7 @@ class ProductManager {
                                    placeholder="색상별 제품명 (선택사항)">
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="mb-3">
                             <label class="form-label">16자리 자사코드</label>
                             <div class="input-group">
