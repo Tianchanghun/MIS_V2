@@ -1518,6 +1518,21 @@ class ProductDetail(db.Model):
     status = db.Column(db.String(20), default='Active')  # Active, Inactive, Discontinued
     use_yn = db.Column(db.String(1), default='Y')  # 레거시 호환용 (Y/N)
     
+    # 🔥 새로 추가된 필드들 (실제 DB 컬럼)
+    douzone_code = db.Column(db.String(50))                    # 더존코드
+    erpia_code = db.Column(db.String(50))                      # ERPIA코드
+    official_cost = db.Column(db.Integer, default=0)           # 공식원가
+    consumer_price = db.Column(db.Integer, default=0)          # 소비자가
+    operation_price = db.Column(db.Integer, default=0)         # 운영가
+    ans_value = db.Column(db.Integer)                          # ANS (01-30)
+    detail_brand_code_seq = db.Column(db.Integer, db.ForeignKey('tbl_code.seq'))  # 세부브랜드 (CL2)
+    color_detail_code_seq = db.Column(db.Integer, db.ForeignKey('tbl_code.seq'))  # 색상별(상세) (CLD)
+    product_division_code_seq = db.Column(db.Integer, db.ForeignKey('tbl_code.seq'))  # 제품구분 (PD)
+    product_group_code_seq = db.Column(db.Integer, db.ForeignKey('tbl_code.seq'))     # 제품군 (PG)
+    item_code_seq = db.Column(db.Integer, db.ForeignKey('tbl_code.seq'))             # 아이템별 (IT)
+    item_detail_code_seq = db.Column(db.Integer, db.ForeignKey('tbl_code.seq'))      # 아이템상세 (ITD)
+    product_type_category_code_seq = db.Column(db.Integer, db.ForeignKey('tbl_code.seq'))  # 제품타입 (PT)
+    
     # 레거시 연결 (새로 추가)
     legacy_seq = db.Column(db.Integer, unique=True, nullable=True)  # 레거시 Seq 연결
     
@@ -1554,18 +1569,19 @@ class ProductDetail(db.Model):
             'use_yn': self.use_yn,
             
             # 🔥 새로 추가된 필드들
-            'douzone_code': getattr(self, 'douzone_code', None),
-            'erpia_code': getattr(self, 'erpia_code', None),
-            'official_cost': getattr(self, 'official_cost', None),
-            'consumer_price': getattr(self, 'consumer_price', None),
-            'operation_price': getattr(self, 'operation_price', None),
-            'ans_value': getattr(self, 'ans_value', None),
-            'detail_brand_code_seq': getattr(self, 'detail_brand_code_seq', None),
-            'category1_code_seq': getattr(self, 'category1_code_seq', None),
-            'category2_code_seq': getattr(self, 'category2_code_seq', None),
-            'category3_code_seq': getattr(self, 'category3_code_seq', None),
-            'category4_code_seq': getattr(self, 'category4_code_seq', None),
-            'category5_code_seq': getattr(self, 'category5_code_seq', None),
+            'douzone_code': self.douzone_code,
+            'erpia_code': self.erpia_code,
+            'official_cost': self.official_cost,
+            'consumer_price': self.consumer_price,
+            'operation_price': self.operation_price,
+            'ans_value': self.ans_value,
+            'detail_brand_code_seq': self.detail_brand_code_seq,
+            'color_detail_code_seq': self.color_detail_code_seq,
+            'product_division_code_seq': self.product_division_code_seq,
+            'product_group_code_seq': self.product_group_code_seq,
+            'item_code_seq': self.item_code_seq,
+            'item_detail_code_seq': self.item_detail_code_seq,
+            'product_type_category_code_seq': self.product_type_category_code_seq,
             
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,

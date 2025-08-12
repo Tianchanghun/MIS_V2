@@ -878,11 +878,13 @@ body.modal-open {
 {% endblock %}
 
 {% block extra_js %}
-<!-- 상품 관리 JavaScript 파일들 -->
-<script src="/static/js/common/ajax-helper.js?v=20241224000000"></script>
-<script src="/static/js/common/ui-components.js?v=20241224000000"></script>
-<script src="/static/js/modules/product/product-list.js?v=20241224000000"></script>
-<script src="/static/js/modules/product/product-manager.js?v=20241224000000"></script>
+<!-- 공통 라이브러리 -->
+<script src="/static/js/common/ajax-helper.js?v=1754968604"></script>
+<script src="/static/js/common/ui-components.js?v=1754968604"></script>
+
+<!-- 상품 관리 모듈 -->
+<script src="/static/js/modules/product/product-list.js?v=1754968604"></script>
+<script src="/static/js/modules/product/product-manager.js?v=1754968604"></script>
 
 <script>
 // 페이지 초기화 완료 로그
@@ -2232,25 +2234,25 @@ async function uploadExcel(input) {
 <!-- 🔥 코드 데이터를 JavaScript 변수로 설정 -->
 <script>
 // 전역 변수로 코드 데이터 설정
-window.colorCodesData = {{ color_codes | tojson | safe }};
-window.brandCodesData = {{ brand_codes | tojson | safe }};
-window.productGroupCodesData = {{ product_group_codes | tojson | safe }};
-window.itemCodesData = {{ item_codes | tojson | safe }};
-window.itemDetailCodesData = {{ item_detail_codes | tojson | safe }};
-window.productTypeCategoryCodesData = {{ product_type_category_codes | tojson | safe }};
-window.companyCodesData = {{ company_codes | tojson | safe }};
-window.yearCodesData = {{ year_codes | tojson | safe }};
+window.colorCodesData = {{ color_codes | tojson }};
+window.brandCodesData = {{ brand_codes | tojson }};
+window.productGroupCodesData = {{ product_group_codes | tojson }};
+window.itemCodesData = {{ item_codes | tojson }};
+window.itemDetailCodesData = {{ item_detail_codes | tojson }};
+window.productTypeCategoryCodesData = {{ product_type_category_codes | tojson }};
+window.companyCodesData = {{ company_codes | tojson }};
+window.yearCodesData = {{ year_codes | tojson }};
 // 🔥 타입2 코드 데이터 추가 (TP 그룹 - 2자리)
-window.tp2CodesData = {{ tp2_codes | tojson | safe }};
-window.colorDetailCodesData = {{ color_detail_codes | tojson | safe }};
-window.detailBrandCodesData = {{ detail_brand_codes | tojson | safe }};
-window.productDivisionCodesData = {{ product_division_codes | tojson | safe }};
+window.tp2CodesData = {{ tp2_codes | tojson }};
 
 console.log('🔧 JavaScript 변수 설정 완료:');
 console.log('  - 색상 코드:', window.colorCodesData?.length || 0, '개');
 console.log('  - 브랜드 코드:', window.brandCodesData?.length || 0, '개');
 console.log('  - 제품군 코드:', window.productGroupCodesData?.length || 0, '개');
 console.log('  - 아이템 코드:', window.itemCodesData?.length || 0, '개');
-console.log('  - 타입2 코드:', window.tp2CodesData?.length || 0, '개');
+console.log('  - 아이템상세 코드:', window.itemDetailCodesData?.length || 0, '개');
+console.log('  - 제품타입카테고리 코드:', window.productTypeCategoryCodesData?.length || 0, '개');
+console.log('  - 회사 코드:', window.companyCodesData?.length || 0, '개');
+console.log('  - 년도 코드:', window.yearCodesData?.length || 0, '개');
 </script>
 {% endblock %} 

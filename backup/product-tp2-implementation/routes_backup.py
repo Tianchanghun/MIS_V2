@@ -317,26 +317,26 @@ def api_create():
         
         # 새 상품 생성 (tbl_Product - 기본 정보)
         product = Product(
-            company_id=int(data.get('company_id', 1)),
-            brand_code_seq=int(data.get('brand_code_seq')) if data.get('brand_code_seq') else None,
-            category_code_seq=int(data.get('prod_group_code_seq')) if data.get('prod_group_code_seq') else None,  # 제품구분 → category로 매핑
-            type_code_seq=int(data.get('prod_type_code_seq')) if data.get('prod_type_code_seq') else None,       # 타입 → type으로 매핑
-            year_code_seq=int(data.get('year_code_seq')) if data.get('year_code_seq') else None,
+            company_id=current_company_id,
+            brand_code_seq=int(data['brand_code_seq']),
+            category_code_seq=int(data['prod_group_code_seq']),  # 제품구분 → category로 매핑
+            type_code_seq=int(data['prod_type_code_seq']),       # 타입 → type으로 매핑
+            year_code_seq=int(data['year_code_seq']),
             
             # 레거시 호환 필드들
-            div_type_code_seq=int(data.get('div_type_code_seq')) if data.get('div_type_code_seq') else None,
+            div_type_code_seq=int(data.get('div_type_code_seq', 0)) if data.get('div_type_code_seq') else None,
             
-            product_name=str(data.get('product_name', '')),
+            product_name=data['product_name'],
             product_code='',  # 레거시에서는 제품코드가 별도로 없음
-            price=int(data.get('price', 0)) if data.get('price') else 0,
-            description=str(data.get('description', '')),
+            price=int(data.get('price', 0)),
+            description=data.get('description', ''),
             
             # use_yn을 is_active로 변환
             is_active=data.get('use_yn', 'Y') == 'Y',
-            use_yn=str(data.get('use_yn', 'Y')),  # 레거시 호환용
+            use_yn=data.get('use_yn', 'Y'),  # 레거시 호환용
             
-            created_by=str(session.get('member_id', 'admin')),
-            updated_by=str(session.get('member_id', 'admin'))
+            created_by=session.get('member_id', 'admin'),
+            updated_by=session.get('member_id', 'admin')
         )
         
         db.session.add(product)
@@ -347,27 +347,22 @@ def api_create():
         if product_models_data:
             try:
                 import json
-                current_app.logger.info(f"🔧 제품모델 데이터 파싱 시작: {product_models_data}")
                 product_models = json.loads(product_models_data)
-                current_app.logger.info(f"🔧 파싱된 제품모델: {product_models}")
                 
                 for model_data in product_models:
-                    current_app.logger.info(f"🔧 모델 데이터 처리 중: {model_data}")
                     # 16자리 자사코드로 ProductDetail 생성
                     std_code = model_data['std_code']
                     if len(std_code) == 16:
-                        # 🔥 타입2 코드 변환 (seq → code)
+                        # 🔥 타입2 코드 seq 처리 (TP 그룹에서 실제 code 값 찾기)
                         prod_type2_code_value = '00'  # 기본값
                         if model_data.get('prod_type2_code_seq'):
                             try:
-                                type2_seq = int(model_data['prod_type2_code_seq'])
-                                type2_code_obj = Code.query.get(type2_seq)
+                                type2_code_obj = Code.query.get(int(model_data['prod_type2_code_seq']))
                                 if type2_code_obj:
                                     prod_type2_code_value = type2_code_obj.code
-                            except (ValueError, TypeError):
+                            except:
                                 pass
                         
-                        current_app.logger.info(f"🔧 ProductDetail 생성 시작")
                         product_detail = ProductDetail(
                             product_id=product.id,
                             brand_code=std_code[:2],
@@ -375,7 +370,7 @@ def api_create():
                             prod_group_code=std_code[3:5],
                             prod_type_code=std_code[5:7],
                             prod_code=std_code[7:9],
-                            prod_type2_code=prod_type2_code_value,  # 🔥 실제 Code 값 저장
+                            prod_type2_code=prod_type2_code_value,  # 🔥 TP 코드 실제 값 저장
                             year_code=std_code[11:13],
                             color_code=std_code[13:16],
                             std_div_prod_code=std_code,
@@ -385,27 +380,28 @@ def api_create():
                             additional_price=int(model_data.get('additional_price', 0)),
                             stock_quantity=int(model_data.get('stock_quantity', 0)),
                             
-                            # 🔥 새로운 필드들 추가 (안전한 변환)
-                            douzone_code=str(model_data.get('douzone_code', '')),
-                            erpia_code=str(model_data.get('erpia_code', '')),
+                            # 🔥 새로운 필드들 추가
+                            douzone_code=model_data.get('douzone_code', ''),
+                            erpia_code=model_data.get('erpia_code', ''),
                             official_cost=int(model_data.get('official_cost', 0)) if model_data.get('official_cost') else 0,
                             consumer_price=int(model_data.get('consumer_price', 0)) if model_data.get('consumer_price') else 0,
                             operation_price=int(model_data.get('operation_price', 0)) if model_data.get('operation_price') else 0,
                             ans_value=int(model_data.get('ans_value', 0)) if model_data.get('ans_value') else None,
+                            detail_brand_code_seq=int(model_data.get('detail_brand_code_seq', 0)) if model_data.get('detail_brand_code_seq') else None,
+                            color_detail_code_seq=int(model_data.get('color_detail_code_seq', 0)) if model_data.get('color_detail_code_seq') else None,
+                            product_division_code_seq=int(model_data.get('product_division_code_seq', 0)) if model_data.get('product_division_code_seq') else None,
+                            product_group_code_seq=int(model_data.get('product_group_code_seq', 0)) if model_data.get('product_group_code_seq') else None,
+                            item_code_seq=int(model_data.get('item_code_seq', 0)) if model_data.get('item_code_seq') else None,
+                            item_detail_code_seq=int(model_data.get('item_detail_code_seq', 0)) if model_data.get('item_detail_code_seq') else None,
+                            product_type_category_code_seq=int(model_data.get('product_type_category_code_seq', 0)) if model_data.get('product_type_category_code_seq') else None,
                             
                             created_by=session.get('member_id', 'admin'),
                             updated_by=session.get('member_id', 'admin')
                         )
-                        current_app.logger.info(f"🔧 ProductDetail 생성 완료")
                         db.session.add(product_detail)
-                        current_app.logger.info(f"🔧 ProductDetail 세션 추가 완료")
                         
-            except json.JSONDecodeError as e:
-                current_app.logger.error(f'❌ 제품모델 JSON 파싱 실패: {e}')
-                return jsonify({'success': False, 'message': f'제품모델 데이터 형식 오류: {str(e)}'}), 400
-            except Exception as e:
-                current_app.logger.error(f'❌ 제품모델 처리 실패: {e}')
-                return jsonify({'success': False, 'message': f'제품모델 처리 중 오류: {str(e)}'}), 500
+            except json.JSONDecodeError:
+                current_app.logger.warning('제품모델 데이터 파싱 실패')
         
         db.session.commit()
         
