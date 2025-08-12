@@ -1185,11 +1185,35 @@ function addProduct() {
             });
         }
         
-        // 브랜드 옵션 HTML 생성
+        // 브랜드 옵션 HTML 생성 (세부브랜드용)
         let brandOptionsHtml = '<option value="">브랜드를 선택하세요</option>';
         if (window.brandCodesData && window.brandCodesData.length > 0) {
             window.brandCodesData.forEach(brand => {
                 brandOptionsHtml += `<option value="${brand.seq}">${brand.code_name} (${brand.code})</option>`;
+            });
+        }
+        
+        // 🔥 세부브랜드(CL2) 옵션 HTML 생성
+        let detailBrandOptionsHtml = '<option value="">세부브랜드를 선택하세요</option>';
+        if (window.detailBrandCodesData) {
+            window.detailBrandCodesData.forEach(detailBrand => {
+                detailBrandOptionsHtml += `<option value="${detailBrand.seq}">${detailBrand.code_name} (${detailBrand.code})</option>`;
+            });
+        }
+        
+        // 🔥 제품구분(PD) 옵션 HTML 생성
+        let productDivisionOptionsHtml = '<option value="">제품구분을 선택하세요</option>';
+        if (window.productDivisionCodesData) {
+            window.productDivisionCodesData.forEach(division => {
+                productDivisionOptionsHtml += `<option value="${division.seq}">${division.code_name} (${division.code})</option>`;
+            });
+        }
+        
+        // 🔥 색상별(상세) 옵션 HTML 생성
+        let colorDetailOptionsHtml = '<option value="">색상별(상세)를 선택하세요</option>';
+        if (window.colorDetailCodesData) {
+            window.colorDetailCodesData.forEach(colorDetail => {
+                colorDetailOptionsHtml += `<option value="${colorDetail.seq}">${colorDetail.code_name} (${colorDetail.code})</option>`;
             });
         }
         
@@ -1359,7 +1383,7 @@ function addProduct() {
                         <div class="mb-3">
                             <label class="form-label">세부브랜드</label>
                             <select class="form-select detail-brand-code" name="detail_brand_code_seq[]">
-                                ${brandOptionsHtml}
+                                ${detailBrandOptionsHtml}
                             </select>
                             <small class="text-muted">브랜드 코드 참조</small>
                         </div>
@@ -1377,7 +1401,7 @@ function addProduct() {
                         <div class="mb-3">
                             <label class="form-label">🔥 색상별(상세)</label>
                             <select class="form-select color-detail-code" name="color_detail_code_seq[]">
-                                <option value="">선택하세요</option>
+                                ${colorDetailOptionsHtml}
                             </select>
                             <small class="text-muted">235개 세부 색상 선택 가능</small>
                         </div>
@@ -1659,6 +1683,30 @@ function addProductModel() {
         });
     }
     
+    // 🔥 세부브랜드(CL2) 옵션 HTML 생성
+    let detailBrandOptionsHtml = '<option value="">세부브랜드를 선택하세요</option>';
+    if (window.detailBrandCodesData) {
+        window.detailBrandCodesData.forEach(detailBrand => {
+            detailBrandOptionsHtml += `<option value="${detailBrand.seq}">${detailBrand.code_name} (${detailBrand.code})</option>`;
+        });
+    }
+    
+    // 🔥 제품구분(PD) 옵션 HTML 생성
+    let productDivisionOptionsHtml = '<option value="">제품구분을 선택하세요</option>';
+    if (window.productDivisionCodesData) {
+        window.productDivisionCodesData.forEach(division => {
+            productDivisionOptionsHtml += `<option value="${division.seq}">${division.code_name} (${division.code})</option>`;
+        });
+    }
+    
+    // 🔥 색상별(상세) 옵션 HTML 생성
+    let colorDetailOptionsHtml = '<option value="">색상별(상세)를 선택하세요</option>';
+    if (window.colorDetailCodesData) {
+        window.colorDetailCodesData.forEach(colorDetail => {
+            colorDetailOptionsHtml += `<option value="${colorDetail.seq}">${colorDetail.code_name} (${colorDetail.code})</option>`;
+        });
+    }
+    
     // 새로운 분류 체계 옵션들 생성
     let productGroupOptionsHtml = '<option value="">제품군을 선택하세요</option>';
     if (window.productGroupCodesData) {
@@ -1825,7 +1873,7 @@ function addProductModel() {
                     <div class="mb-3">
                         <label class="form-label">세부브랜드</label>
                         <select class="form-select detail-brand-code" name="detail_brand_code_seq[]">
-                            ${brandOptionsHtml}
+                            ${detailBrandOptionsHtml}
                         </select>
                         <small class="text-muted">브랜드 코드 참조</small>
                     </div>
@@ -1838,6 +1886,15 @@ function addProductModel() {
                     <h6 class="text-secondary">
                         <i class="fas fa-sitemap me-1"></i>분류 관리 (Excel 기반)
                     </h6>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label">🔥 제품구분</label>
+                        <select class="form-select product-division-code" name="product_division_code_seq[]">
+                            ${productDivisionOptionsHtml}
+                        </select>
+                        <small class="text-muted">PD 그룹 (4개)</small>
+                    </div>
                 </div>
                 <div class="col-md-4">
                     <div class="mb-3">
@@ -1855,6 +1912,9 @@ function addProductModel() {
                         </select>
                     </div>
                 </div>
+            </div>
+            
+            <div class="row">
                 <div class="col-md-4">
                     <div class="mb-3">
                         <label class="form-label">아이템상세</label>
@@ -1863,10 +1923,7 @@ function addProductModel() {
                         </select>
                     </div>
                 </div>
-            </div>
-            
-            <div class="row">
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <div class="mb-3">
                         <label class="form-label">제품타입</label>
                         <select class="form-select product-type-category-code" name="product_type_category_code_seq[]">
@@ -1875,75 +1932,12 @@ function addProductModel() {
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <small class="text-info">
-                        <i class="fas fa-info-circle me-1"></i>
-                        Excel에서 가져온 분류 체계입니다.
-                    </small>
-                </div>
-                <div class="col-md-2">
-                    <button type="button" class="btn btn-outline-danger btn-sm btn-remove-model w-100">
-                        <i class="fas fa-times me-1"></i>제거
-                    </button>
-                </div>
-            </div>
-            
-            <!-- 🔥 추가 관리 필드들 (ANS, 세부브랜드, 색상별) -->
-            <div class="row">
-                <div class="col-12">
-                    <h6 class="text-secondary">
-                        <i class="fas fa-cogs me-1"></i>추가 관리
-                    </h6>
-                </div>
-                <div class="col-md-4">
-                    <div class="mb-3">
-                        <label class="form-label">ANS</label>
-                        <select class="form-select ans-value" name="ans_value[]">
-                            ${ansOptionsHtml}
-                        </select>
-                        <small class="text-muted">1~30 값 선택</small>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="mb-3">
-                        <label class="form-label">세부브랜드</label>
-                        <select class="form-select detail-brand-code" name="detail_brand_code_seq[]">
-                            ${brandOptionsHtml}
-                        </select>
-                        <small class="text-muted">브랜드 코드 참조</small>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="mb-3">
-                        <label class="form-label">색상별(추가)</label>
-                        <select class="form-select color-by-product-code" name="color_by_product_code_seq[]">
-                            <option value="">선택하세요</option>
-                        </select>
-                        <small class="text-muted">추가 색상 분류</small>
-                    </div>
-                </div>
-                <div class="col-md-4">
                     <div class="mb-3">
                         <label class="form-label">🔥 색상별(상세)</label>
                         <select class="form-select color-detail-code" name="color_detail_code_seq[]">
-                            <option value="">선택하세요</option>
+                            ${colorDetailOptionsHtml}
                         </select>
                         <small class="text-muted">235개 세부 색상 선택 가능</small>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- 제거 버튼 영역 -->
-            <div class="row mt-3">
-                <div class="col-12">
-                    <hr class="my-2">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <small class="text-muted">
-                            <i class="fas fa-info-circle me-1"></i>
-                            이 색상 모델을 삭제하려면 제거 버튼을 클릭하세요
-                        </small>
-                        <button type="button" class="btn btn-outline-danger btn-sm btn-remove-model">
-                            <i class="fas fa-times me-1"></i>이 색상 모델 제거
-                        </button>
                     </div>
                 </div>
             </div>
