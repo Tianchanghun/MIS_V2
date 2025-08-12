@@ -328,12 +328,12 @@ def api_create():
         product = Product(
             company_id=int(data.get('company_id', 1)),
             brand_code_seq=int(data.get('brand_code_seq')) if data.get('brand_code_seq') else None,
-            category_code_seq=int(data.get('prod_group_code_seq')) if data.get('prod_group_code_seq') else None,  # 제품구분 → category로 매핑
-            type_code_seq=int(data.get('prod_type_code_seq')) if data.get('prod_type_code_seq') else None,       # 타입 → type으로 매핑
+            category_code_seq=int(data.get('prod_code_seq')) if data.get('prod_code_seq') else None,  # 🔥 품목 → category로 매핑
+            type_code_seq=int(data.get('prod_type_code_seq')) if data.get('prod_type_code_seq') else None,       # 🔥 타입 → type으로 매핑
             year_code_seq=int(data.get('year_code_seq')) if data.get('year_code_seq') else None,
             
             # 레거시 호환 필드들
-            div_type_code_seq=int(data.get('div_type_code_seq')) if data.get('div_type_code_seq') else None,
+            div_type_code_seq=int(data.get('prod_group_code_seq')) if data.get('prod_group_code_seq') else None,  # 🔥 제품구분 → div_type으로 매핑
             
             product_name=str(data.get('product_name', '')),
             product_code='',  # 레거시에서는 제품코드가 별도로 없음
@@ -507,13 +507,13 @@ def api_update(product_id):
         
         # 상품 정보 업데이트
         product.brand_code_seq = data.get('brand_code_seq') or None
-        product.category_code_seq = data.get('category_code_seq') or None
-        product.type_code_seq = data.get('type_code_seq') or None
+        product.category_code_seq = data.get('prod_code_seq') or None  # 🔥 품목 → category로 매핑
+        product.type_code_seq = data.get('prod_type_code_seq') or None  # 🔥 타입 → type으로 매핑
         product.year_code_seq = data.get('year_code_seq') or None
         
         # 확장 분류 정보 업데이트 (새로 추가)
         product.color_code_seq = data.get('color_code_seq') or None
-        product.div_type_code_seq = data.get('div_type_code_seq') or None
+        product.div_type_code_seq = data.get('prod_group_code_seq') or None  # 🔥 제품구분 → div_type으로 매핑
         product.product_code_seq = data.get('product_code_seq') or None
         
         product.product_name = data['product_name']
@@ -1253,13 +1253,37 @@ def api_get_product_models(product_id):
                 ).first()  # company_id 필터 제거
             
             models_list.append({
-                'id': detail.id,
-                'product_id': detail.product_id,
+                'id': detail.id,  # seq 대신 id 사용
+                'std_div_prod_code': detail.std_div_prod_code,
+                'product_name': detail.product_name,
                 'color_code': detail.color_code,
-                'color_name': color_info.code_name if color_info else detail.color_code,
-                'product_model_name': detail.product_name,  # ProductDetail.product_name 사용
-                'std_product_code': detail.std_div_prod_code,
-                'created_at': detail.created_at.isoformat() if detail.created_at else None
+                'color_code_info': color_info,
+                'status': detail.status,
+                'use_yn': detail.use_yn,  # 직접 사용
+                'brand_code': detail.brand_code,
+                'div_type_code': detail.div_type_code,
+                'prod_group_code': detail.prod_group_code,
+                'prod_type_code': detail.prod_type_code,
+                'prod_code': detail.prod_code,
+                'prod_type2_code': detail.prod_type2_code,
+                'year_code': detail.year_code,
+                'additional_price': detail.additional_price,
+                'stock_quantity': detail.stock_quantity,
+                
+                # 🔥 새로운 필드들 추가
+                'douzone_code': detail.douzone_code,
+                'erpia_code': detail.erpia_code,
+                'official_cost': detail.official_cost,
+                'consumer_price': detail.consumer_price,
+                'operation_price': detail.operation_price,
+                'ans_value': detail.ans_value,
+                'detail_brand_code_seq': detail.detail_brand_code_seq,
+                'color_detail_code_seq': detail.color_detail_code_seq,
+                'product_division_code_seq': detail.product_division_code_seq,
+                'product_group_code_seq': detail.product_group_code_seq,
+                'item_code_seq': detail.item_code_seq,
+                'item_detail_code_seq': detail.item_detail_code_seq,
+                'product_type_category_code_seq': detail.product_type_category_code_seq
             })
         
         return jsonify({
@@ -1335,7 +1359,22 @@ def api_get(product_id):
                 'prod_type2_code': detail.prod_type2_code,
                 'year_code': detail.year_code,
                 'additional_price': detail.additional_price,
-                'stock_quantity': detail.stock_quantity
+                'stock_quantity': detail.stock_quantity,
+                
+                # 🔥 새로운 필드들 추가
+                'douzone_code': detail.douzone_code,
+                'erpia_code': detail.erpia_code,
+                'official_cost': detail.official_cost,
+                'consumer_price': detail.consumer_price,
+                'operation_price': detail.operation_price,
+                'ans_value': detail.ans_value,
+                'detail_brand_code_seq': detail.detail_brand_code_seq,
+                'color_detail_code_seq': detail.color_detail_code_seq,
+                'product_division_code_seq': detail.product_division_code_seq,
+                'product_group_code_seq': detail.product_group_code_seq,
+                'item_code_seq': detail.item_code_seq,
+                'item_detail_code_seq': detail.item_detail_code_seq,
+                'product_type_category_code_seq': detail.product_type_category_code_seq
             })
         
         # 선택된 코드 정보 (셀렉트박스 selected 처리용)

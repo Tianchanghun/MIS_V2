@@ -420,16 +420,25 @@ class ProductManager {
             if (firstModel.std_div_prod_code && firstModel.std_div_prod_code.length >= 16) {
                 const stdCode = firstModel.std_div_prod_code;
                 parsedCodes = {
-                    brand: stdCode.substring(0, 2),      // RY
-                    divType: stdCode.substring(2, 3),    // 3
-                    prodGroup: stdCode.substring(3, 5),  // GT (수정됨)
-                    prodType: stdCode.substring(5, 7),   // TR
-                    prod: stdCode.substring(7, 9),       // TJ
-                    type2: stdCode.substring(9, 11),     // 00
-                    year: stdCode.substring(11, 13),     // 25
-                    color: stdCode.substring(13, 16)     // BLK
+                    brand: stdCode.substring(0, 2),      // 브랜드 (2자리)
+                    divType: stdCode.substring(2, 3),    // 구분타입 (1자리) - 제품구분의 첫 글자
+                    prodGroup: stdCode.substring(3, 5),  // 제품구분 (2자리) - 실제 제품구분 코드
+                    prodType: stdCode.substring(5, 7),   // 제품타입 (2자리)
+                    prod: stdCode.substring(7, 9),       // 품목 (2자리)
+                    type2: stdCode.substring(9, 11),     // 타입2 (2자리)
+                    year: stdCode.substring(11, 13),     // 년도 (2자리)
+                    color: stdCode.substring(13, 16)     // 색상 (3자리)
                 };
                 console.log('🔧 자사코드 파싱 결과:', stdCode, '→', parsedCodes);
+                console.log('🔧 레거시 구조 분석:');
+                console.log(`  - 브랜드: ${parsedCodes.brand} (위치 0-1)`);
+                console.log(`  - 구분타입: ${parsedCodes.divType} (위치 2)`);
+                console.log(`  - 제품구분: ${parsedCodes.prodGroup} (위치 3-4)`);
+                console.log(`  - 제품타입: ${parsedCodes.prodType} (위치 5-6)`);
+                console.log(`  - 품목: ${parsedCodes.prod} (위치 7-8)`);
+                console.log(`  - 타입2: ${parsedCodes.type2} (위치 9-10)`);
+                console.log(`  - 년도: ${parsedCodes.year} (위치 11-12)`);
+                console.log(`  - 색상: ${parsedCodes.color} (위치 13-15)`);
             }
         }
         
@@ -451,10 +460,10 @@ class ProductManager {
         }
         }, 100);
         
-        // 🔥 4단계: 제품구분 설정 (200ms 지연) - 파싱된 코드값 활용
+        // 🔥 4단계: 제품구분 설정 (200ms 지연) - 파싱된 코드값 활용  
         setTimeout(() => {
-        if (productData.category_code_seq) {
-                this.setSelectValue('prod_group_code_seq', productData.category_code_seq, '제품구분', parsedCodes.prodGroup);
+        if (productData.div_type_code_seq) {
+                this.setSelectValue('prod_group_code_seq', productData.div_type_code_seq, '제품구분', parsedCodes.prodGroup);
             }
         }, 200);
         
