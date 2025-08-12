@@ -313,6 +313,7 @@ class ProductManager {
                 ans_value: $(this).find('.ans-value').val(),
                 detail_brand_code_seq: $(this).find('.detail-brand-code').val(),
                 color_by_product_code_seq: $(this).find('.color-by-product-code').val(),
+                color_detail_code_seq: $(this).find('.color-detail-code').val(),
                 
                 // 🔥 새로운 분류 체계 필드들
                 product_group_code_seq: $(this).find('.product-group-code').val(),
@@ -666,6 +667,15 @@ class ProductManager {
             ansOptionsHtml += `<option value="${i}" ${isSelected}>${i}</option>`;
         }
         
+        // 🔥 색상별(상세) 옵션 HTML 생성 (새로 추가된 CLD 그룹)
+        let colorDetailOptionsHtml = '<option value="">색상별(상세)를 선택하세요</option>';
+        if (window.colorDetailCodesData) {
+            window.colorDetailCodesData.forEach(colorDetail => {
+                const isSelected = model.color_detail_code_seq && model.color_detail_code_seq == colorDetail.seq ? 'selected' : '';
+                colorDetailOptionsHtml += `<option value="${colorDetail.seq}" ${isSelected}>${colorDetail.code_name} (${colorDetail.code})</option>`;
+            });
+        }
+        
         return `
             <div class="product-model-item border p-3 mb-3" data-index="${index}" data-model-id="${model.id}">
                 <h6 class="text-primary mb-3">
@@ -816,6 +826,15 @@ class ProductManager {
                                 <option value="">선택하세요</option>
                             </select>
                             <small class="text-muted">추가 색상 분류</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">🔥 색상별(상세)</label>
+                            <select class="form-select color-detail-code" name="color_detail_code_seq[]">
+                                ${colorDetailOptionsHtml}
+                            </select>
+                            <small class="text-muted">235개 세부 색상 선택 가능</small>
                         </div>
                     </div>
                 </div>

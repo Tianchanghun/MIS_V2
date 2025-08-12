@@ -777,6 +777,15 @@ body.modal-open {
                                                     <small class="text-muted">추가 색상 분류</small>
                                         </div>
                                     </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                                    <label class="form-label">🔥 색상별(상세)</label>
+                                                    <select class="form-select color-detail-code" name="color_detail_code_seq[]">
+                                                        <option value="">선택하세요</option>
+                                                    </select>
+                                                    <small class="text-muted">235개 세부 색상 선택 가능</small>
+                                        </div>
+                                    </div>
                                 </div>
                                 
                                         <!-- 제거 버튼 영역 -->
@@ -949,6 +958,15 @@ $(document).ready(function() {
     } catch (e) {
         console.error('❌ 색상별 제품 코드 데이터 로드 실패:', e);
         window.colorByProductCodesData = [];
+    }
+    
+    // 🔧 색상별(상세) 코드 데이터를 전역 변수로 설정
+    try {
+        window.colorDetailCodesData = JSON.parse('{{ color_detail_codes | tojson | safe }}');
+        console.log('✅ 색상별(상세) 코드 데이터 로드:', window.colorDetailCodesData.length + '개');
+    } catch (e) {
+        console.error('❌ 색상별(상세) 코드 데이터 로드 실패:', e);
+        window.colorDetailCodesData = [];
     }
     
     // ✅ 모든 중복 API 호출 제거 - productListManager가 알아서 처리
@@ -1331,65 +1349,35 @@ function addProduct() {
                         <div class="mb-3">
                             <label class="form-label">색상별(추가)</label>
                             <select class="form-select color-by-product-code" name="color_by_product_code_seq[]">
-                            <option value="">선택하세요</option>
-                        </select>
+                                <option value="">선택하세요</option>
+                            </select>
                             <small class="text-muted">추가 색상 분류</small>
                         </div>
                     </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">🔥 색상별(상세)</label>
+                            <select class="form-select color-detail-code" name="color_detail_code_seq[]">
+                                <option value="">선택하세요</option>
+                            </select>
+                            <small class="text-muted">235개 세부 색상 선택 가능</small>
+                        </div>
+                    </div>
                 </div>
                 
-                <!-- 🔥 새로운 분류 체계 -->
-                <div class="row">
+                <!-- 제거 버튼 영역 -->
+                <div class="row mt-3">
                     <div class="col-12">
-                        <h6 class="text-secondary">
-                            <i class="fas fa-sitemap me-1"></i>분류 관리 (Excel 기반)
-                        </h6>
-                    </div>
-                <div class="col-md-4">
-                    <div class="mb-3">
-                            <label class="form-label">제품군</label>
-                            <select class="form-select product-group-code" name="product_group_code_seq[]">
-                                ${productGroupOptionsHtml}
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="mb-3">
-                            <label class="form-label">아이템별</label>
-                            <select class="form-select item-code" name="item_code_seq[]">
-                                ${itemOptionsHtml}
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="mb-3">
-                            <label class="form-label">아이템상세</label>
-                            <select class="form-select item-detail-code" name="item_detail_code_seq[]">
-                                ${itemDetailOptionsHtml}
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label class="form-label">제품타입</label>
-                            <select class="form-select product-type-category-code" name="product_type_category_code_seq[]">
-                                ${productTypeOptionsHtml}
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <small class="text-info">
-                            <i class="fas fa-info-circle me-1"></i>
-                            Excel에서 가져온 분류 체계입니다.
-                        </small>
-                    </div>
-                    <div class="col-md-2">
-                        <button type="button" class="btn btn-outline-danger btn-sm btn-remove-model w-100">
-                            <i class="fas fa-times me-1"></i>제거
+                        <hr class="my-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                이 색상 모델을 삭제하려면 제거 버튼을 클릭하세요
+                            </small>
+                            <button type="button" class="btn btn-outline-danger btn-sm btn-remove-model">
+                                <i class="fas fa-times me-1"></i>이 색상 모델 제거
                         </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1912,6 +1900,15 @@ function addProductModel() {
                             <option value="">선택하세요</option>
                         </select>
                         <small class="text-muted">추가 색상 분류</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label">🔥 색상별(상세)</label>
+                        <select class="form-select color-detail-code" name="color_detail_code_seq[]">
+                            <option value="">선택하세요</option>
+                        </select>
+                        <small class="text-muted">235개 세부 색상 선택 가능</small>
                     </div>
                 </div>
             </div>

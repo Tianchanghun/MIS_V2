@@ -123,6 +123,9 @@ def index():
         color_by_product_codes = safe_get_codes('색상별제품')
         product_type_category_codes = safe_get_codes('카시트 보호 매트')  # PT 그룹
         
+        # 10. 🔥 새로 추가된 색상별(상세) 코드 (CLD 그룹)
+        color_detail_codes = safe_get_codes('색상별(상세)')  # CLD 그룹
+        
         return render_template('product/index.html',
                              products=products,
                              # 새로운 코드 체계 (요구사항)
@@ -145,6 +148,7 @@ def index():
                              item_detail_codes=item_detail_codes,
                              color_by_product_codes=color_by_product_codes,
                              product_type_category_codes=product_type_category_codes,
+                             color_detail_codes=color_detail_codes,
                              search_term=search_term,
                              brand_code_seq=brand_code_seq,
                              category_code_seq=category_code_seq,
@@ -357,6 +361,7 @@ def api_create():
                             item_code_seq=int(model_data.get('item_code_seq', 0)) if model_data.get('item_code_seq') else None,
                             item_detail_code_seq=int(model_data.get('item_detail_code_seq', 0)) if model_data.get('item_detail_code_seq') else None,
                             product_type_category_code_seq=int(model_data.get('product_type_category_code_seq', 0)) if model_data.get('product_type_category_code_seq') else None,
+                            color_detail_code_seq=int(model_data.get('color_detail_code_seq', 0)) if model_data.get('color_detail_code_seq') else None,
                             
                             created_by=session.get('member_id', 'admin'),
                             updated_by=session.get('member_id', 'admin')
