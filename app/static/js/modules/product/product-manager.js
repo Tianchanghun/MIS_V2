@@ -711,7 +711,7 @@ class ProductManager {
                         </div>
                     </div>
                 </div>
-
+                
                 <!-- 🔥 코드 관리 필드 -->
                 <div class="row mt-3">
                     <div class="col-12">
@@ -722,7 +722,7 @@ class ProductManager {
                     <div class="col-md-6">
                         <div class="mb-3">
                             <label class="form-label">더존코드 (20자)</label>
-                            <input type="text" class="form-control douzone-code"
+                            <input type="text" class="form-control douzone-code" 
                                    name="douzone_code[]" maxlength="20"
                                    value="${model.douzone_code || ''}"
                                    placeholder="더존 연동 코드">
@@ -731,14 +731,14 @@ class ProductManager {
                     <div class="col-md-6">
                         <div class="mb-3">
                             <label class="form-label">ERPIA코드 (13자)</label>
-                            <input type="text" class="form-control erpia-code"
+                            <input type="text" class="form-control erpia-code" 
                                    name="erpia_code[]" maxlength="13"
                                    value="${model.erpia_code || ''}"
                                    placeholder="ERPIA 연동 코드">
                         </div>
                     </div>
                 </div>
-
+                
                 <!-- 🔥 가격 관리 필드 -->
                 <div class="row">
                     <div class="col-12">
@@ -751,9 +751,9 @@ class ProductManager {
                             <label class="form-label">공식원가</label>
                             <div class="input-group">
                                 <span class="input-group-text">₩</span>
-                                <input type="number" class="form-control official-cost"
+                                <input type="number" class="form-control official-cost" 
                                        name="official_cost[]" min="0"
-                                       value="${model.official_cost || ''}"
+                                       value="${model.official_cost || 0}"
                                        placeholder="0">
                             </div>
                         </div>
@@ -763,9 +763,9 @@ class ProductManager {
                             <label class="form-label">소비자가</label>
                             <div class="input-group">
                                 <span class="input-group-text">₩</span>
-                                <input type="number" class="form-control consumer-price"
+                                <input type="number" class="form-control consumer-price" 
                                        name="consumer_price[]" min="0"
-                                       value="${model.consumer_price || ''}"
+                                       value="${model.consumer_price || 0}"
                                        placeholder="0">
                             </div>
                         </div>
@@ -775,16 +775,16 @@ class ProductManager {
                             <label class="form-label">운영가</label>
                             <div class="input-group">
                                 <span class="input-group-text">₩</span>
-                                <input type="number" class="form-control operation-price"
+                                <input type="number" class="form-control operation-price" 
                                        name="operation_price[]" min="0"
-                                       value="${model.operation_price || ''}"
+                                       value="${model.operation_price || 0}"
                                        placeholder="0">
                             </div>
                         </div>
                     </div>
                 </div>
-
-                <!-- 🔥 추가 관리 필드들 (ANS, 세부브랜드) -->
+                
+                <!-- 🔥 추가 관리 필드들 (ANS, 세부브랜드, 색상별) -->
                 <div class="row">
                     <div class="col-12">
                         <h6 class="text-secondary">
@@ -819,7 +819,7 @@ class ProductManager {
                         </div>
                     </div>
                 </div>
-
+                
                 <!-- 🔥 새로운 분류 체계 -->
                 <div class="row">
                     <div class="col-12">
@@ -852,9 +852,9 @@ class ProductManager {
                         </div>
                     </div>
                 </div>
-
+                
                 <div class="row">
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <div class="mb-3">
                             <label class="form-label">제품타입</label>
                             <select class="form-select product-type-category-code" name="product_type_category_code_seq[]">
@@ -862,42 +862,16 @@ class ProductManager {
                             </select>
                         </div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-3">
                         <small class="text-info">
                             <i class="fas fa-info-circle me-1"></i>
                             Excel에서 가져온 분류 체계입니다.
                         </small>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-3">
                         <button type="button" class="btn btn-outline-danger btn-sm btn-remove-model w-100">
-                            <i class="fas fa-times me-1"></i>제거
+                            <i class="fas fa-times me-1"></i>이 색상 모델 제거
                         </button>
-                    </div>
-                </div>
-
-                <!-- 제거 버튼 영역 -->
-                <div class="row mt-3">
-                    <div class="col-12">
-                        <hr class="my-2">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <small class="text-muted">
-                                <i class="fas fa-info-circle me-1"></i>
-                                이 색상 모델을 삭제하려면 제거 버튼을 클릭하세요
-                            </small>
-                            <button type="button" class="btn btn-outline-danger btn-sm btn-remove-model">
-                                <i class="fas fa-times me-1"></i>이 색상 모델 제거
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 🔥 디버깅 정보 (개발용) -->
-                <div class="row mt-2">
-                    <div class="col-12">
-                        <small class="text-info">
-                            <strong>코드 구성:</strong> 
-                            ${model.brand_code || '?'}+${model.div_type_code || '?'}+${model.prod_group_code || '?'}+${model.prod_type_code || '?'}+${model.prod_code || '?'}+${model.prod_type2_code || '?'}+${model.year_code || '?'}+${model.color_code || '?'}
-                        </small>
                     </div>
                 </div>
             </div>

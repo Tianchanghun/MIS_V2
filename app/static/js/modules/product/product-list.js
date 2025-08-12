@@ -30,10 +30,16 @@ class ProductListManager {
         // 필수 DOM 요소 존재 확인
         const requiredElements = [
             '#productTableBody',
-            '#searchInput', 
             '#productCount',
             '#loadingSpinner',
             '#emptyState'
+        ];
+        
+        // 옵션 DOM 요소들 (있으면 좋지만 없어도 됨)
+        const optionalElements = [
+            '#searchName', 
+            '#searchProduct',
+            '#searchType'
         ];
         
         let missingElements = [];
@@ -51,7 +57,7 @@ class ProductListManager {
             // 필수 요소가 없어도 계속 진행 (일부 기능은 동작할 수 있음)
         }
         
-        // 이벤트 바인딩 (안전하게)
+        // 이벤트 바인딩 (검색 버튼 방식으로 변경)
         try {
             this.bindEvents();
             console.log('✅ 이벤트 바인딩 완료');
@@ -73,21 +79,19 @@ class ProductListManager {
     }
     
     /**
-     * 이벤트 바인딩 (통합검색만)
+     * 이벤트 바인딩 (검색 버튼 방식으로 변경)
      */
     bindEvents() {
-        // 실시간 통합 검색 입력 이벤트 (debounce 시간 단축)
-        $('#searchInput').on('input keyup', this.debounce(() => {
-            console.log('🔍 통합 검색 시작:', $('#searchInput').val());
+        // 검색 폼 제출 이벤트
+        $('#searchForm').on('submit', (e) => {
+            e.preventDefault();
+            console.log('🔍 검색 버튼 클릭');
             this.searchProducts();
-        }, 200)); // 300ms에서 200ms로 단축
+        });
         
-        // Enter 키 즉시 검색
-        $('#searchInput').on('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                this.searchProducts();
-            }
+        // 품목 선택 시 타입 목록 동적 로드
+        $('#searchProduct').on('change', () => {
+            this.loadProductTypes();
         });
         
         // 정렬 변경
@@ -99,6 +103,8 @@ class ProductListManager {
         $('[onchange="changePerPage(this.value)"]').on('change', (e) => {
             this.changePerPage($(e.target).val());
         });
+        
+        console.log('✅ 이벤트 바인딩 완료');
     }
     
     /**
@@ -109,15 +115,25 @@ class ProductListManager {
             console.log('📦 상품 목록 로드 시작');
             UIHelper.showLoading();
             
-            // API 파라미터 준비
+            // API 파라미터 준비 - 새로운 검색 필드 지원
             const params = new URLSearchParams({
                 page: this.currentPage,
                 per_page: this.currentPerPage,
                 sort_by: this.currentSort.column,
                 sort_direction: this.currentSort.direction,
-                search: this.currentSearch,
                 _: Date.now()
             });
+            
+            // 새로운 검색 파라미터들
+            const searchName = $('#searchName').val() || '';
+            const searchProduct = $('#searchProduct').val() || '';
+            const searchType = $('#searchType').val() || '';
+            const showInactive = $('#showInactive').is(':checked');
+            
+            if (searchName) params.append('search_name', searchName);
+            if (searchProduct) params.append('search_product', searchProduct);
+            if (searchType) params.append('search_type', searchType);
+            if (showInactive) params.append('show_inactive', 'true');
             
             const response = await AjaxHelper.get(`/product/api/list?${params}`);
             
@@ -372,11 +388,8 @@ class ProductListManager {
      * 상품 검색 및 필터링
      */
     searchProducts() {
-        // 검색어 가져오기
-        this.currentSearch = $('#searchInput').val() || '';
-        this.currentPage = 1; // 검색 시 첫 페이지로
-        
-        // 서버에서 검색 결과 가져오기
+        console.log('🔍 검색 실행');
+        this.currentPage = 1; // 페이지 초기화
         this.loadProducts();
     }
     
@@ -641,6 +654,36 @@ class ProductListManager {
             }
         } catch (error) {
             console.error('❌ 타입 코드 로드 에러:', error);
+        }
+    }
+
+    /**
+     * 품목에 따른 타입 목록 로드
+     */
+    async loadProductTypes() {
+        const productSeq = $('#searchProduct').val();
+        const typeSelect = $('#searchType');
+        
+        // 초기화
+        typeSelect.html('<option value="">전체 타입</option>');
+        
+        if (!productSeq) {
+            return;
+        }
+        
+        try {
+            const response = await $.ajax({
+                url: `/product/api/get-types-by-product-seq/${productSeq}`,
+                method: 'GET'
+            });
+            
+            if (response.success && response.data) {
+                response.data.forEach(type => {
+                    typeSelect.append(`<option value="${type.seq}">${type.code_name}</option>`);
+                });
+            }
+        } catch (error) {
+            console.error('타입 목록 로드 실패:', error);
         }
     }
 }

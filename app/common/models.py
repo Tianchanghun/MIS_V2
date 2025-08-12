@@ -1552,6 +1552,21 @@ class ProductDetail(db.Model):
             'stock_quantity': self.stock_quantity,
             'status': self.status,
             'use_yn': self.use_yn,
+            
+            # 🔥 새로 추가된 필드들
+            'douzone_code': getattr(self, 'douzone_code', None),
+            'erpia_code': getattr(self, 'erpia_code', None),
+            'official_cost': getattr(self, 'official_cost', None),
+            'consumer_price': getattr(self, 'consumer_price', None),
+            'operation_price': getattr(self, 'operation_price', None),
+            'ans_value': getattr(self, 'ans_value', None),
+            'detail_brand_code_seq': getattr(self, 'detail_brand_code_seq', None),
+            'category1_code_seq': getattr(self, 'category1_code_seq', None),
+            'category2_code_seq': getattr(self, 'category2_code_seq', None),
+            'category3_code_seq': getattr(self, 'category3_code_seq', None),
+            'category4_code_seq': getattr(self, 'category4_code_seq', None),
+            'category5_code_seq': getattr(self, 'category5_code_seq', None),
+            
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'created_by': self.created_by,

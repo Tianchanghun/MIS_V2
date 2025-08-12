@@ -61,87 +61,67 @@ def index():
             active_only=not show_inactive
         )
         
-        # 코드 정보 조회 (드롭다운용) - 요구사항에 맞게 수정
-        # 1. 회사 정보 (하드코딩 - 에이원, 에이원월드만)
-        company_codes = [
-            {'id': 1, 'name': '에이원'},
-            {'id': 2, 'name': '에이원월드'}
-        ]
+        # 안전한 코드 로딩 헬퍼 함수
+        def safe_get_codes(group_name):
+            try:
+                # Code 모델의 기존 메서드 사용
+                codes_raw = Code.get_codes_by_group_name(group_name)
+                if not codes_raw:
+                    return []
+                
+                valid_codes = []
+                for code in codes_raw:
+                    if hasattr(code, 'seq') and hasattr(code, 'code') and hasattr(code, 'code_name'):
+                        valid_codes.append({
+                            'seq': int(code.seq),
+                            'code': str(code.code), 
+                            'code_name': str(code.code_name)
+                        })
+                
+                current_app.logger.info(f"✅ '{group_name}' 그룹: {len(valid_codes)}개 코드 로드")
+                return valid_codes
+                
+            except Exception as e:
+                current_app.logger.error(f"❌ 코드 그룹 '{group_name}' 로딩 실패: {e}")
+                return []
+
+        # 1. 회사 정보 (CB → 회사/브랜드 그룹에서 가져오기)
+        company_codes = safe_get_codes('회사/브랜드')
         
-        # 2. 브랜드 코드 (브랜드 그룹에서)
-        brand_codes_raw = Code.get_codes_by_group_name('브랜드')
-        brand_codes = [{'seq': code.seq, 'code': code.code, 'code_name': code.code_name} for code in brand_codes_raw]
+        # 2. 브랜드 코드 (브랜드 그룹에서 가져오기)
+        brand_codes = safe_get_codes('브랜드')
         
-        # 3. 품목 코드 (PRD 그룹에서 가져오기)
-        product_codes_raw = Code.get_codes_by_group_name('PRD')
-        product_codes = [{'seq': code.seq, 'code': code.code, 'code_name': code.code_name} for code in product_codes_raw]
+        # 3. 품목 코드 (제품 그룹에서 가져오기)
+        product_codes = safe_get_codes('제품')
         
         # 4. 타입 코드 (초기에는 빈 리스트, 품목 선택 시 동적 로드)
         type_codes = []
         
-        # 5. 색상 코드 (CR 그룹에서 가져오기)
-        color_codes_raw = Code.get_codes_by_group_name('CR')
-        color_codes = [{'seq': code.seq, 'code': code.code, 'code_name': code.code_name} for code in color_codes_raw]
+        # 5. 색상 코드 (색상 그룹에서 가져오기)
+        color_codes = safe_get_codes('색상')
         
-        # 6. 년도 코드 (YR 그룹에서 가져오기)
-        year_codes_raw = Code.get_codes_by_group_name('YR')
-        year_codes = [{'seq': code.seq, 'code': code.code, 'code_name': code.code_name} for code in year_codes_raw]
+        # 6. 년도 코드 (년도 그룹에서 가져오기)
+        year_codes = safe_get_codes('년도')
         
-        # 년도 코드가 없으면 기본 년도 생성
-        if not year_codes:
-            current_year = datetime.now().year
-            year_codes = [
-                {'seq': None, 'code': str(current_year), 'code_name': f'{current_year}년'},
-                {'seq': None, 'code': str(current_year-1), 'code_name': f'{current_year-1}년'},
-                {'seq': None, 'code': str(current_year+1), 'code_name': f'{current_year+1}년'}
-            ]
-        
-        # 7. 상태 코드 (하드코딩)
+        # 7. 상태 코드
         status_codes = [
             {'value': 'true', 'name': '활성'},
             {'value': 'false', 'name': '비활성'}
         ]
         
-        # 레거시 호환 코드들 (기존 기능 유지)
-        category_codes_raw = Code.get_codes_by_group_name('제품구분')  # 제품구분 (PRT)
-        category_codes = [{'seq': code.seq, 'code': code.code, 'code_name': code.code_name} for code in category_codes_raw]
+        # 8. 레거시 호환 코드들
+        category_codes = safe_get_codes('제품구분')  # PRT 그룹
+        div_type_codes = safe_get_codes('구분타입')
+        prod_group_codes = safe_get_codes('품목그룹')
+        prod_type_codes = safe_get_codes('타입')     # TP 그룹
+        type2_codes = safe_get_codes('타입2')
         
-        div_type_codes_raw = Code.get_codes_by_group_name('구분타입')
-        div_type_codes = [{'seq': code.seq, 'code': code.code, 'code_name': code.code_name} for code in div_type_codes_raw]
-        
-        prod_group_codes_raw = Code.get_codes_by_group_name('품목그룹')  # 레거시 호환
-        prod_group_codes = [{'seq': code.seq, 'code': code.code, 'code_name': code.code_name} for code in prod_group_codes_raw]
-        
-        prod_type_codes_raw = Code.get_codes_by_group_name('제품타입')  # 레거시 호환
-        prod_type_codes = [{'seq': code.seq, 'code': code.code, 'code_name': code.code_name} for code in prod_type_codes_raw]
-        
-        type2_codes_raw = Code.get_codes_by_group_name('타입2')
-        type2_codes = [{'seq': code.seq, 'code': code.code, 'code_name': code.code_name} for code in type2_codes_raw]
-        
-        # 🔥 새로운 분류 체계들 로드 (Excel에서 가져온 실제 분류)
-        try:
-            product_group_codes_raw = Code.get_codes_by_group_name('제품군')
-            product_group_codes = [{'seq': code.seq, 'code': code.code, 'code_name': code.code_name} for code in product_group_codes_raw]
-            
-            item_codes_raw = Code.get_codes_by_group_name('아이템별')
-            item_codes = [{'seq': code.seq, 'code': code.code, 'code_name': code.code_name} for code in item_codes_raw]
-            
-            item_detail_codes_raw = Code.get_codes_by_group_name('아이템상세')
-            item_detail_codes = [{'seq': code.seq, 'code': code.code, 'code_name': code.code_name} for code in item_detail_codes_raw]
-            
-            color_by_product_codes_raw = Code.get_codes_by_group_name('색상별')
-            color_by_product_codes = [{'seq': code.seq, 'code': code.code, 'code_name': code.code_name} for code in color_by_product_codes_raw]
-            
-            product_type_category_codes_raw = Code.get_codes_by_group_name('제품타입')
-            product_type_category_codes = [{'seq': code.seq, 'code': code.code, 'code_name': code.code_name} for code in product_type_category_codes_raw]
-            
-        except Exception as e:
-            current_app.logger.error(f"❌ 새로운 분류 체계 로딩 실패: {e}")
-            product_group_codes = []
-            item_codes = []
-            item_detail_codes = []
-            color_by_product_codes = []
-            product_type_category_codes = []
+        # 9. 새로운 분류 체계들 (실제 존재하는 그룹들)
+        product_group_codes = safe_get_codes('펫용품')  # PG 그룹
+        item_codes = safe_get_codes('아이템별')
+        item_detail_codes = safe_get_codes('아이템상세')
+        color_by_product_codes = safe_get_codes('색상별제품')
+        product_type_category_codes = safe_get_codes('카시트 보호 매트')  # PT 그룹
         
         return render_template('product/index.html',
                              products=products,
@@ -183,30 +163,19 @@ def api_list():
     # 개발 환경에서는 로그인 체크 우회 (강제)
     current_company_id = 1  # 에이원으로 고정
     
-    # 원래 로그인 체크 코드는 주석 처리
-    # if current_app.config.get('FLASK_ENV') == 'development':
-    #     current_company_id = 1  # 에이원으로 고정
-    # else:
-    #     # 로그인 체크
-    #     if not session.get('member_seq'):
-    #         return jsonify({'success': False, 'message': '로그인이 필요합니다.'}), 401
-    #     current_company_id = session.get('current_company_id', 1)
-        
     try:
         # 페이징 파라미터
         page = request.args.get('page', 1, type=int)
         per_page = min(request.args.get('per_page', 50, type=int), 100)
         
-        # 정렬 파라미터 (새로 추가)
+        # 정렬 파라미터
         sort_by = request.args.get('sort_by', 'created_at')
         sort_direction = request.args.get('sort_direction', 'desc')
         
-        # 검색 파라미터
-        search_term = request.args.get('search', '')
-        brand_code_seq = request.args.get('brand_code_seq', type=int)
-        category_code_seq = request.args.get('category_code_seq', type=int)
-        type_code_seq = request.args.get('type_code_seq', type=int)
-        year_code_seq = request.args.get('year_code_seq', type=int)
+        # 새로운 검색 파라미터들
+        search_name = request.args.get('search_name', '')
+        search_product = request.args.get('search_product', type=int)
+        search_type = request.args.get('search_type', type=int)
         show_inactive = request.args.get('show_inactive', 'false') == 'true'
         
         # 쿼리 빌드
@@ -215,37 +184,20 @@ def api_list():
         if not show_inactive:
             query = query.filter_by(is_active=True)
         
-        # 검색어 처리 (상품명, 상품코드, 설명, 자가코드 포함)
-        if search_term:
-            search_pattern = f'%{search_term}%'
-            # 서브쿼리로 자가코드 검색 포함
-            subquery = db.session.query(ProductDetail.product_id).filter(
-                ProductDetail.std_div_prod_code.ilike(search_pattern)
-            ).subquery()
-            
-            query = query.filter(
-                db.or_(
-                    Product.product_name.ilike(search_pattern),
-                    Product.product_code.ilike(search_pattern),
-                    Product.description.ilike(search_pattern),
-                    Product.id.in_(subquery)  # 자가코드로 검색
-                )
-            )
+        # 상품명 검색
+        if search_name:
+            search_pattern = f'%{search_name}%'
+            query = query.filter(Product.product_name.ilike(search_pattern))
         
-        # 필터 조건들
-        if brand_code_seq:
-            query = query.filter_by(brand_code_seq=brand_code_seq)
+        # 품목별 검색
+        if search_product:
+            query = query.filter_by(prod_code_seq=search_product)
         
-        if category_code_seq:
-            query = query.filter_by(category_code_seq=category_code_seq)
+        # 타입별 검색
+        if search_type:
+            query = query.filter_by(prod_type_code_seq=search_type)
         
-        if type_code_seq:
-            query = query.filter_by(type_code_seq=type_code_seq)
-            
-        if year_code_seq:
-            query = query.filter_by(year_code_seq=year_code_seq)
-        
-        # 정렬 적용 (새로 추가)
+        # 정렬 적용
         if sort_by and hasattr(Product, sort_by):
             sort_column = getattr(Product, sort_by)
             if sort_direction.lower() == 'desc':
@@ -263,9 +215,34 @@ def api_list():
         
         products = [product.to_dict() for product in pagination.items]
         
+        # 통계 정보 계산 (ProductDetail 기준)
+        try:
+            # 전체 상품수 (Product 테이블 기준)
+            total_products_query = Product.query.filter_by(company_id=current_company_id)
+            if not show_inactive:
+                total_products_query = total_products_query.filter_by(is_active=True)
+            total_products = total_products_query.count()
+            
+            # 상품코드 보유 상품수 (ProductDetail 테이블 기준)
+            std_code_products = db.session.query(ProductDetail.product_id).filter(
+                ProductDetail.std_div_prod_code.isnot(None),
+                ProductDetail.std_div_prod_code != ''
+            ).distinct().count()
+            
+            stats = {
+                'total_products': total_products,
+                'std_code_products': std_code_products
+            }
+        except Exception as e:
+            current_app.logger.warning(f"통계 계산 오류: {e}")
+            stats = {
+                'total_products': pagination.total,
+                'std_code_products': 0
+            }
+        
         return jsonify({
             'success': True,
-            'data': products,  # products -> data로 변경
+            'data': products,
             'pagination': {
                 'page': pagination.page,
                 'per_page': pagination.per_page,
@@ -273,7 +250,8 @@ def api_list():
                 'pages': pagination.pages,
                 'has_prev': pagination.has_prev,
                 'has_next': pagination.has_next
-            }
+            },
+            'stats': stats
         })
         
     except Exception as e:
@@ -365,6 +343,21 @@ def api_create():
                             use_yn='Y',
                             additional_price=int(model_data.get('additional_price', 0)),
                             stock_quantity=int(model_data.get('stock_quantity', 0)),
+                            
+                            # 🔥 새로운 필드들 추가
+                            douzone_code=model_data.get('douzone_code', ''),
+                            erpia_code=model_data.get('erpia_code', ''),
+                            official_cost=int(model_data.get('official_cost', 0)) if model_data.get('official_cost') else 0,
+                            consumer_price=int(model_data.get('consumer_price', 0)) if model_data.get('consumer_price') else 0,
+                            operation_price=int(model_data.get('operation_price', 0)) if model_data.get('operation_price') else 0,
+                            ans_value=int(model_data.get('ans_value', 0)) if model_data.get('ans_value') else None,
+                            detail_brand_code_seq=int(model_data.get('detail_brand_code_seq', 0)) if model_data.get('detail_brand_code_seq') else None,
+                            color_by_product_code_seq=int(model_data.get('color_by_product_code_seq', 0)) if model_data.get('color_by_product_code_seq') else None,
+                            product_group_code_seq=int(model_data.get('product_group_code_seq', 0)) if model_data.get('product_group_code_seq') else None,
+                            item_code_seq=int(model_data.get('item_code_seq', 0)) if model_data.get('item_code_seq') else None,
+                            item_detail_code_seq=int(model_data.get('item_detail_code_seq', 0)) if model_data.get('item_detail_code_seq') else None,
+                            product_type_category_code_seq=int(model_data.get('product_type_category_code_seq', 0)) if model_data.get('product_type_category_code_seq') else None,
+                            
                             created_by=session.get('member_id', 'admin'),
                             updated_by=session.get('member_id', 'admin')
                         )
@@ -1322,3 +1315,230 @@ def api_get(product_id):
     except Exception as e:
         current_app.logger.error(f"❌ 상품 조회 실패: {e}")
         return jsonify({'success': False, 'message': f'상품 조회 중 오류가 발생했습니다: {str(e)}'}), 500 
+
+@bp.route('/api/excel/download')
+def api_excel_download():
+    """상품 목록 엑셀 다운로드"""
+    # 개발 환경에서는 로그인 체크 우회
+    current_company_id = 1
+    
+    try:
+        # 검색 파라미터
+        search_name = request.args.get('search_name', '')
+        search_product = request.args.get('search_product', type=int)
+        search_type = request.args.get('search_type', type=int)
+        show_inactive = request.args.get('show_inactive', 'false') == 'true'
+        
+        # 쿼리 빌드
+        query = Product.query.filter_by(company_id=current_company_id)
+        
+        if not show_inactive:
+            query = query.filter_by(is_active=True)
+        
+        # 검색 조건 적용
+        if search_name:
+            search_pattern = f'%{search_name}%'
+            query = query.filter(Product.product_name.ilike(search_pattern))
+        
+        if search_product:
+            query = query.filter_by(prod_code_seq=search_product)
+        
+        if search_type:
+            query = query.filter_by(prod_type_code_seq=search_type)
+        
+        # 데이터 조회 (제한: 최대 1000개)
+        products = query.limit(1000).all()
+        
+        # 엑셀 데이터 준비
+        excel_data = []
+        for product in products:
+            # 브랜드명 조회
+            brand_name = ''
+            if product.brand_code_seq:
+                brand_code = Code.query.get(product.brand_code_seq)
+                brand_name = brand_code.code_name if brand_code else ''
+            
+            # 품목명 조회
+            product_name = ''
+            if product.prod_code_seq:
+                prod_code = Code.query.get(product.prod_code_seq)
+                product_name = prod_code.code_name if prod_code else ''
+            
+            # 타입명 조회
+            type_name = ''
+            if product.prod_type_code_seq:
+                type_code = Code.query.get(product.prod_type_code_seq)
+                type_name = type_code.code_name if type_code else ''
+            
+            # 상태 변환
+            status_text = '사용' if product.is_active else '미사용'
+            
+            excel_data.append({
+                '상품명': product.product_name,
+                '브랜드': brand_name,
+                '품목': product_name,
+                '타입': type_name,
+                '가격': product.price or 0,
+                '상태': status_text,
+                '등록일': product.created_at.strftime('%Y-%m-%d') if product.created_at else '',
+                '수정일': product.updated_at.strftime('%Y-%m-%d') if product.updated_at else ''
+            })
+        
+        # 엑셀 파일 생성
+        df = pd.DataFrame(excel_data)
+        
+        # BytesIO로 메모리에 엑셀 파일 생성
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='상품목록', index=False)
+        
+        output.seek(0)
+        
+        # 파일명 생성
+        from datetime import datetime
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f'상품목록_{timestamp}.xlsx'
+        
+        # 응답 생성
+        response = make_response(output.getvalue())
+        response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        response.headers['Content-Disposition'] = f'attachment; filename="{filename.encode("utf-8").decode("latin1")}"'
+        
+        current_app.logger.info(f"✅ 엑셀 다운로드 완료: {len(excel_data)}개 상품")
+        return response
+        
+    except Exception as e:
+        current_app.logger.error(f"❌ 엑셀 다운로드 실패: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@bp.route('/api/excel/upload', methods=['POST'])
+def api_excel_upload():
+    """상품 목록 엑셀 업로드"""
+    # 개발 환경에서는 로그인 체크 우회
+    if not session.get('member_seq'):
+        session['member_seq'] = 1
+        session['member_id'] = 'admin'
+        session['current_company_id'] = 1
+    
+    current_company_id = session.get('current_company_id', 1)
+    
+    try:
+        # 파일 확인
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'message': '파일이 선택되지 않았습니다.'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'success': False, 'message': '파일이 선택되지 않았습니다.'}), 400
+        
+        # 파일 확장자 확인
+        if not file.filename.lower().endswith(('.xlsx', '.xls')):
+            return jsonify({'success': False, 'message': '엑셀 파일(.xlsx, .xls)만 업로드 가능합니다.'}), 400
+        
+        # 엑셀 파일 읽기
+        df = pd.read_excel(file)
+        
+        processed = 0
+        errors = 0
+        error_messages = []
+        
+        for index, row in df.iterrows():
+            try:
+                # 필수 필드 확인
+                if pd.isna(row.get('상품명')) or not str(row.get('상품명')).strip():
+                    error_messages.append(f"행 {index + 2}: 상품명이 없습니다.")
+                    errors += 1
+                    continue
+                
+                product_name = str(row['상품명']).strip()
+                
+                # 브랜드 코드 찾기
+                brand_code_seq = None
+                if not pd.isna(row.get('브랜드')):
+                    brand_name = str(row['브랜드']).strip()
+                    brand_code = Code.query.filter_by(code_name=brand_name).first()
+                    if brand_code:
+                        brand_code_seq = brand_code.seq
+                
+                # 품목 코드 찾기
+                prod_code_seq = None
+                if not pd.isna(row.get('품목')):
+                    prod_name = str(row['품목']).strip()
+                    prod_code = Code.query.filter_by(code_name=prod_name).first()
+                    if prod_code:
+                        prod_code_seq = prod_code.seq
+                
+                # 타입 코드 찾기
+                prod_type_code_seq = None
+                if not pd.isna(row.get('타입')):
+                    type_name = str(row['타입']).strip()
+                    type_code = Code.query.filter_by(code_name=type_name).first()
+                    if type_code:
+                        prod_type_code_seq = type_code.seq
+                
+                # 가격 처리
+                price = 0
+                if not pd.isna(row.get('가격')):
+                    try:
+                        price = float(row['가격'])
+                    except:
+                        price = 0
+                
+                # 상태 처리
+                is_active = True
+                if not pd.isna(row.get('상태')):
+                    status_text = str(row['상태']).strip()
+                    is_active = status_text != '미사용'
+                
+                # 기존 상품 확인 (상품명으로)
+                existing_product = Product.query.filter_by(
+                    product_name=product_name,
+                    company_id=current_company_id
+                ).first()
+                
+                if existing_product:
+                    # 기존 상품 업데이트
+                    existing_product.brand_code_seq = brand_code_seq
+                    existing_product.prod_code_seq = prod_code_seq
+                    existing_product.prod_type_code_seq = prod_type_code_seq
+                    existing_product.price = price
+                    existing_product.is_active = is_active
+                    existing_product.updated_at = datetime.now()
+                else:
+                    # 새 상품 생성
+                    new_product = Product(
+                        product_name=product_name,
+                        brand_code_seq=brand_code_seq,
+                        prod_code_seq=prod_code_seq,
+                        prod_type_code_seq=prod_type_code_seq,
+                        price=price,
+                        is_active=is_active,
+                        company_id=current_company_id,
+                        created_by=session.get('member_id', 'admin')
+                    )
+                    db.session.add(new_product)
+                
+                processed += 1
+                
+            except Exception as e:
+                error_messages.append(f"행 {index + 2}: {str(e)}")
+                errors += 1
+                continue
+        
+        # 변경사항 커밋
+        db.session.commit()
+        
+        current_app.logger.info(f"✅ 엑셀 업로드 완료: 처리 {processed}개, 오류 {errors}개")
+        
+        return jsonify({
+            'success': True,
+            'message': f'업로드 완료: 처리 {processed}개, 오류 {errors}개',
+            'processed': processed,
+            'errors': errors,
+            'error_messages': error_messages[:10]  # 최대 10개까지만
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"❌ 엑셀 업로드 실패: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500 

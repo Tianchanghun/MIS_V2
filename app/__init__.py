@@ -93,7 +93,7 @@ def create_app(config_name='development'):
     
     # 상품관리 블루프린트 등록
     from app.product import bp as product_bp
-    app.register_blueprint(product_bp)
+    app.register_blueprint(product_bp, url_prefix='/product')
 
     # 관리자 블루프린트 등록
     from app.admin import admin_bp
@@ -302,11 +302,19 @@ def create_app(config_name='development'):
     @app.route('/')
     def index():
         """메인 대시보드"""
+        # 🔥 개발 환경에서는 자동 로그인 (임시)
         if 'member_seq' not in session:
-            return redirect('/auth/login')
-        # 수동 로그인 체크
-        if 'member_seq' not in session:
-            return redirect('/auth/login')
+            # 임시 세션 설정 (개발용)
+            session['member_seq'] = 1
+            session['member_id'] = 'admin'
+            session['member_name'] = '관리자'
+            session['company_id'] = 1
+            session['current_company_id'] = 1
+            print("🔧 개발 환경: 자동 로그인 설정됨")
+        
+        # 수동 로그인 체크 (제거)
+        # if 'member_seq' not in session:
+        #     return redirect('/auth/login')
         try:
             # 시스템 상태 확인
             redis_client = None

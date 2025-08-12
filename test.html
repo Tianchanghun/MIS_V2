@@ -1,8 +1,102 @@
-{% extends "base.html" %}
-
-{% block title %}상품관리{% endblock %}
-
-{% block extra_css %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="current-company-id" content="1">
+    <title>상품관리</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+    
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- DataTables JS -->
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+    
+    <!-- Custom CSS -->
+    <style>
+        html, body {
+            height: 100% !important;
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #f8f9fa;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow-x: hidden !important;
+            overflow-y: auto !important;
+        }
+        
+        /* 메인 콘텐츠 영역 - 반응형 레이아웃 */
+        .main-content {
+            min-height: 100vh;
+            padding: 20px;
+            position: relative !important;
+            overflow: visible !important;
+            z-index: 1 !important;
+            background: white !important;
+        }
+        
+        /* 데스크톱: 사이드바 옆에 메인 콘텐츠 배치 */
+        @media (min-width: 769px) {
+            .main-content {
+                margin-left: 250px !important;
+                width: calc(100% - 250px) !important;
+            }
+        }
+        
+        /* 카드 스타일 */
+        .card {
+            border: none;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            border-radius: 0.5rem;
+        }
+        
+        .card-header {
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            border-radius: 0.5rem 0.5rem 0 0 !important;
+        }
+        
+        /* 테이블 스타일 */
+        .table {
+            margin-bottom: 0;
+        }
+        
+        .table th {
+            border-top: none;
+            font-weight: 600;
+            background-color: #f8f9fa;
+        }
+        
+        /* 사이드바 스타일은 별도 파일에서 처리 */
+        
+        /* 버튼 스타일 */
+        .btn {
+            border-radius: 0.375rem;
+        }
+        
+        /* 배지 스타일 */
+        .badge {
+            font-size: 0.75rem;
+        }
+        
+        /* 플래시 메시지 스타일 */
+        .alert {
+            border-radius: 0.5rem;
+            border: none;
+        }
+    </style>
+    
+    
 <!-- 🚨 HTML 로드 확인용 -->
 <style>
 .test-banner {
@@ -330,9 +424,338 @@ body.modal-open {
     display: block !important;
 }
 </style>
-{% endblock %}
 
-{% block content %}
+</head>
+
+<body>
+    <!-- 사이드바 포함 -->
+    
+        <!-- 좌측 사이드바 -->
+<div id="sidebar" class="d-flex flex-column bg-light border-end vh-100 position-fixed" style="width: 250px; z-index: 100; left: 0; top: 0;">
+    <!-- 사이드바 복원 - 메인 콘텐츠가 제대로 보이도록 레이아웃 조정 -->
+    <!-- 🚨 임시로 사이드바 숨김 - 메인 콘텐츠 표시 확인용 -->
+    <!-- 로고 섹션 -->
+    <div class="p-3 border-bottom bg-primary text-white text-center">
+        <a href="/" class="text-white text-decoration-none" style="cursor: pointer; transition: opacity 0.3s ease;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+            <div class="mb-2">
+                <img src="/static/img/logo.png" alt="MIS v2 Logo" style="max-width: 80px; max-height: 50px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                <i class="fas fa-building fa-2x" style="display: none;"></i>
+            </div>
+            <h5 class="mb-0">MIS v2</h5>
+            <small>Management Information System</small>
+        </a>
+    </div>
+    
+    <!-- 사용자 패널 -->
+    <div class="p-3 border-bottom">
+        <div class="d-flex align-items-center">
+            <div class="me-3">
+                <i class="fas fa-user-circle fa-2x text-primary"></i>
+            </div>
+            <div>
+                <div class="fw-bold"></div>
+                <small class="text-muted"></small>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 회사 전환 (멀티테넌트) -->
+    
+    <div class="p-3 border-bottom bg-white">
+        <div class="mb-2">
+            <small class="text-muted fw-bold">현재 회사</small>
+        </div>
+        <div class="dropdown">
+            <button class="btn btn-outline-primary btn-sm dropdown-toggle w-100" type="button" id="companyDropdown" data-bs-toggle="dropdown">
+                <i class="fas fa-building me-2"></i>
+                
+                    에이원
+                
+            </button>
+            <ul class="dropdown-menu w-100">
+                
+                <li>
+                    <a class="dropdown-item active" 
+                       href="#" onclick="switchCompany(1)">
+                        <i class="fas fa-building me-2"></i>
+                        에이원
+                        <span class="badge bg-primary ms-2">주속</span>
+                    </a>
+                </li>
+                
+                <li>
+                    <a class="dropdown-item " 
+                       href="#" onclick="switchCompany(2)">
+                        <i class="fas fa-building me-2"></i>
+                        에이원 월드
+                        
+                    </a>
+                </li>
+                
+            </ul>
+        </div>
+    </div>
+    
+        
+    <!-- 메인 네비게이션 -->
+    <nav class="flex-grow-1 overflow-auto">
+        <ul class="nav nav-pills flex-column p-2" id="sidebar-menu">
+            <li class="nav-item"><small class="text-muted fw-bold px-2">NAVIGATION</small></li>
+            
+            <!-- 대시보드 -->
+            <li class="nav-item">
+                <a class="nav-link text-dark" href="/">
+                    <i class="fas fa-tachometer-alt me-2"></i> 대시보드
+                </a>
+            </li>
+            
+            <!-- 관리자 메뉴 -->
+            <li class="nav-item">
+                <a class="nav-link text-dark dropdown-toggle" href="#adminMenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
+                    <i class="fas fa-cog me-2"></i> 관리자
+                </a>
+                <div class="collapse" id="adminMenu">
+                    <div class="ms-3">
+                        <a class="nav-link text-dark py-1" href="/admin/menu_management">
+                            <i class="fas fa-sitemap me-2"></i> 메뉴 관리
+                        </a>
+                        <a class="nav-link text-dark py-1" href="/admin/code_management">
+                            <i class="fas fa-code me-2"></i> 코드 관리
+                            </a>
+                        <a class="nav-link text-dark py-1" href="/admin/department_management">
+                            <i class="fas fa-building me-2"></i> 부서 관리
+                            </a>
+                        <a class="nav-link text-dark py-1" href="/admin/user_management">
+                            <i class="fas fa-users me-2"></i> 사용자 관리
+                            </a>
+                        <a class="nav-link text-dark py-1" href="/admin/permissions">
+                            <i class="fas fa-key me-2"></i> 권한 관리
+                            </a>
+                        <a class="nav-link text-dark py-1" href="/admin/brand_management">
+                            <i class="fas fa-tags me-2"></i> 브랜드 관리
+                            </a>
+                    </div>
+                </div>
+            </li>
+            
+            <!-- ERPia 배치 -->
+            <li class="nav-item">
+                <a class="nav-link text-dark dropdown-toggle" href="#batchMenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
+                    <i class="fas fa-clock me-2"></i> ERPia 배치
+                </a>
+                <div class="collapse" id="batchMenu">
+                    <div class="ms-3">
+                        <a class="nav-link text-dark py-1" href="/batch/">
+                            <i class="fas fa-tachometer-alt me-2"></i> 배치 대시보드
+                            </a>
+                        <a class="nav-link text-dark py-1" href="/batch/settings">
+                            <i class="fas fa-cog me-2"></i> 배치 설정
+                            </a>
+                    </div>
+                </div>
+            </li>
+            
+            <!-- 사은품 관리 -->
+            <li class="nav-item">
+                <a class="nav-link text-dark dropdown-toggle" href="#giftMenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
+                    <i class="fas fa-gift me-2"></i> 사은품 관리
+                </a>
+                <div class="collapse" id="giftMenu">
+                    <div class="ms-3">
+                        <a class="nav-link text-dark py-1" href="/gift/">
+                            <i class="fas fa-list me-2"></i> 분류 관리
+                        </a>
+                        <a class="nav-link text-dark py-1" href="/gift/settings">
+                            <i class="fas fa-cog me-2"></i> 분류 설정
+                </a>
+                    </div>
+                </div>
+            </li>
+            
+            <!-- 영업 관리 -->
+            <li class="nav-item">
+                <a class="nav-link" href="#sales-menu" data-bs-toggle="collapse">
+                    <i class="fas fa-chart-line"></i>
+                    <span>영업 관리</span>
+                    <i class="fas fa-chevron-down ms-auto"></i>
+                </a>
+                <div class="collapse" id="sales-menu">
+                    <ul class="nav nav-pills flex-column ms-3">
+                        <li class="nav-item">
+                            <a class="nav-link" href="/shop/index">
+                                <i class="fas fa-store"></i> 매장 관리
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/product/">
+                                <i class="fas fa-box"></i> 상품관리
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#">
+                                <i class="fas fa-users"></i> 영업사원 관리
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#">
+                                <i class="fas fa-chart-bar"></i> 영업 실적
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#">
+                                <i class="fas fa-handshake"></i> 거래처 관리
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </li>
+
+            <!-- 고객 관리 -->
+            <li class="nav-item">
+                <a class="nav-link" href="#customer-menu" data-bs-toggle="collapse">
+                    <i class="fas fa-users-cog"></i>
+                    <span>고객 관리</span>
+                    <i class="fas fa-chevron-down ms-auto"></i>
+                </a>
+                <div class="collapse" id="customer-menu">
+                    <ul class="nav nav-pills flex-column ms-3">
+                        <li class="nav-item">
+                            <a class="nav-link" href="/customer/">
+                                <i class="fas fa-user-friends"></i> 고객 목록
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/customer/as-list">
+                                <i class="fas fa-list"></i> A/S 접수 목록
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/customer/analysis">
+                                <i class="fas fa-chart-line"></i> 고객 분석
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </li>
+
+            <!-- 매장 관리 (기존 독립 메뉴 제거) -->
+        </ul>
+    </nav>
+    
+    <!-- 하단 로그아웃 -->
+    <div class="p-3 border-top">
+        <a href="/auth/logout" class="btn btn-outline-danger w-100">
+            <i class="fas fa-sign-out-alt me-2"></i> 로그아웃
+        </a>
+    </div>
+</div>
+
+<!-- 사이드바 토글 버튼 -->
+<button class="btn btn-light d-md-none position-fixed" style="top: 10px; left: 10px; z-index: 1001;" id="sidebar-toggle">
+    <i class="fas fa-bars"></i>
+</button>
+
+<!-- 사이드바 JavaScript -->
+<script>
+// 회사 전환 함수
+function switchCompany(companyId) {
+    $.post('/api/switch-company', {
+        company_id: companyId
+    }, function(data) {
+        if (data.success) {
+            // 성공 시 페이지 새로고침
+            location.reload();
+        } else {
+            alert('회사 전환 실패: ' + data.message);
+        }
+    }).fail(function() {
+        alert('회사 전환 중 오류가 발생했습니다.');
+    });
+}
+
+// 사이드바 토글 (모바일)
+document.getElementById('sidebar-toggle')?.addEventListener('click', function() {
+    const sidebar = document.getElementById('sidebar');
+    sidebar.classList.toggle('d-none');
+});
+</script>
+
+<style>
+@media (max-width: 768px) {
+    #sidebar {
+        transform: translateX(-100%) !important;
+        transition: transform 0.3s ease;
+    }
+    #sidebar.show {
+        transform: translateX(0) !important;
+    }
+    .main-content {
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
+}
+
+@media (min-width: 769px) {
+    #sidebar {
+        transform: translateX(0) !important;
+    }
+    .main-content {
+        margin-left: 250px !important;
+        width: calc(100% - 250px) !important;
+    }
+}
+</style> 
+    
+
+    <!-- 메인 콘텐츠 영역 -->
+    <div class="main-content">
+        <!-- 상단 네비게이션 바 (옵션) -->
+        
+        <nav class="navbar navbar-expand-lg navbar-light bg-white mb-2 shadow-sm" style="min-height: auto !important; max-height: 50px !important; padding: 5px 0 !important;">
+            <div class="container-fluid" style="height: auto !important; max-height: 40px !important;">
+                <span class="navbar-brand mb-0 h1" style="font-size: 1rem !important; margin: 0 !important; padding: 0 !important;">
+                    <i class="fas fa-tachometer-alt me-1" style="font-size: 0.9rem !important;"></i>
+                    대시보드
+                </span>
+                
+                <div class="navbar-nav ms-auto" style="height: auto !important;">
+                    <!-- 알림 -->
+                    <div class="nav-item dropdown">
+                        <a class="nav-link" href="#" role="button" data-bs-toggle="dropdown" style="padding: 4px 8px !important; font-size: 0.85rem !important;">
+                            <i class="fas fa-bell" style="font-size: 0.9rem !important;"></i>
+                            <span class="badge bg-danger" style="font-size: 0.7rem !important;">3</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><span class="dropdown-item-text">새로운 알림이 없습니다.</span></li>
+                        </ul>
+                    </div>
+                    
+                    <!-- 사용자 메뉴 -->
+                    <div class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" style="padding: 4px 8px !important; font-size: 0.85rem !important;">
+                            <i class="fas fa-user-circle me-1" style="font-size: 0.9rem !important;"></i>
+                            사용자
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="#"><i class="fas fa-user me-2"></i>내 정보</a></li>
+                            <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>설정</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="/auth/logout"><i class="fas fa-sign-out-alt me-2"></i>로그아웃</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </nav>
+        
+
+        <!-- 플래시 메시지 -->
+        
+            
+        
+
+        <!-- 메인 콘텐츠 -->
+        <main class="container-fluid">
+            
 <div class="container-fluid">
     <!-- 페이지 헤더 -->
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -366,9 +789,19 @@ body.modal-open {
                         </label>
                         <select class="form-select" id="searchProduct" name="searchProduct">
                             <option value="">전체 품목</option>
-                            {% for product in product_codes %}
-                            <option value="{{ product.seq }}">{{ product.code_name }}</option>
-                        {% endfor %}
+                            
+                            <option value="50">유모차</option>
+                        
+                            <option value="89">카시트</option>
+                        
+                            <option value="135">디럭스</option>
+                        
+                            <option value="176">썬종형</option>
+                        
+                            <option value="217">휴대용</option>
+                        
+                            <option value="279">쌍둥이</option>
+                        
                     </select>
                 </div>
                 <div class="col-md-2">
@@ -555,9 +988,11 @@ body.modal-open {
                                     <label for="brand_code_seq" class="form-label">브랜드 <span class="required">*</span></label>
                                     <select class="form-select" id="brand_code_seq" name="brand_code_seq" required>
                                         <option value="">선택하세요</option>
-                                        {% for brand in brand_codes %}
-                                        <option value="{{ brand.seq }}">{{ brand.code_name }}</option>
-                                        {% endfor %}
+                                        
+                                        <option value="1">로얄</option>
+                                        
+                                        <option value="2">조이</option>
+                                        
                                 </select>
                             </div>
                         </div>
@@ -568,9 +1003,7 @@ body.modal-open {
                                 <label for="prod_group_code_seq" class="form-label">제품구분 <span class="required">*</span></label>
                                 <select class="form-select" id="prod_group_code_seq" name="prod_group_code_seq" required>
                                     <option value="">선택하세요</option>
-                                    {% for category in category_codes %}
-                                    <option value="{{ category.seq }}">{{ category.code_name }}</option>
-                                    {% endfor %}
+                                    
                                 </select>
                             </div>
                             
@@ -580,9 +1013,19 @@ body.modal-open {
                                 </label>
                                 <select class="form-select" id="prod_code_seq" name="prod_code_seq" required>
                                     <option value="">품목을 선택하세요</option>
-                                    {% for product in product_codes %}
-                                    <option value="{{ product.seq }}" data-code="{{ product.code }}">{{ product.code_name }} ({{ product.code }})</option>
-                                    {% endfor %}
+                                    
+                                    <option value="50" data-code="ST">유모차 (ST)</option>
+                                    
+                                    <option value="89" data-code="CS">카시트 (CS)</option>
+                                    
+                                    <option value="135" data-code="DX">디럭스 (DX)</option>
+                                    
+                                    <option value="176" data-code="SD">썬종형 (SD)</option>
+                                    
+                                    <option value="217" data-code="BU">휴대용 (BU)</option>
+                                    
+                                    <option value="279" data-code="TW">쌍둥이 (TW)</option>
+                                    
                                 </select>
                                 <small class="text-muted">ERPia 연동 없이 자체 관리됩니다</small>
                             </div>
@@ -610,9 +1053,13 @@ body.modal-open {
                                     <label for="year_code_seq" class="form-label">년식 <span class="required">*</span></label>
                                     <select class="form-select" id="year_code_seq" name="year_code_seq" required>
                                         <option value="">선택하세요</option>
-                                    {% for year in year_codes %}
-                                        <option value="{{ year.seq }}" data-code="{{ year.code }}">{{ year.code_name }}</option>
-                                    {% endfor %}
+                                    
+                                        <option value="2024" data-code="2024">2024년</option>
+                                    
+                                        <option value="2025" data-code="2025">2025년</option>
+                                    
+                                        <option value="2026" data-code="2026">2026년</option>
+                                    
                                 </select>
                                 </div>
                             </div>
@@ -866,9 +1313,63 @@ body.modal-open {
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
+        </main>
+    </div>
+
+    <!-- 커스텀 JavaScript -->
+    <script>
+        // 전역 JavaScript 함수들
+        
+        // 로그아웃 확인
+        function confirmLogout() {
+            return confirm('정말 로그아웃하시겠습니까?');
+        }
+        
+        // 회사 전환 함수
+        function switchCompany(companyId) {
+            fetch('/api/switch-company', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({company_id: companyId})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 회사 전환 완료 이벤트 발생
+                    $(window).trigger('companyChanged');
+                    // 페이지 새로고침으로 UI 업데이트
+                    location.reload();
+                } else {
+                    alert('회사 전환에 실패했습니다: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('회사 전환 중 오류가 발생했습니다.');
+            });
+        }
+        
+        // 페이지 로드 시 실행
+        $(document).ready(function() {
+            // DataTables 기본 설정
+            if ($.fn.DataTable) {
+                $.extend(true, $.fn.dataTable.defaults, {
+                    language: {
+                        url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/ko.json'
+                    },
+                    responsive: true,
+                    pageLength: 25,
+                    lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "전체"]],
+                    dom: '<"row"<"col-sm-6"l><"col-sm-6"f>>rtip'
+                });
+            }
+        });
+    </script>
+    
+    
 <!-- 공통 라이브러리 -->
 <script src="/static/js/common/ajax-helper.js"></script>
 <script src="/static/js/common/ui-components.js"></script>
@@ -890,7 +1391,7 @@ $(document).ready(function() {
     
     // 🔧 색상 코드 데이터를 전역 변수로 설정
     try {
-        window.colorCodesData = JSON.parse('{{ color_codes | tojson | safe }}');
+        window.colorCodesData = JSON.parse('[{"code": "BLK", "code_name": "\ube14\ub799", "seq": 1}, {"code": "WHT", "code_name": "\ud654\uc774\ud2b8", "seq": 2}, {"code": "GRY", "code_name": "\uadf8\ub808\uc774", "seq": 3}, {"code": "RED", "code_name": "\ube68\uac15", "seq": 4}, {"code": "BLU", "code_name": "\ud30c\ub791", "seq": 5}]');
         console.log('✅ 색상 코드 데이터 로드:', window.colorCodesData.length + '개');
     } catch (e) {
         console.error('❌ 색상 코드 데이터 로드 실패:', e);
@@ -899,7 +1400,7 @@ $(document).ready(function() {
     
     // 🔧 브랜드 코드 데이터를 전역 변수로 설정
     try {
-        window.brandCodesData = JSON.parse('{{ brand_codes | tojson | safe }}');
+        window.brandCodesData = JSON.parse('[{"code": "RY", "code_name": "\ub85c\uc584", "seq": 1}, {"code": "JO", "code_name": "\uc870\uc774", "seq": 2}]');
         console.log('✅ 브랜드 코드 데이터 로드:', window.brandCodesData.length + '개');
     } catch (e) {
         console.error('❌ 브랜드 코드 데이터 로드 실패:', e);
@@ -908,7 +1409,7 @@ $(document).ready(function() {
     
     // 🔧 제품 그룹 코드 데이터를 전역 변수로 설정
     try {
-        window.productGroupCodesData = JSON.parse('{{ product_group_codes | tojson | safe }}');
+        window.productGroupCodesData = JSON.parse('[]');
         console.log('✅ 제품 그룹 코드 데이터 로드:', window.productGroupCodesData.length + '개');
     } catch (e) {
         console.error('❌ 제품 그룹 코드 데이터 로드 실패:', e);
@@ -917,7 +1418,7 @@ $(document).ready(function() {
     
     // 🔧 아이템 코드 데이터를 전역 변수로 설정
     try {
-        window.itemCodesData = JSON.parse('{{ item_codes | tojson | safe }}');
+        window.itemCodesData = JSON.parse('[]');
         console.log('✅ 아이템 코드 데이터 로드:', window.itemCodesData.length + '개');
     } catch (e) {
         console.error('❌ 아이템 코드 데이터 로드 실패:', e);
@@ -926,7 +1427,7 @@ $(document).ready(function() {
     
     // 🔧 아이템 상세 코드 데이터를 전역 변수로 설정
     try {
-        window.itemDetailCodesData = JSON.parse('{{ item_detail_codes | tojson | safe }}');
+        window.itemDetailCodesData = JSON.parse('[]');
         console.log('✅ 아이템 상세 코드 데이터 로드:', window.itemDetailCodesData.length + '개');
     } catch (e) {
         console.error('❌ 아이템 상세 코드 데이터 로드 실패:', e);
@@ -935,20 +1436,11 @@ $(document).ready(function() {
     
     // 🔧 제품 타입 카테고리 코드 데이터를 전역 변수로 설정
     try {
-        window.productTypeCategoryCodesData = JSON.parse('{{ product_type_category_codes | tojson | safe }}');
+        window.productTypeCategoryCodesData = JSON.parse('[]');
         console.log('✅ 제품 타입 카테고리 코드 데이터 로드:', window.productTypeCategoryCodesData.length + '개');
     } catch (e) {
         console.error('❌ 제품 타입 카테고리 코드 데이터 로드 실패:', e);
         window.productTypeCategoryCodesData = [];
-    }
-    
-    // 🔧 색상별 제품 코드 데이터를 전역 변수로 설정
-    try {
-        window.colorByProductCodesData = JSON.parse('{{ color_by_product_codes | tojson | safe }}');
-        console.log('✅ 색상별 제품 코드 데이터 로드:', window.colorByProductCodesData.length + '개');
-    } catch (e) {
-        console.error('❌ 색상별 제품 코드 데이터 로드 실패:', e);
-        window.colorByProductCodesData = [];
     }
     
     // ✅ 모든 중복 API 호출 제거 - productListManager가 알아서 처리
@@ -1945,102 +2437,21 @@ function updateModelIndices() {
     });
 }
 
-// 🔧 자사코드 생성 함수 - 개선된 버전
+// 🔧 자사코드 생성 함수
 function generateStdCodeFromSelection(stdCodeInput) {
-    console.log('🔧 자사코드 생성 시작');
+    const brand = $('#brand_code_seq option:selected').data('code') || '';
+    const divType = '3'; // 고정값
+    const prodGroup = $('#prod_group_code_seq option:selected').data('code') || '';
+    const prodType = $('#prod_type_code_seq option:selected').data('code') || '';
+    const prod = $('#prod_code_seq option:selected').data('code') || '';
+    const type2 = '00'; // 고정값
+    const year = $('#year_code_seq option:selected').data('code') || '';
+    const colorCode = stdCodeInput.closest('.product-model-item').find('.color-code option:selected').data('code') || '';
     
-    // 필수 필드들 수집 (실제 필드 ID 사용)
-    const brandSeq = $('#brand_code_seq').val();
-    const prodGroupSeq = $('#prod_group_code_seq').val();
-    const prodCodeSeq = $('#prod_code_seq').val();
-    const prodTypeSeq = $('#prod_type_code_seq').val();
-    const yearSeq = $('#year_code_seq').val();
+    const stdCode = `${brand}${divType}${prodGroup}${prodType}${prod}${type2}${year}${colorCode}`;
+    stdCodeInput.val(stdCode);
     
-    // 색상은 해당 제품 모델에서 가져오기
-    const colorSeq = stdCodeInput.closest('.product-model-item').find('.color-code').val();
-    
-    console.log('📊 필드 값 확인:', {
-        brandSeq: brandSeq,
-        prodGroupSeq: prodGroupSeq,
-        prodCodeSeq: prodCodeSeq,
-        prodTypeSeq: prodTypeSeq,
-        yearSeq: yearSeq,
-        colorSeq: colorSeq
-    });
-    
-    // 필수 필드 검증
-    const missingFields = [];
-    if (!brandSeq) missingFields.push('브랜드');
-    if (!prodGroupSeq) missingFields.push('제품구분');
-    if (!prodCodeSeq) missingFields.push('품목');
-    if (!prodTypeSeq) missingFields.push('타입');
-    if (!yearSeq) missingFields.push('년식');
-    if (!colorSeq) missingFields.push('색상');
-    
-    if (missingFields.length > 0) {
-        alert('❌ 다음 필드를 먼저 선택해주세요:\n' + missingFields.join(', '));
-        console.warn('❌ 필수 필드 누락:', missingFields);
-        return;
-    }
-    
-    // 백엔드 API를 통한 자동생성 호출
-    const requestData = {
-        brandSeq: parseInt(brandSeq),
-        prodGroupSeq: parseInt(prodGroupSeq),
-        prodCodeSeq: parseInt(prodCodeSeq),
-        prodTypeSeq: parseInt(prodTypeSeq),
-        yearSeq: parseInt(yearSeq),
-        colorSeq: parseInt(colorSeq)
-    };
-    
-    console.log('📡 자사코드 생성 요청 데이터:', requestData);
-    
-    // 로딩 표시
-    const generateBtn = stdCodeInput.siblings('.btn-generate-code');
-    const originalText = generateBtn.html();
-    generateBtn.html('<i class="fas fa-spinner fa-spin"></i> 생성중...');
-    generateBtn.prop('disabled', true);
-    
-    $.ajax({
-        url: '/product/api/generate-code',
-        method: 'POST',
-        contentType: 'application/json',
-        data: JSON.stringify(requestData),
-        success: function(response) {
-            console.log('📡 API 응답:', response);
-            if (response.success && response.generated_code) {
-                stdCodeInput.val(response.generated_code);
-                console.log('✅ 자사코드 생성 성공:', response.generated_code);
-                console.log('🔧 구성 요소:', response.components);
-                
-                // 성공 표시
-                stdCodeInput.addClass('border-success');
-                setTimeout(() => {
-                    stdCodeInput.removeClass('border-success');
-                }, 2000);
-                
-                // 성공 메시지
-                UIHelper.showAlert(`✅ 자사코드 생성 완료: ${response.generated_code}`, 'success');
-            } else {
-                console.error('❌ 자사코드 생성 실패:', response);
-                alert('❌ 자사코드 생성 실패: ' + (response.message || '알 수 없는 오류'));
-            }
-        },
-        error: function(xhr, status, error) {
-            console.error('❌ 자사코드 생성 API 오류:', {
-                status: xhr.status,
-                statusText: xhr.statusText,
-                responseText: xhr.responseText,
-                error: error
-            });
-            alert('❌ 자사코드 생성 중 오류가 발생했습니다.\n상세 내용: ' + (xhr.responseText || error));
-        },
-        complete: function() {
-            // 로딩 해제
-            generateBtn.html(originalText);
-            generateBtn.prop('disabled', false);
-        }
-    });
+    console.log('🔧 자사코드 생성:', stdCode);
 }
 
 function scrollToTop() {
@@ -2221,26 +2632,5 @@ async function uploadExcel(input) {
 }
 </style>
 
-<!-- 🔥 코드 데이터를 JavaScript 변수로 설정 -->
-<script>
-// 전역 변수로 코드 데이터 설정
-window.colorCodesData = {{ color_codes | tojson }};
-window.brandCodesData = {{ brand_codes | tojson }};
-window.productGroupCodesData = {{ product_group_codes | tojson }};
-window.itemCodesData = {{ item_codes | tojson }};
-window.itemDetailCodesData = {{ item_detail_codes | tojson }};
-window.productTypeCategoryCodesData = {{ product_type_category_codes | tojson }};
-window.companyCodesData = {{ company_codes | tojson }};
-window.yearCodesData = {{ year_codes | tojson }};
-
-console.log('🔧 JavaScript 변수 설정 완료:');
-console.log('  - 색상 코드:', window.colorCodesData?.length || 0, '개');
-console.log('  - 브랜드 코드:', window.brandCodesData?.length || 0, '개');
-console.log('  - 제품군 코드:', window.productGroupCodesData?.length || 0, '개');
-console.log('  - 아이템 코드:', window.itemCodesData?.length || 0, '개');
-console.log('  - 아이템상세 코드:', window.itemDetailCodesData?.length || 0, '개');
-console.log('  - 제품타입카테고리 코드:', window.productTypeCategoryCodesData?.length || 0, '개');
-console.log('  - 회사 코드:', window.companyCodesData?.length || 0, '개');
-console.log('  - 년도 코드:', window.yearCodesData?.length || 0, '개');
-</script>
-{% endblock %} 
+</body>
+</html> 
