@@ -49,6 +49,10 @@ def create_app(config_name='development'):
     # 설정 로드
     app.config.from_object(Config)
     
+    # 🔧 개발 환경에서 정적 파일 캐시 비활성화
+    if config_name == 'development':
+        app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
+    
     # 확장 모듈 초기화
     init_db(app)  # 데이터베이스 초기화
     login_manager.init_app(app)
