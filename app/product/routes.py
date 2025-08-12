@@ -117,8 +117,8 @@ def index():
         type2_codes = safe_get_codes('타입2')
         
         # 🔥 새로 추가된 코드들
-        detail_brand_codes = safe_get_codes('분류2')  # CL2 그룹 (세부브랜드)
-        product_division_codes = safe_get_codes('제품구분')  # PD 그룹
+        detail_brand_codes = safe_get_codes('세부 브랜드')  # CL2 그룹 (세부브랜드)
+        product_division_codes = safe_get_codes('제품구분')  # PD 그룹 (4개)
         
         # 9. 새로운 분류 체계들 (실제 존재하는 그룹들)
         product_group_codes = safe_get_codes('제품군')  # PG 그룹
