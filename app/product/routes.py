@@ -110,7 +110,7 @@ def index():
         ]
         
         # 8. 레거시 호환 코드들
-        category_codes = safe_get_codes('제품구분')  # PRT 그룹
+        category_codes = safe_get_codes('PRT')  # 🔥 PRT 그룹으로 수정 (제품구분)
         div_type_codes = safe_get_codes('구분타입')
         prod_group_codes = safe_get_codes('품목그룹')
         prod_type_codes = safe_get_codes('타입')     # TP 그룹
@@ -132,7 +132,7 @@ def index():
         
         # 🔥 새로 추가된 코드들
         detail_brand_codes = safe_get_codes('세부 브랜드')  # CL2 그룹 (세부브랜드)
-        product_division_codes = safe_get_codes('제품구분')  # PD 그룹 (4개)
+        product_division_codes = safe_get_codes('PRT')  # 🔥 PRT 그룹으로 수정 (제품구분)
         
         # 9. 새로운 분류 체계들 (실제 존재하는 그룹들)
         product_group_codes = safe_get_codes('제품군')  # PG 그룹
@@ -226,11 +226,11 @@ def api_list():
         
         # 품목별 검색
         if search_product:
-            query = query.filter_by(prod_code_seq=search_product)
+            query = query.filter_by(category_code_seq=search_product)  # 🔥 올바른 필드명 사용
         
         # 타입별 검색
         if search_type:
-            query = query.filter_by(prod_type_code_seq=search_type)
+            query = query.filter_by(type_code_seq=search_type)  # 🔥 올바른 필드명 사용
         
         # 정렬 적용
         if sort_by and hasattr(Product, sort_by):
@@ -252,17 +252,14 @@ def api_list():
         
         # 통계 정보 계산 (ProductDetail 기준)
         try:
-            # 전체 상품수 (Product 테이블 기준)
-            total_products_query = Product.query.filter_by(company_id=current_company_id)
-            if not show_inactive:
-                total_products_query = total_products_query.filter_by(is_active=True)
-            total_products = total_products_query.count()
+            # 🔥 전체 상품수 (ProductDetail 테이블 기준 - 미사용 포함)
+            total_products = ProductDetail.query.count()
             
-            # 상품코드 보유 상품수 (ProductDetail 테이블 기준)
-            std_code_products = db.session.query(ProductDetail.product_id).filter(
+            # 🔥 자사코드 보유 상품수 (ProductDetail 테이블 기준)
+            std_code_products = ProductDetail.query.filter(
                 ProductDetail.std_div_prod_code.isnot(None),
                 ProductDetail.std_div_prod_code != ''
-            ).distinct().count()
+            ).count()
             
             stats = {
                 'total_products': total_products,
@@ -1444,10 +1441,10 @@ def api_excel_download():
             query = query.filter(Product.product_name.ilike(search_pattern))
         
         if search_product:
-            query = query.filter_by(prod_code_seq=search_product)
+            query = query.filter_by(category_code_seq=search_product)  # 🔥 올바른 필드명 사용
         
         if search_type:
-            query = query.filter_by(prod_type_code_seq=search_type)
+            query = query.filter_by(type_code_seq=search_type)  # 🔥 올바른 필드명 사용
         
         # 데이터 조회 (제한: 최대 1000개)
         products = query.limit(1000).all()
@@ -1463,14 +1460,14 @@ def api_excel_download():
             
             # 품목명 조회
             product_name = ''
-            if product.prod_code_seq:
-                prod_code = Code.query.get(product.prod_code_seq)
+            if product.category_code_seq:  # 🔥 올바른 필드명 사용
+                prod_code = Code.query.get(product.category_code_seq)
                 product_name = prod_code.code_name if prod_code else ''
             
             # 타입명 조회
             type_name = ''
-            if product.prod_type_code_seq:
-                type_code = Code.query.get(product.prod_type_code_seq)
+            if product.type_code_seq:  # 🔥 올바른 필드명 사용
+                type_code = Code.query.get(product.type_code_seq)
                 type_name = type_code.code_name if type_code else ''
             
             # 상태 변환
@@ -1602,8 +1599,8 @@ def api_excel_upload():
                 if existing_product:
                     # 기존 상품 업데이트
                     existing_product.brand_code_seq = brand_code_seq
-                    existing_product.prod_code_seq = prod_code_seq
-                    existing_product.prod_type_code_seq = prod_type_code_seq
+                    existing_product.category_code_seq = prod_code_seq  # 🔥 올바른 필드명 사용
+                    existing_product.type_code_seq = prod_type_code_seq  # 🔥 올바른 필드명 사용
                     existing_product.price = price
                     existing_product.is_active = is_active
                     existing_product.updated_at = datetime.now()
@@ -1612,8 +1609,8 @@ def api_excel_upload():
                     new_product = Product(
                         product_name=product_name,
                         brand_code_seq=brand_code_seq,
-                        prod_code_seq=prod_code_seq,
-                        prod_type_code_seq=prod_type_code_seq,
+                        category_code_seq=prod_code_seq,  # 🔥 올바른 필드명 사용
+                        type_code_seq=prod_type_code_seq,  # 🔥 올바른 필드명 사용
                         price=price,
                         is_active=is_active,
                         company_id=current_company_id,

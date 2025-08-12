@@ -154,7 +154,7 @@ class ProductListManager {
                 }
                 
                 this.displayProducts();
-                this.updatePagination();
+                this.updatePagination(this.currentPagination);  // 🔥 pagination 데이터 전달
                 this.retryCount = 0; // 🔥 성공 시 재시도 횟수 리셋
                 
                 console.log(`✅ 상품 목록 로드 완료: ${this.allProducts.length}개`);

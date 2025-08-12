@@ -130,8 +130,9 @@ class ProductManager {
         $('#isEditMode').val('false');
         $('#saveProductBtn').html('<i class="fas fa-save me-1"></i>저장');
         
-            // 폼 초기화
+            // 🔥 완전한 폼 초기화 (모든 필드 리셋)
         this.resetForm();
+        this.clearAllFormData();  // 🔥 추가: 모든 데이터 완전 삭제
             
             // 코드 데이터 로드
             console.log('🔄 상품 등록 모달 - 코드 데이터 로드 시작');
@@ -478,20 +479,20 @@ class ProductManager {
             console.log('🔧 제품구분 설정 데이터 확인:');
             console.log('  - productData.div_type_code_seq:', productData.div_type_code_seq);
             console.log('  - parsedCodes.prodGroup:', parsedCodes.prodGroup);
-            console.log('  - 제품구분 셀렉트박스 옵션들:');
+            console.log('  - 제품구분 셀렉트박스 옵션들 (PRT 그룹):');
             $('#prod_group_code_seq option').each(function() {
                 if ($(this).val()) {
                     console.log(`    * value: ${$(this).val()}, data-code: ${$(this).data('code')}, text: ${$(this).text()}`);
                 }
             });
             
-            // 우선순위: 1) div_type_code_seq 2) 파싱된 자사코드 prodGroup
+            // 우선순위: 1) div_type_code_seq 2) 파싱된 자사코드 prodGroup을 PRT 그룹에서 매칭
             if (productData.div_type_code_seq) {
-                this.setSelectValue('prod_group_code_seq', productData.div_type_code_seq, '제품구분', parsedCodes.prodGroup);
+                this.setSelectValue('prod_group_code_seq', productData.div_type_code_seq, '제품구분(PRT)', parsedCodes.prodGroup);
             } else if (parsedCodes.prodGroup) {
-                // div_type_code_seq가 없으면 파싱된 자사코드로 매칭 시도
-                console.log('🔄 div_type_code_seq가 없어서 자사코드 파싱값으로 제품구분 매칭 시도');
-                this.setSelectValue('prod_group_code_seq', null, '제품구분', parsedCodes.prodGroup);
+                // div_type_code_seq가 없으면 파싱된 자사코드의 prodGroup을 PRT 그룹에서 매칭 시도
+                console.log('🔄 div_type_code_seq가 없어서 자사코드 파싱값으로 PRT 그룹에서 제품구분 매칭 시도');
+                this.setSelectValue('prod_group_code_seq', null, '제품구분(PRT)', parsedCodes.prodGroup);
             } else {
                 console.warn('⚠️ div_type_code_seq와 파싱된 자사코드 모두 없습니다. 제품구분을 설정할 수 없습니다.');
             }
@@ -1133,6 +1134,53 @@ class ProductManager {
         this.currentProductId = null;
         this.isEditMode = false;
         
+        // 유효성 검사 스타일 제거
+        $('#productForm').removeClass('was-validated');
+        $('.is-invalid').removeClass('is-invalid');
+    }
+
+    /**
+     * 모든 폼 데이터 초기화
+     */
+    clearAllFormData() {
+        $('#productForm')[0].reset();
+        $('#productId').val('');
+        this.currentProductId = null;
+        this.isEditMode = false;
+
+        // 모든 데이터 초기화 (예: 모델 컨테이너 비우기)
+        $('#productModelsContainer').empty();
+
+        // 모든 코드 선택 상태 초기화
+        $('#prod_code_seq').val('').trigger('change');
+        $('#prod_type_code_seq').html('<option value="">선택하세요</option>');
+        $('#brand_code_seq').val('').trigger('change');
+        $('#prod_group_code_seq').val('').trigger('change');
+        $('#prod_code_seq').val('').trigger('change');
+        $('#prod_type_code_seq').val('').trigger('change');
+        $('#year_code_seq').val('').trigger('change');
+        $('#use_yn').val('Y').trigger('change');
+
+        // 모든 모델 필드 초기화
+        $('.product-model-item').each(function() {
+            $(this).find('.prod-type2-code').val('').trigger('change');
+            $(this).find('.color-code').val('').trigger('change');
+            $(this).find('.product-model-name').val('');
+            $(this).find('.std-product-code').val('');
+            $(this).find('.douzone-code').val('');
+            $(this).find('.erpia-code').val('');
+            $(this).find('.official-cost').val('0');
+            $(this).find('.consumer-price').val('0');
+            $(this).find('.operation-price').val('0');
+            $(this).find('.ans-value').val('').trigger('change');
+            $(this).find('.detail-brand-code').val('').trigger('change');
+            $(this).find('.product-group-code').val('').trigger('change');
+            $(this).find('.item-code').val('').trigger('change');
+            $(this).find('.item-detail-code').val('').trigger('change');
+            $(this).find('.product-type-category-code').val('').trigger('change');
+            $(this).find('.color-detail-code').val('').trigger('change');
+        });
+
         // 유효성 검사 스타일 제거
         $('#productForm').removeClass('was-validated');
         $('.is-invalid').removeClass('is-invalid');
